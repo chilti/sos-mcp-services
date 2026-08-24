@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #090e17;
+      --card: #131d2e;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #06b6d4;
+      --primary: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: rgba(19, 29, 46, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+    h1 { font-size: 14px; font-weight: 600; }
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 14px;
+      flex: 1;
+    }
+    @media (max-width: 768px) { .grid-container { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .partner-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+    }
+    .partner-row:hover { background: rgba(255,255,255,0.02); }
+    .fwci-tag {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .donut-container { display: flex; align-items: center; justify-content: space-around; flex: 1; }
+    .sdg-bar-item { margin-bottom: 10px; }
+    .sdg-bar-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+    .sdg-bar-track { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+    .sdg-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="badge">Geopolítica & OA</span>
+      <h1>{{ TITLE }}</h1>
+    </div>
+  </header>
+
+  <div class="grid-container">
+    <!-- Card 1: Coautoría Internacional -->
+    <div class="card">
+      <div class="card-title">🌍 Países Aliados Estratégicos</div>
+      <div id="partners-list" style="overflow-y:auto; max-height:280px;"></div>
+    </div>
+
+    <!-- Card 2: Vías de Acceso Abierto -->
+    <div class="card">
+      <div class="card-title">🔓 Transición a Acceso Abierto (6 Vías)</div>
+      <div class="donut-container">
+        <svg id="oa-donut" width="160" height="160"></svg>
+        <div id="oa-legend" style="font-size:11px; display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </div>
+
+    <!-- Card 3: Alineación ODS -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <div class="card-title">🎯 Alineación con Objetivos de Desarrollo Sostenible (ODS)</div>
+      <div id="sdg-bars"></div>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    const partners = data.partner_countries || [];
+    const oa = data.oa_breakdown || { diamond: 35, gold_apc: 25, green_repository: 15, closed_paywall: 25 };
+    const sdgs = data.top_sdgs || [];
+
+    // 1. Partners
+    const pList = document.getElementById("partners-list");
+    partners.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "partner-row";
+      row.innerHTML = `
+        <div>
+          <strong>${p.country_name || p.country_code}</strong>
+          <span style="color:#64748b; margin-left:6px;">(${p.coauthored_papers} papers)</span>
+        </div>
+        <div>
+          ${p.mean_fwci ? `<span class="fwci-tag">FWCI: ${p.mean_fwci}</span>` : ''}
+        </div>
+      `;
+      pList.appendChild(row);
+    });
+
+    // 2. OA Donut
+    const oaData = [
+      { label: "💎 Diamante", value: oa.diamond || 0, color: "#38bdf8" },
+      { label: "🥇 Gold APC", value: oa.gold_apc || 0, color: "#f59e0b" },
+      { label: "🌿 Repositorio (Green)", value: oa.green_repository || 0, color: "#10b981" },
+      { label: "🔒 Cerrado (Paywall)", value: oa.closed_paywall || 0, color: "#64748b" }
+    ].filter(d => d.value > 0);
+
+    const svgDonut = d3.select("#oa-donut");
+    const radius = 75;
+    const gDonut = svgDonut.append("g").attr("transform", `translate(${radius + 5},${radius + 5})`);
+    const pie = d3.pie().value(d => d.value).sort(null);
+    const arc = d3.arc().innerRadius(45).outerRadius(radius);
+
+    gDonut.selectAll("path")
+      .data(pie(oaData))
+      .enter()
+      .append("path")
+      .attr("d", arc)
+      .attr("fill", d => d.data.color)
+      .attr("stroke", "#131d2e")
+      .attr("stroke-width", 2);
+
+    const oaLeg = document.getElementById("oa-legend");
+    oaData.forEach(d => {
+      oaLeg.innerHTML += `<div style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; background:${d.color}; border-radius:2px; display:inline-block;"></span> <span>${d.label}: <strong>${d.value}%</strong></span></div>`;
+    });
+
+    // 3. SDGs
+    const sdgContainer = document.getElementById("sdg-bars");
+    sdgs.forEach(s => {
+      const pct = s.pct_share || (s.aligned_papers_count ? Math.min(100, s.aligned_papers_count * 2) : 20);
+      sdgContainer.innerHTML += `
+        <div class="sdg-bar-item">
+          <div class="sdg-bar-label">
+            <span>ODS ${s.sdg_number || ''}: <strong>${s.sdg_title || ''}</strong></span>
+            <span>${s.aligned_papers_count ? `${s.aligned_papers_count} papers` : ''} (${pct}%)</span>
+          </div>
+          <div class="sdg-bar-track">
+            <div class="sdg-bar-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>

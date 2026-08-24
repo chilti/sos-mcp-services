@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #151e2e;
+      --border: #233044;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --primary: #818cf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: rgba(21, 30, 46, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(129, 140, 248, 0.15);
+      color: var(--primary);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(129, 140, 248, 0.3);
+    }
+    h1 { font-size: 14px; font-weight: 600; }
+    .controls { display: flex; align-items: center; gap: 8px; }
+    input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+      width: 150px;
+      transition: all 0.2s;
+    }
+    input[type="text"]:focus { border-color: var(--accent); width: 190px; }
+    .btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    #main-container { flex: 1; position: relative; width: 100%; height: 100%; cursor: grab; }
+    #main-container:active { cursor: grabbing; }
+    svg { width: 100%; height: 100%; display: block; }
+    .link { stroke: #334155; stroke-opacity: 0.6; transition: stroke 0.2s, stroke-opacity 0.2s; }
+    .link.highlighted { stroke: var(--accent); stroke-opacity: 1; }
+    .node { cursor: pointer; transition: transform 0.2s; }
+    .node circle { stroke: #0f172a; stroke-width: 1.5px; }
+    .node:hover circle { stroke: #fff; stroke-width: 3px; }
+    .node.dimmed { opacity: 0.15; }
+    .node-text {
+      font-size: 10px;
+      font-weight: 500;
+      fill: #e2e8f0;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: #090d16;
+      stroke-width: 2.5px;
+    }
+    .tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      max-width: 280px;
+      backdrop-filter: blur(6px);
+    }
+    .stats-card {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(21, 30, 46, 0.85);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 5;
+    }
+    .stats-card strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="badge">Red Louvain</span>
+      <h1>{{ TITLE }}</h1>
+    </div>
+    <div class="controls">
+      <input type="text" id="search-input" placeholder="🔍 Buscar nodo..." oninput="onSearch(this.value)">
+      <button class="btn" onclick="resetView()">🎯 Centrar</button>
+      <button class="btn" onclick="restartSim()">⚡ Estabilizar</button>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <svg id="net-svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="stats-card" id="stats-card">
+      Nodos: <strong id="st-nodes">0</strong> | Enlaces: <strong id="st-links">0</strong> | Q: <strong id="st-q">0.00</strong>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    const nodes = data.nodes || [];
+    const links = data.links || [];
+    const modularityQ = data.modularity_q || 0;
+
+    document.getElementById("st-nodes").textContent = nodes.length;
+    document.getElementById("st-links").textContent = links.length;
+    document.getElementById("st-q").textContent = (typeof modularityQ === 'number') ? modularityQ.toFixed(2) : modularityQ;
+
+    const svg = d3.select("#net-svg");
+    const container = document.getElementById("main-container");
+    const tooltip = document.getElementById("tooltip");
+
+    const g = svg.append("g");
+    const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 8])
+      .on("zoom", (e) => g.attr("transform", e.transform));
+    svg.call(zoom);
+
+    // Link and node sizing
+    const maxWeight = Math.max(1, ...nodes.map(n => n.weight || 1));
+    const rScale = d3.scaleSqrt().domain([1, maxWeight]).range([5, 26]);
+
+    const maxLinkStrength = Math.max(1, ...links.map(l => l.strength || 1));
+    const wScale = d3.scaleLinear().domain([1, maxLinkStrength]).range([1, 6]);
+
+    // Force simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(60).strength(0.6))
+      .force("charge", d3.forceManyBody().strength(-180))
+      .force("center", d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2))
+      .force("collide", d3.forceCollide().radius(d => rScale(d.weight || 1) + 4));
+
+    // Render links
+    const link = g.append("g")
+      .attr("class", "links")
+      .selectAll("line")
+      .data(links)
+      .enter()
+      .append("line")
+      .attr("class", "link")
+      .attr("stroke-width", d => wScale(d.strength || 1));
+
+    // Render nodes
+    const node = g.append("g")
+      .attr("class", "nodes")
+      .selectAll("g")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .attr("class", "node")
+      .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+    node.append("circle")
+      .attr("r", d => rScale(d.weight || 1))
+      .attr("fill", d => colorScale(d.cluster !== undefined ? d.cluster : 0));
+
+    node.append("text")
+      .attr("class", "node-text")
+      .attr("x", d => rScale(d.weight || 1) + 4)
+      .attr("y", 3)
+      .text(d => d.label || d.id);
+
+    node.on("mousemove", (e, d) => {
+      tooltip.style.display = "block";
+      tooltip.style.left = (e.clientX + 14) + "px";
+      tooltip.style.top = (e.clientY + 14) + "px";
+      
+      let html = `<strong style="color:${colorScale(d.cluster)}">${d.label || d.id}</strong>`;
+      if (d.cluster !== undefined) html += `<div>Comunidad: Cluster #${d.cluster + 1}</div>`;
+      if (d.weight) html += `<div>Volumen/Frecuencia: ${d.weight}</div>`;
+      if (d.fwci) html += `<div>FWCI Normalizado: ${d.fwci}</div>`;
+      if (d.institution) html += `<div>Filiación: ${d.institution}</div>`;
+      tooltip.innerHTML = html;
+    })
+    .on("mouseleave", () => { tooltip.style.display = "none"; })
+    .on("click", (e, d) => highlightCluster(d.cluster));
+
+    simulation.on("tick", () => {
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    function highlightCluster(clusterId) {
+      if (clusterId === null || clusterId === undefined) {
+        node.classed("dimmed", false);
+        link.classed("highlighted", false);
+        return;
+      }
+      node.classed("dimmed", d => d.cluster !== clusterId);
+      link.classed("highlighted", d => d.source.cluster === clusterId && d.target.cluster === clusterId);
+    }
+
+    function onSearch(query) {
+      const q = query.trim().toLowerCase();
+      if (!q) {
+        node.classed("dimmed", false);
+        return;
+      }
+      node.classed("dimmed", d => !(d.label || d.id || "").toLowerCase().includes(q));
+    }
+
+    function resetView() {
+      highlightCluster(null);
+      document.getElementById("search-input").value = "";
+      svg.transition().duration(750).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(0, 0).scale(1)
+      );
+    }
+
+    function restartSim() {
+      simulation.alpha(1).restart();
+    }
+
+    window.addEventListener('resize', () => {
+      simulation.force("center", d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2));
+      restartSim();
+    });
+  </script>
+</body>
+</html>

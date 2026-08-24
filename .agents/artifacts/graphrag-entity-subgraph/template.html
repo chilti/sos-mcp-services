@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #090e17;
+      --card: #131d2e;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: rgba(19, 29, 46, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    h1 { font-size: 14px; font-weight: 600; }
+    #main-container { flex: 1; position: relative; width: 100%; height: 100%; cursor: grab; }
+    #main-container:active { cursor: grabbing; }
+    svg { width: 100%; height: 100%; display: block; }
+    .edge { stroke: #334155; stroke-opacity: 0.6; stroke-width: 1.5px; }
+    .edge-label { font-size: 8px; fill: #64748b; text-anchor: middle; }
+    .node circle { stroke: #0f172a; stroke-width: 2px; cursor: pointer; }
+    .node text { font-size: 9px; font-weight: 600; fill: #e2e8f0; pointer-events: none; }
+    .tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      max-width: 300px;
+      backdrop-filter: blur(6px);
+    }
+    .legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(19, 29, 46, 0.85);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 5;
+      display: flex;
+      gap: 12px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-color { width: 10px; height: 10px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="badge">GraphRAG Neo4j</span>
+      <h1>{{ TITLE }}</h1>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <svg id="graph-svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-color" style="background:#38bdf8;"></span> Investigador</div>
+      <div class="legend-item"><span class="legend-color" style="background:#10b981;"></span> Institución</div>
+      <div class="legend-item"><span class="legend-color" style="background:#f59e0b;"></span> Trabajo/Paper</div>
+      <div class="legend-item"><span class="legend-color" style="background:#ec4899;"></span> Concepto</div>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    const nodes = data.nodes || [];
+    const edges = data.edges || [];
+
+    const svg = d3.select("#graph-svg");
+    const container = document.getElementById("main-container");
+    const tooltip = document.getElementById("tooltip");
+    const g = svg.append("g");
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 6])
+      .on("zoom", (e) => g.attr("transform", e.transform));
+    svg.call(zoom);
+
+    const typeColors = {
+      Researcher: "#38bdf8",
+      Institution: "#10b981",
+      Work: "#f59e0b",
+      Concept: "#ec4899",
+      Patent: "#a855f7"
+    };
+
+    const sim = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(edges).id(d => d.id).distance(80))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("center", d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2));
+
+    const link = g.append("g")
+      .selectAll("line")
+      .data(edges)
+      .enter()
+      .append("line")
+      .attr("class", "edge");
+
+    const node = g.append("g")
+      .selectAll("g")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .attr("class", "node")
+      .call(d3.drag()
+        .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+        .on("end", (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+    node.append("circle")
+      .attr("r", d => d.entity_type === 'Institution' ? 14 : (d.entity_type === 'Researcher' ? 12 : 8))
+      .attr("fill", d => typeColors[d.entity_type] || "#64748b");
+
+    node.append("text")
+      .attr("x", 12)
+      .attr("y", 3)
+      .text(d => d.label || d.id);
+
+    node.on("mousemove", (e, d) => {
+      tooltip.style.display = "block";
+      tooltip.style.left = (e.clientX + 14) + "px";
+      tooltip.style.top = (e.clientY + 14) + "px";
+      let h = `<strong style="color:${typeColors[d.entity_type] || '#fff'}">${d.label || d.id}</strong><div>Tipo: ${d.entity_type || 'Entidad'}</div>`;
+      if (d.snii_level) h += `<div>Nivel SNII: <strong>${d.snii_level}</strong></div>`;
+      if (d.orcid) h += `<div>ORCID: ${d.orcid}</div>`;
+      if (d.citations) h += `<div>Citas: ${d.citations}</div>`;
+      tooltip.innerHTML = h;
+    })
+    .on("mouseleave", () => { tooltip.style.display = "none"; });
+
+    sim.on("tick", () => {
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+  </script>
+</body>
+</html>

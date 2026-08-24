@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --primary: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 10;
+    }
+    .title-group { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    h1 { font-size: 14px; font-weight: 600; }
+    .controls { display: flex; align-items: center; gap: 8px; }
+    .btn-group { display: flex; background: var(--bg); border-radius: 6px; padding: 2px; border: 1px solid var(--border); }
+    .btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .btn.active { background: var(--primary); color: #fff; }
+    #main-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #main-container:active { cursor: grabbing; }
+    svg { width: 100%; height: 100%; display: block; }
+    .hex {
+      stroke: #1e293b;
+      stroke-width: 1.2px;
+      transition: fill 0.3s, stroke 0.2s;
+    }
+    .hex:hover {
+      stroke: #fff;
+      stroke-width: 2.5px;
+      filter: brightness(1.25);
+    }
+    .marker {
+      fill: #fff;
+      stroke: #0f172a;
+      stroke-width: 1.5px;
+      pointer-events: none;
+    }
+    .marker-label {
+      font-size: 9px;
+      font-weight: 600;
+      fill: #fff;
+      text-anchor: middle;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: #000;
+      stroke-width: 2px;
+    }
+    .tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      max-width: 280px;
+      backdrop-filter: blur(6px);
+    }
+    .tooltip strong { color: var(--accent); display: block; margin-bottom: 4px; }
+    .legend {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 5;
+    }
+    .legend-bar { width: 120px; height: 8px; border-radius: 4px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-group">
+      <span class="badge">knoMap SOM</span>
+      <h1 id="artifact-title">{{ TITLE }}</h1>
+    </div>
+    <div class="controls">
+      <div class="btn-group">
+        <button class="btn active" id="btn-umatrix" onclick="setMode('umatrix')">U-Matrix</button>
+        <button class="btn" id="btn-clusters" onclick="setMode('clusters')">Clusters</button>
+        <button class="btn" id="btn-freq" onclick="setMode('frequencies')">Densidad</button>
+      </div>
+      <button class="btn" onclick="resetZoom()" title="Restablecer vista">🎯 Centrar</button>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <svg id="som-svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="legend" id="legend">
+      <span id="legend-text">Distancia topológica U-Matrix</span>
+      <div class="legend-bar" id="legend-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    const meta = {{ META_JSON }};
+
+    const rows = data.grid_dimensions?.rows || (data.u_matrix ? data.u_matrix.length : 10);
+    const cols = data.grid_dimensions?.cols || (data.u_matrix && data.u_matrix[0] ? data.u_matrix[0].length : 10);
+    const uMatrix = data.u_matrix || Array.from({length: rows}, () => Array(cols).fill(0.5));
+    const sampleMappings = data.sample_mappings || [];
+    const clusterLabels = data.cluster_labels || [];
+
+    let currentMode = 'umatrix';
+    const svg = d3.select("#som-svg");
+    const container = document.getElementById("main-container");
+    const tooltip = document.getElementById("tooltip");
+    
+    const hexRadius = 24;
+    const hexWidth = Math.sqrt(3) * hexRadius;
+    const hexHeight = 2 * hexRadius * 0.75;
+
+    const g = svg.append("g");
+
+    // Color Scales
+    const colorUmatrix = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);
+    const colorClusters = d3.scaleOrdinal(d3.schemeTableau10);
+    const colorFreq = d3.scaleSequential(d3.interpolateYlOrRd);
+
+    // Zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.3, 5])
+      .on("zoom", (e) => g.attr("transform", e.transform));
+    svg.call(zoom);
+
+    function hexPoints(r) {
+      const angles = [0, 60, 120, 180, 240, 300].map(a => a * Math.PI / 180);
+      return angles.map(a => [r * Math.cos(a), r * Math.sin(a)]);
+    }
+    const hexPathString = d3.line()(hexPoints(hexRadius)) + "Z";
+
+    // Build grid cells
+    const cells = [];
+    const freqMap = {};
+
+    sampleMappings.forEach(s => {
+      const key = `${s.bmu_row}_${s.bmu_col}`;
+      if (!freqMap[key]) freqMap[key] = [];
+      freqMap[key].push(s);
+    });
+
+    const maxFreq = Math.max(1, ...Object.values(freqMap).map(arr => arr.length));
+    colorFreq.domain([0, maxFreq]);
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * hexWidth + (r % 2 === 1 ? hexWidth / 2 : 0);
+        const y = r * hexHeight;
+        const uVal = (uMatrix[r] && uMatrix[r][c] !== undefined) ? uMatrix[r][c] : 0.5;
+        const clusterIdx = Array.isArray(clusterLabels) && clusterLabels[r * cols + c] !== undefined 
+          ? clusterLabels[r * cols + c] 
+          : (r % 3);
+        const mappedItems = freqMap[`${r}_${c}`] || [];
+
+        cells.push({
+          row: r, col: c, x, y,
+          uVal: uVal,
+          cluster: clusterIdx,
+          items: mappedItems,
+          freq: mappedItems.length
+        });
+      }
+    }
+
+    // Draw Hexagons
+    const hexes = g.selectAll(".hex")
+      .data(cells)
+      .enter()
+      .append("path")
+      .attr("class", "hex")
+      .attr("d", hexPathString)
+      .attr("transform", d => `translate(${d.x}, ${d.y}) rotate(30)`)
+      .attr("fill", d => getColor(d))
+      .on("mousemove", (e, d) => {
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 14) + "px";
+        tooltip.style.top = (e.clientY + 14) + "px";
+        
+        let html = `<strong>Neurona (${d.row}, ${d.col})</strong>`;
+        html += `<div>U-Matrix: ${d.uVal.toFixed(3)}</div>`;
+        html += `<div>Cluster: #${d.cluster + 1}</div>`;
+        if (d.items.length > 0) {
+          html += `<div style="margin-top:4px; border-top:1px solid #334155; padding-top:4px;">`;
+          html += `<strong>Entidades mapeadas (${d.items.length}):</strong>`;
+          d.items.slice(0, 5).forEach(it => {
+            html += `<div>• ${it.label}</div>`;
+          });
+          if (d.items.length > 5) html += `<div><em>+${d.items.length - 5} más...</em></div>`;
+          html += `</div>`;
+        }
+        tooltip.innerHTML = html;
+      })
+      .on("mouseleave", () => { tooltip.style.display = "none"; });
+
+    // Draw mapped markers
+    const markersGroup = g.append("g").attr("class", "markers-layer");
+    cells.filter(d => d.items.length > 0).forEach(d => {
+      markersGroup.append("circle")
+        .attr("class", "marker")
+        .attr("cx", d.x)
+        .attr("cy", d.y)
+        .attr("r", Math.min(14, 4 + Math.sqrt(d.items.length) * 3))
+        .attr("fill", "#38bdf8");
+
+      markersGroup.append("text")
+        .attr("class", "marker-label")
+        .attr("x", d.x)
+        .attr("y", d.y + 3)
+        .text(d.items.length);
+    });
+
+    function getColor(d) {
+      if (currentMode === 'umatrix') return colorUmatrix(d.uVal);
+      if (currentMode === 'clusters') return colorClusters(d.cluster);
+      if (currentMode === 'frequencies') return d.freq > 0 ? colorFreq(d.freq) : "#1e293b";
+      return "#334155";
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById(`btn-${mode === 'frequencies' ? 'freq' : mode}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      hexes.transition().duration(400).attr("fill", d => getColor(d));
+
+      const legendText = document.getElementById("legend-text");
+      const legendBar = document.getElementById("legend-bar");
+      if (mode === 'umatrix') {
+        legendText.textContent = "Distancia topológica (U-Matrix)";
+        legendBar.style.background = "linear-gradient(to right, #440154, #21918c, #fde725)";
+        legendBar.style.display = "block";
+      } else if (mode === 'clusters') {
+        legendText.textContent = "Partición K-Means Neuronal";
+        legendBar.style.display = "none";
+      } else {
+        legendText.textContent = `Densidad de ocupación (1 a ${maxFreq})`;
+        legendBar.style.background = "linear-gradient(to right, #fee8c8, #e34a33, #7f0000)";
+        legendBar.style.display = "block";
+      }
+    }
+
+    function resetZoom() {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const gridWidth = cols * hexWidth;
+      const gridHeight = rows * hexHeight;
+      
+      const scale = Math.min(width / (gridWidth + 80), height / (gridHeight + 80), 1.5);
+      const tx = (width - gridWidth * scale) / 2;
+      const ty = (height - gridHeight * scale) / 2;
+
+      svg.transition().duration(750).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(tx, ty).scale(scale)
+      );
+    }
+
+    setMode('umatrix');
+    setTimeout(resetZoom, 100);
+    window.addEventListener('resize', resetZoom);
+  </script>
+</body>
+</html>

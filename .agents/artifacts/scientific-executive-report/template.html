@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <style>
+    :root {
+      --bg: #090e17;
+      --card: #131d2e;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --primary: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-y: auto;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    .report-container { max-width: 900px; margin: 0 auto; }
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-val { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .kpi-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+    .kpi-det { font-size: 10px; color: #64748b; margin-top: 4px; }
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 8px;
+    }
+    .table-responsive { overflow-x: auto; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      background: #0f172a;
+      color: var(--muted);
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .rec-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .rec-icon { color: #10b981; font-weight: bold; }
+    .btn-export {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-export:hover { color: #fff; background: #334155; }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <span class="badge">Reporte Ejecutivo</span>
+        <h1 id="rep-title">{{ TITLE }}</h1>
+        <div class="subtitle" id="rep-sub">--</div>
+      </div>
+      <div>
+        <button class="btn-export" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Resumen Ejecutivo -->
+    <div class="section">
+      <div class="section-title">📌 Síntesis Ejecutiva</div>
+      <div id="exec-summary" style="font-size:13px; color:#cbd5e1;"></div>
+    </div>
+
+    <!-- Secciones Dinámicas -->
+    <div id="dynamic-sections"></div>
+
+    <!-- Recomendaciones Estratégicas -->
+    <div class="section" id="rec-section" style="display:none;">
+      <div class="section-title">💡 Recomendaciones Estratégicas</div>
+      <div id="rec-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    document.getElementById("rep-title").textContent = data.title || "{{ TITLE }}";
+    document.getElementById("rep-sub").textContent = data.subtitle || (data.institution ? `Institución: ${data.institution}` : "Info TlachIA Intelligence");
+    document.getElementById("exec-summary").textContent = data.executive_summary || "Sin síntesis disponible.";
+
+    // KPIs
+    const kpis = data.kpis || [];
+    const kpiGrid = document.getElementById("kpi-grid");
+    kpis.forEach(k => {
+      kpiGrid.innerHTML += `
+        <div class="kpi-card">
+          <div class="kpi-val">${k.value}</div>
+          <div class="kpi-lbl">${k.label}</div>
+          ${k.detail ? `<div class="kpi-det">${k.detail}</div>` : ''}
+        </div>
+      `;
+    });
+
+    // Sections
+    const secContainer = document.getElementById("dynamic-sections");
+    (data.sections || []).forEach(s => {
+      let html = `<div class="section"><div class="section-title">${s.title}</div><div style="font-size:13px; color:#cbd5e1;">${s.content}</div>`;
+      if (s.table && s.table.headers && s.table.rows) {
+        html += `<div class="table-responsive"><table><thead><tr>`;
+        s.table.headers.forEach(h => { html += `<th>${h}</th>`; });
+        html += `</tr></thead><tbody>`;
+        s.table.rows.forEach(r => {
+          html += `<tr>`;
+          r.forEach(c => { html += `<td>${c}</td>`; });
+          html += `</tr>`;
+        });
+        html += `</tbody></table></div>`;
+      }
+      html += `</div>`;
+      secContainer.innerHTML += html;
+    });
+
+    // Recommendations
+    const recs = data.recommendations || [];
+    if (recs.length > 0) {
+      document.getElementById("rec-section").style.display = "block";
+      const recList = document.getElementById("rec-list");
+      recs.forEach(r => {
+        recList.innerHTML += `<div class="rec-item"><span class="rec-icon">➔</span> <span>${r}</span></div>`;
+      });
+    }
+  </script>
+</body>
+</html>

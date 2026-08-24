@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ TITLE }}</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <style>
+    :root {
+      --bg: #090e17;
+      --card: #131d2e;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --primary: #8b5cf6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: rgba(19, 29, 46, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    h1 { font-size: 14px; font-weight: 600; }
+    #main-container { flex: 1; position: relative; width: 100%; height: 100%; }
+    svg { width: 100%; height: 100%; display: block; }
+    .node rect {
+      cursor: pointer;
+      rx: 4px;
+      ry: 4px;
+      transition: fill 0.2s, stroke 0.2s;
+    }
+    .node rect:hover { stroke: #fff; stroke-width: 2px; }
+    .node text {
+      font-size: 11px;
+      font-weight: 600;
+      fill: #fff;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: #090e17;
+      stroke-width: 2px;
+    }
+    .link {
+      fill: none;
+      stroke-opacity: 0.45;
+      transition: stroke-opacity 0.2s;
+    }
+    .link:hover { stroke-opacity: 0.85; }
+    .tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      max-width: 300px;
+      backdrop-filter: blur(6px);
+    }
+    .col-header {
+      font-size: 12px;
+      font-weight: 700;
+      fill: var(--muted);
+      text-anchor: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="badge">Research Fronts v5</span>
+      <h1>{{ TITLE }}</h1>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <svg id="sankey-svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <script>
+    const data = {{ DATA_JSON }};
+    const windows = data.time_windows || [];
+    const fronts = data.fronts || [];
+    const flows = data.flows || [];
+
+    const svg = d3.select("#sankey-svg");
+    const container = document.getElementById("main-container");
+    const tooltip = document.getElementById("tooltip");
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 500;
+    const margin = { top: 45, right: 120, bottom: 25, left: 120 };
+
+    const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+
+    // Build node map
+    const nodeMap = new Map();
+    fronts.forEach((f, idx) => {
+      nodeMap.set(f.id, { ...f, nodeIndex: idx });
+    });
+
+    const sankeyNodes = fronts.map(f => ({ ...f }));
+    const sankeyLinks = flows.map(fl => ({
+      source: fronts.findIndex(f => f.id === fl.source),
+      target: fronts.findIndex(f => f.id === fl.target),
+      value: fl.value || 1,
+      ...fl
+    })).filter(l => l.source >= 0 && l.target >= 0);
+
+    if (sankeyNodes.length > 0 && sankeyLinks.length > 0) {
+      const sankey = d3.sankey()
+        .nodeWidth(20)
+        .nodePadding(18)
+        .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]]);
+
+      const { nodes, links } = sankey({
+        nodes: sankeyNodes.map(d => Object.assign({}, d)),
+        links: sankeyLinks.map(d => Object.assign({}, d))
+      });
+
+      // Render links
+      const link = svg.append("g")
+        .attr("class", "links")
+        .selectAll("path")
+        .data(links)
+        .enter()
+        .append("path")
+        .attr("class", "link")
+        .attr("d", d3.sankeyLinkHorizontal())
+        .attr("stroke", d => colorScale(d.source.id))
+        .attr("stroke-width", d => Math.max(2, d.width))
+        .on("mousemove", (e, d) => {
+          tooltip.style.display = "block";
+          tooltip.style.left = (e.clientX + 14) + "px";
+          tooltip.style.top = (e.clientY + 14) + "px";
+          tooltip.innerHTML = `<strong>Flujo de Linaje</strong><div>${d.source.label} ➔ ${d.target.label}</div><div>Intensidad: ${d.value} papers</div>${d.event_type ? `<div>Evento: <em>${d.event_type}</em></div>` : ''}${d.ami_score ? `<div>AMI Score: ${d.ami_score}</div>` : ''}`;
+        })
+        .on("mouseleave", () => { tooltip.style.display = "none"; });
+
+      // Render nodes
+      const node = svg.append("g")
+        .attr("class", "nodes")
+        .selectAll("g")
+        .data(nodes)
+        .enter()
+        .append("g")
+        .attr("class", "node");
+
+      node.append("rect")
+        .attr("x", d => d.x0)
+        .attr("y", d => d.y0)
+        .attr("height", d => Math.max(6, d.y1 - d.y0))
+        .attr("width", d => d.x1 - d.x0)
+        .attr("fill", d => colorScale(d.id))
+        .on("mousemove", (e, d) => {
+          tooltip.style.display = "block";
+          tooltip.style.left = (e.clientX + 14) + "px";
+          tooltip.style.top = (e.clientY + 14) + "px";
+          let h = `<strong>${d.label}</strong><div>Ventana: ${d.window}</div>`;
+          if (d.size) h += `<div>Papers nucleares: ${d.size}</div>`;
+          if (d.mean_citations) h += `<div>Citas promedio: ${d.mean_citations}</div>`;
+          if (d.top_terms) h += `<div>Términos: ${d.top_terms.join(', ')}</div>`;
+          tooltip.innerHTML = h;
+        })
+        .on("mouseleave", () => { tooltip.style.display = "none"; });
+
+      node.append("text")
+        .attr("x", d => d.x0 < width / 2 ? d.x1 + 8 : d.x0 - 8)
+        .attr("y", d => (d.y1 + d.y0) / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
+        .text(d => d.label);
+
+      // Window headers
+      if (windows.length > 0) {
+        const winX = d3.scalePoint().domain(windows).range([margin.left, width - margin.right]);
+        windows.forEach(w => {
+          svg.append("text")
+            .attr("class", "col-header")
+            .attr("x", winX(w))
+            .attr("y", margin.top - 15)
+            .text(`Período ${w}`);
+        });
+      }
+    }
+  </script>
+</body>
+</html>
