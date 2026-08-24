@@ -1,6 +1,6 @@
 ---
 name: infotlachia-scholar-intelligence
-description: Diccionario exhaustivo de inteligencia bibliométrica de Info TlachIA (Padrón SNII 2025, 4 niveles de agregación, APC estimado, Gini temático, UMAP 2D/3D y Parquets analíticos).
+description: Diccionario exhaustivo de inteligencia bibliométrica de Info TlachIA (DuckDB analytics_cache, Padrón SNII 2025, 4 niveles de agregación, APC estimado, Gini temático, UMAP 2D/3D y Parquets analíticos).
 ---
 
 # Skill: Info TlachIA Scholar Intelligence
@@ -32,11 +32,35 @@ Se activa para cualquier consulta sobre investigadores de México, dependencias 
 
 ---
 
-## 3. Diccionario de Tablas Parquet y ClickHouse
-* `institucion_annual`: Series temporales anuales de producción, citas y FWCI por institución ROR.
-* `investigador_annual`: Series temporales anuales por investigador SNII.
-* `papers_profesor`: Relación de papers individuales (DOI, título, año, citas, fwci, oa_status, apc_usd) por académico.
-* `papers_institucion`: Publicaciones indexadas por ROR institucional.
-* `topics`: Mapeo a los 4,500 tópicos de SciVal/OpenAlex.
-* `umap_investigadores`: Coordenadas UMAP y métricas normalizadas.
-* `works_academic_all`: Tabla materializada en ClickHouse con la producción de autores SNII.
+## 3. Manejador de Base de Datos Embebido: DuckDB (`analytics_cache.duckdb`)
+Ubicación: `/home/sinapsisai/data/analytics_cache.duckdb` (4.97 GB).
+Consultas SQL ultrarrápidas (< 5ms) mediante la herramienta `query_duckdb_analytics(sql_query)`.
+
+### Columnas Canónicas de Filtrado en DuckDB:
+* `db_level`: `'NATIONAL'`, `'INSTITUTION'`, `'ENTITY'` o `'RESEARCHER'`.
+* `db_institution_name`: Nombre de la institución (ej. `'UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO (UNAM)'`).
+* `db_entity_name`: Nombre de la dependencia o facultad (ej. `'FACULTAD DE CIENCIAS'`).
+* `db_academic_name`: Nombre oficial del investigador en formato `'APELLIDO PATERNO MATERNO, NOMBRES'`.
+* `db_view_mode`: `'capacidad_instalada'` o `'produccion_institucional'`.
+
+### Las 14 Tablas Consolidadas:
+1. `institucion_annual` (63k filas): Series temporales anuales de instituciones.
+2. `institucion_total` (3k filas): Totales acumulados por institución.
+3. `investigador_annual` (409k filas): Series anuales por investigador SNII.
+4. `investigador_total` (90k filas): Totales consolidados por investigador (H-index, FWCI, citas, docs).
+5. `investigador_recent` (43k filas): Producción de los últimos 3 años.
+6. `papers_profesor` (1.25M filas): Artículos por investigador con DOI, citas, año y topics.
+7. `papers_institucion` (4.22M filas): Artículos completos indexados por institución.
+8. `topics_institucion` (223k filas): Tópicos por institución y facultad.
+9. `topics_investigador` (377k filas): Tópicos clasificados por investigador.
+10. `keywords_institucion` (1.11M filas): Palabras clave agregadas por institución.
+11. `keywords_investigador` (3.73M filas): Palabras clave por investigador.
+12. `thematic_evolution_institucion` (949k filas): Evolución temática temporal institucional.
+13. `thematic_evolution_investigador` (819k filas): Evolución temática temporal por investigador.
+14. `umap_investigadores` (18.7k filas): Coordenadas UMAP 2D del Padrón Nacional.
+
+---
+
+## 4. Fuentes ClickHouse Masivas
+* `works_academic_all`: Tabla materializada con 1,652,927 artículos de académicos de México.
+* `works_flat`: 569,000,000 de trabajos globales de OpenAlex.
