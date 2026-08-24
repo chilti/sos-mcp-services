@@ -5,12 +5,13 @@ services:
     build:
       context: .
       dockerfile: services/knomap/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8001
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
     ports:
-      - "8001:8001"
+      - "8010:8001"
     restart: unless-stopped
     networks:
       - mcp-network
@@ -19,13 +20,14 @@ services:
     build:
       context: .
       dockerfile: services/sinapsisai/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8002
       - NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
       - QDRANT_HOST=${QDRANT_HOST:-qdrant}
     ports:
-      - "8002:8002"
+      - "8011:8002"
     restart: unless-stopped
     networks:
       - mcp-network
@@ -34,11 +36,12 @@ services:
     build:
       context: .
       dockerfile: services/plmetrix/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8003
     ports:
-      - "8003:8003"
+      - "8012:8003"
     restart: unless-stopped
     networks:
       - mcp-network
@@ -47,11 +50,12 @@ services:
     build:
       context: .
       dockerfile: services/revistaslatam/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8004
     ports:
-      - "8004:8004"
+      - "8013:8004"
     restart: unless-stopped
     networks:
       - mcp-network
@@ -60,12 +64,13 @@ services:
     build:
       context: .
       dockerfile: services/topics/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8005
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
     ports:
-      - "8005:8005"
+      - "8014:8005"
     restart: unless-stopped
     networks:
       - mcp-network
@@ -74,12 +79,13 @@ services:
     build:
       context: .
       dockerfile: services/openalex/Dockerfile
+      network: host
     environment:
       - MCP_TRANSPORT=http
       - PORT=8006
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
     ports:
-      - "8006:8006"
+      - "8015:8006"
     restart: unless-stopped
     networks:
       - mcp-network
