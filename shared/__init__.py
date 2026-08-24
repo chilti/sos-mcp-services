@@ -1,0 +1,1 @@
+# SOS MCP Shared Module

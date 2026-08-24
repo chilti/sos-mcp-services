@@ -1,0 +1,52 @@
+{
+  "mcpServers": {
+    "sos_knomap": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/newLabSOM",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_sinapsisai": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/sinapsisai/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/Proyectos/RAGs",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_plmetrix": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/plmetrix/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/Proyectos/PLmetrix-Lab-2.0/backend",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_revistaslatam": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/revistaslatam/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/Proyectos/revistaslatam",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_topics": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/topics/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/Proyectos/Topics",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_openalex": {
+      "command": "python",
+      "args": ["C:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/openalex/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "C:/Users/jlja/Documents/Proyectos/sos-mcp-services;C:/Users/jlja/Documents/Proyectos/openalex-elastic-api",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}

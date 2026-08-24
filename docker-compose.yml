@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  knomap-mcp:
+    build:
+      context: .
+      dockerfile: services/knomap/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8001
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  sinapsisai-mcp:
+    build:
+      context: .
+      dockerfile: services/sinapsisai/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8002
+      - NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  plmetrix-mcp:
+    build:
+      context: .
+      dockerfile: services/plmetrix/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8003
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  revistaslatam-mcp:
+    build:
+      context: .
+      dockerfile: services/revistaslatam/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8004
+    ports:
+      - "8004:8004"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  topics-mcp:
+    build:
+      context: .
+      dockerfile: services/topics/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8005
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+    ports:
+      - "8005:8005"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  openalex-mcp:
+    build:
+      context: .
+      dockerfile: services/openalex/Dockerfile
+    environment:
+      - MCP_TRANSPORT=http
+      - PORT=8006
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+    ports:
+      - "8006:8006"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
