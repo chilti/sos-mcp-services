@@ -35,7 +35,10 @@ wheels/
 htmlcov/
 *.log
 data/cache/
+data/*.db
+*.db
 *.parquet
+paper_extracted.txt
 
 # IDEs
 .vscode/

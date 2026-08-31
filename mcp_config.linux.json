@@ -1,0 +1,52 @@
+{
+  "mcpServers": {
+    "sos_knomap": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/knomap/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/home/labsom/knomap",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_sinapsisai": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/sinapsisai/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/home/sinapsisai",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_plmetrix": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/plmetrix/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_revistaslatam": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/revistaslatam/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/mnt/expansion/desplegados/revistaslatam",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_topics": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/topics/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/mnt/expansion/desplegados/Topics",
+        "MCP_TRANSPORT": "stdio"
+      }
+    },
+    "sos_openalex": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/openalex/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/mnt/expansion/desplegados/openalex-elastic-clickhouse-api",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
