@@ -22,4 +22,4 @@ if __name__ == "__main__":
         print(f"Iniciando plmetrix-laws-engine en modo SSE (http://0.0.0.0:{port}/sse)...")
         mcp.run(transport="sse", host="0.0.0.0", port=port)
     else:
-        mcp.run(transport="stdio")
+        mcp.run(transport="stdio", show_banner=False)

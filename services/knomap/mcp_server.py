@@ -14,6 +14,14 @@ from services.knomap.tools.semantic_tools import (
     reduce_semantic_dimension,
     cluster_semantic_documents
 )
+from services.knomap.tools.viz_tools import (
+    knomap_render_alluvial_diagram,
+    knomap_render_dumbbell_chart,
+    knomap_render_connection_map,
+    knomap_render_exploration_dashboard,
+    knomap_render_umatrix_3d,
+    knomap_render_component_planes
+)
 
 mcp = FastMCP("knomap-som-engine")
 
@@ -39,6 +47,14 @@ mcp.tool()(estimate_intrinsic_dimension)
 mcp.tool()(reduce_semantic_dimension)
 mcp.tool()(cluster_semantic_documents)
 
+# Registro de Nuevas Herramientas de Visualización (Viz Extensions)
+mcp.tool()(knomap_render_alluvial_diagram)
+mcp.tool()(knomap_render_dumbbell_chart)
+mcp.tool()(knomap_render_connection_map)
+mcp.tool()(knomap_render_exploration_dashboard)
+mcp.tool()(knomap_render_umatrix_3d)
+mcp.tool()(knomap_render_component_planes)
+
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
     if transport == "http":
@@ -46,4 +62,4 @@ if __name__ == "__main__":
         print(f"Iniciando knomap-som-engine en modo SSE (http://0.0.0.0:{port}/sse)...")
         mcp.run(transport="sse", host="0.0.0.0", port=port)
     else:
-        mcp.run(transport="stdio")
+        mcp.run(transport="stdio", show_banner=False)

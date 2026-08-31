@@ -27,6 +27,13 @@ Se activa para análisis de frentes de investigación, linajes temáticos longit
 
 ---
 
+## 3. Integración Visual Proactiva (MCP Tools)
+Al realizar el análisis de frentes de investigación, el agente DEBE invocar las siguientes herramientas visuales para enriquecer el reporte:
+*   Usar `knomap_render_alluvial_diagram(data_path, output_path)` al explicar los linajes longitudinales (Métrica AMI) y presentar las fusiones/divisiones.
+*   Usar `knomap_render_connection_map(data_path, output_path)` al analizar la red de coautoría internacional y la diplomacia científica.
+
+---
+
 ## 3. Fuentes de Datos Locales
 * `data/cache_temas/`: Tablas parquet agregadas por subcampo, país e institución.
 * `_collab.parquet`: Pares de colaboración internacional.
