@@ -43,3 +43,19 @@ Y registra `mcp_config.remote.json` en Antigravity para conectar vía SSE (`http
 
 ## 📚 Documentación
 - [Plan Integral de Implementación](docs/plan_implementacion_sos_mcp.md)
+
+---
+
+## 👥 Autores
+
+- **José Luis Jiménez Andrade** (ORCID: [0000-0003-3453-7159](https://orcid.org/0000-0003-3453-7159))  
+  *Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)*
+- **Humberto Andrés Carrillo Calvet** (ORCID: [0000-0003-3659-6769](https://orcid.org/0000-0003-3659-6769))  
+  *Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)*
+
+---
+
+## 🙏 Agradecimientos
+
+Nuestro especial reconocimiento y agradecimiento a **Romel Calero Ramos**, por el diseño, despliegue y administración de la infraestructura de servidores y base de datos analítica masiva en **ClickHouse** en el **Centro de Ciencias de la Complejidad (C3, UNAM)**, componente fundamental para el funcionamiento y consulta a gran escala de los microservicios MCP de este ecosistema.
+

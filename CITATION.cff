@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "SOS MCP Services: Model Context Protocol Microservices Suite for Scientific and Bibliometric Intelligence"
+abstract: "Monorepo suite of FastMCP microservices providing dual transport (stdio and HTTP/SSE) for AI agents and LLMs to interact with the UNAM scientific intelligence and bibliometric ecosystem."
+authors:
+  - family-names: "Jiménez Andrade"
+    given-names: "José Luis"
+    orcid: "https://orcid.org/0000-0003-3453-7159"
+    affiliation: "Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)"
+  - family-names: "Carrillo Calvet"
+    given-names: "Humberto Andrés"
+    orcid: "https://orcid.org/0000-0003-3659-6769"
+    affiliation: "Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)"
+repository-code: "https://github.com/chilti/sos-mcp-services"
+keywords:
+  - Model Context Protocol
+  - MCP
+  - FastMCP
+  - AI agents
+  - scientometrics
+  - bibliometrics
+  - OpenAlex
+license: MIT
+version: "1.0.0"
+date-released: "2026-09-09"

@@ -1,0 +1,41 @@
+{
+  "title": "SOS MCP Services: Model Context Protocol Microservices Suite for Scientific and Bibliometric Intelligence",
+  "description": "SOS MCP Services is a monorepo suite of FastMCP microservices providing dual transport (stdio and HTTP/SSE) for AI agents and LLMs to interact with the UNAM scientific intelligence ecosystem, including Self-Organizing Maps (knoMap), GraphRAG (SinapsisAI), bibliometric laws (PLmetrix), journal analytics (RevistasLATAM), research front detection (Topics), and local ClickHouse OpenAlex querying.",
+  "creators": [
+    {
+      "name": "Jiménez Andrade, José Luis",
+      "affiliation": "Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)",
+      "orcid": "0000-0003-3453-7159"
+    },
+    {
+      "name": "Carrillo Calvet, Humberto Andrés",
+      "affiliation": "Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)",
+      "orcid": "0000-0003-3659-6769"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Calero Ramos, Romel",
+      "affiliation": "Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)",
+      "type": "Other"
+    }
+  ],
+  "keywords": [
+    "Model Context Protocol",
+    "MCP",
+    "FastMCP",
+    "AI agents",
+    "scientometrics",
+    "bibliometrics",
+    "OpenAlex",
+    "ClickHouse",
+    "Neo4j",
+    "knoMap",
+    "SinapsisAI",
+    "UNAM",
+    "C3"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open"
+}
