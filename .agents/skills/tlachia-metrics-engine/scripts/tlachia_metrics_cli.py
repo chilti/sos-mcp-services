@@ -363,8 +363,11 @@ def calculate_period_series(df: pd.DataFrame, periods: List[Tuple[str, int, int]
         if entity_rows:
             res = pd.concat(entity_rows, ignore_index=True)
             cols = ["period", "start_year", "end_year", "entity", "level", "num_documents", "times_cited", "cites_per_doc", "h_index"]
-            remaining = [c for c in res.columns if c not in cols]
-            return res[[c for c in cols if c in res.columns] + remaining]
+            remaining = [c for c in res.columns if c not in cols and c != "country"]
+            res_cols = [c for c in cols if c in res.columns] + remaining
+            if "country" in res.columns:
+                res_cols.append("country")
+            return res[res_cols]
         return pd.DataFrame()
 
 def aggregate_by_entity(df: pd.DataFrame, level: str) -> pd.DataFrame:
@@ -377,19 +380,23 @@ def aggregate_by_entity(df: pd.DataFrame, level: str) -> pd.DataFrame:
             cits = row.get("citations", 0) or 0
             is_oa = row.get("is_oa", 0) or 0
             fwci = row.get("fwci")
+            country_val = str(row.get("country_code", "") or (row.get("country_codes", "").split(";")[0] if row.get("country_codes") else "")).strip().upper()
             authors = [a.strip() for a in str(row.get("authors", "")).split(";") if a.strip()]
             for auth in authors:
                 if auth not in author_map:
-                    author_map[auth] = {"cits": [], "docs": 0, "oa_count": 0, "fwci_vals": []}
+                    author_map[auth] = {"cits": [], "docs": 0, "oa_count": 0, "fwci_vals": [], "countries": []}
                 author_map[auth]["docs"] += 1
                 author_map[auth]["cits"].append(cits)
                 author_map[auth]["oa_count"] += 1 if is_oa else 0
                 if fwci is not None and not np.isnan(fwci):
                     author_map[auth]["fwci_vals"].append(float(fwci))
+                if country_val and country_val != "NAN":
+                    author_map[auth]["countries"].append(country_val)
                     
         for auth, data in author_map.items():
             c_arr = pd.Series(data["cits"])
             fw_mean = float(np.mean(data["fwci_vals"])) if data["fwci_vals"] else None
+            top_cc = max(set(data["countries"]), key=data["countries"].count) if data["countries"] else ""
             records.append({
                 "entity": auth,
                 "level": "researcher",
@@ -399,7 +406,8 @@ def aggregate_by_entity(df: pd.DataFrame, level: str) -> pd.DataFrame:
                 "h_index": calculate_h_index(c_arr),
                 "i10_index": calculate_i10_index(c_arr),
                 "pct_oa": round((data["oa_count"] / data["docs"]) * 100.0, 2),
-                "fwci_avg": round(fw_mean, 3) if fw_mean is not None else None
+                "fwci_avg": round(fw_mean, 3) if fw_mean is not None else None,
+                "country": top_cc
             })
             
     elif level == "institution":
@@ -407,16 +415,20 @@ def aggregate_by_entity(df: pd.DataFrame, level: str) -> pd.DataFrame:
         for _, row in df.iterrows():
             cits = row.get("citations", 0) or 0
             is_oa = row.get("is_oa", 0) or 0
+            country_val = str(row.get("country_code", "") or (row.get("country_codes", "").split(";")[0] if row.get("country_codes") else "")).strip().upper()
             affils = [af.strip() for af in str(row.get("affiliations", "")).split(";") if af.strip()]
             for aff in affils:
                 if aff not in inst_map:
-                    inst_map[aff] = {"cits": [], "docs": 0, "oa_count": 0}
+                    inst_map[aff] = {"cits": [], "docs": 0, "oa_count": 0, "countries": []}
                 inst_map[aff]["docs"] += 1
                 inst_map[aff]["cits"].append(cits)
                 inst_map[aff]["oa_count"] += 1 if is_oa else 0
+                if country_val and country_val != "NAN":
+                    inst_map[aff]["countries"].append(country_val)
                 
         for aff, data in inst_map.items():
             c_arr = pd.Series(data["cits"])
+            top_cc = max(set(data["countries"]), key=data["countries"].count) if data["countries"] else ""
             records.append({
                 "entity": aff,
                 "level": "institution",
@@ -424,8 +436,10 @@ def aggregate_by_entity(df: pd.DataFrame, level: str) -> pd.DataFrame:
                 "times_cited": int(c_arr.sum()),
                 "cites_per_doc": round(float(c_arr.mean()), 2),
                 "h_index": calculate_h_index(c_arr),
-                "pct_oa": round((data["oa_count"] / data["docs"]) * 100.0, 2)
+                "pct_oa": round((data["oa_count"] / data["docs"]) * 100.0, 2),
+                "country": top_cc
             })
+
             
     elif level == "country":
         country_map = {}

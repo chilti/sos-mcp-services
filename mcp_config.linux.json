@@ -47,6 +47,16 @@
         "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services:/mnt/expansion/desplegados/openalex-elastic-clickhouse-api",
         "MCP_TRANSPORT": "stdio"
       }
+    },
+    "sos_openproject": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/sos-mcp-services/services/openproject/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/sos-mcp-services",
+        "MCP_TRANSPORT": "stdio",
+        "OPENPROJECT_URL": "http://127.0.0.1:8085/openproject",
+        "OPENPROJECT_HOST_HEADER": "dinamica1.fciencias.unam.mx"
+      }
     }
   }
 }
