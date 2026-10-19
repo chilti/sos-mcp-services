@@ -1,5 +1,6 @@
 ---
 name: openalex-mexico-works-search
+always-apply: true
 description: Recuperación y extracción de publicaciones científicas de México sobre la tabla materializada rag.works_academic_all (1.65M de trabajos), filtrando por institución ROR, autor, rango de años, vía de acceso abierto (Diamond, Gold, Hybrid) y percentiles de impacto Top 10% y Top 1%.
 dependencies:
   - python: "/home/ambientesPy/revistaslatam"
