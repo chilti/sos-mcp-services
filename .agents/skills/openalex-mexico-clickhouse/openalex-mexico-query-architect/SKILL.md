@@ -2,9 +2,9 @@
 name: openalex-mexico-query-architect
 always-apply: true
 description: Asesor técnico y validador de consultas ClickHouse sobre el corpus científico de México, asegurando la regla estricta de CERO JOINs, uso de funciones de arrays nativos (has, arrayExists) y optimización columnar sobre rag.works_academic_all.
-dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
-  - script: "shared_scripts/openalex_mexico_cli.py"
+metadata:
+  python: "/home/ambientesPy/revistaslatam"
+  script: "shared_scripts/openalex_mexico_cli.py"
 ---
 
 # OpenAlex México Query Architect

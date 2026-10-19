@@ -2,9 +2,9 @@
 name: openalex-mexico-visualizer
 always-apply: true
 description: Generador de artefactos visuales interactivos y dashboards analíticos (HTML con Plotly.js, Redes PyVis y Tarjetas PNG) a partir de los datos cienciométricos extraídos por las skills del ecosistema OpenAlex México.
-dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
-  - script: "scripts/openalex_visualizer_cli.py"
+metadata:
+  python: "/home/ambientesPy/revistaslatam"
+  script: "scripts/openalex_visualizer_cli.py"
 ---
 
 # OpenAlex México Visualizer

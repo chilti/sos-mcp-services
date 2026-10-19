@@ -2,9 +2,9 @@
 name: openalex-mexico-author-search
 always-apply: true
 description: Búsqueda y desambiguación de investigadoras e investigadores de México en ClickHouse local sobre las tablas materializadas rag.authors_seed_mexico (2.57M autores) y rag.academics_all, con filtros por nivel SNII, dependencia institucional y variantes de nombres hispanos.
-dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
-  - script: "scripts/openalex_mexico_cli.py"
+metadata:
+  python: "/home/ambientesPy/revistaslatam"
+  script: "scripts/openalex_mexico_cli.py"
 ---
 
 # OpenAlex México Author Search

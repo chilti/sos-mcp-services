@@ -2,9 +2,9 @@
 name: openalex-mexico-aggregations
 always-apply: true
 description: Agregaciones analíticas instantáneas sobre la producción científica de México en ClickHouse (rag.works_academic_all), calculando distribución por vías de acceso abierto (Diamond vs Gold APC), gasto comercial en APC en USD, publicaciones de élite Top 10% mundial, FWCI promedio y series cronológicas.
-dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
-  - script: "scripts/openalex_mexico_cli.py"
+metadata:
+  python: "/home/ambientesPy/revistaslatam"
+  script: "scripts/openalex_mexico_cli.py"
 ---
 
 # OpenAlex México Aggregations

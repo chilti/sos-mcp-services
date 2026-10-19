@@ -2,9 +2,9 @@
 name: openalex-mexico-semantic-search
 always-apply: true
 description: Búsqueda semántica y conceptual de publicaciones científicas e investigadoras/es en México usando embeddings vectoriales nomic de 768 dimensiones en ClickHouse (rag.works_academic_all y rag.academics_all), con desambiguación automática de autores nacionales frente a colaboradores internacionales.
-dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
-  - script: "scripts/openalex_mexico_cli.py"
+metadata:
+  python: "/home/ambientesPy/revistaslatam"
+  script: "scripts/openalex_mexico_cli.py"
 ---
 
 # OpenAlex México Semantic Search
