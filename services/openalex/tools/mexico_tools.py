@@ -36,6 +36,32 @@ def generate_hispanic_name_permutations(name: str) -> List[str]:
     return unique
 
 
+def prioritize_mexican_institutions(inst_str: str) -> str:
+    """Prioriza instituciones mexicanas conocidas al inicio de la lista/cadena de afiliaciones."""
+    if not inst_str:
+        return ""
+    insts = [i.strip() for i in inst_str.split("|") if i.strip()]
+    mex_keywords = [
+        "méxico", "mexico", "unam", "cinvestav", "ipn", "uam", "autónoma", "autonoma",
+        "instituto nacional de", "hospital general", "tecnológico de monterrey", "itesm",
+        "el colegio de méxico", "colmex", "universidad de guadalajara", "universidad autónoma",
+        "salud pública", "nutrición", "cardiología", "respiratorias"
+    ]
+    mex_insts = []
+    other_insts = []
+    seen = set()
+    for inst in insts:
+        low = inst.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        if any(k in low for k in mex_keywords):
+            mex_insts.append(inst)
+        else:
+            other_insts.append(inst)
+    return " | ".join(mex_insts + other_insts)
+
+
 def get_text_embedding(text: str) -> List[float]:
     """Genera vector de 768 dimensiones usando el servidor local de embeddings (LM Studio)."""
     clean_text = text.strip()
@@ -238,7 +264,14 @@ def openalex_search_authors(
         SELECT id, any(display_name), any(orcid),
                any(JSONExtractInt(raw_data, 'works_count')) as works_count,
                any(JSONExtractInt(raw_data, 'cited_by_count')) as cited_by_count,
-               any(JSONExtractString(raw_data, 'last_known_institutions', 1, 'display_name')) as institution,
+               arrayStringConcat(
+                   arrayFilter(x -> length(x) > 0,
+                       arrayMap(i -> JSONExtractString(i, 'display_name'),
+                           JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                       )
+                   ),
+                   ' | '
+               ) as institution,
                any(JSONExtractInt(raw_data, 'summary_stats', 'h_index')) as h_index
         FROM rag.authors_seed_mexico
         WHERE {where_sql_seed}
@@ -251,13 +284,14 @@ def openalex_search_authors(
             for r in res_seed.result_rows:
                 if r[0] not in seen_ids:
                     seen_ids.add(r[0])
+                    inst_formatted = prioritize_mexican_institutions(r[5] or "")
                     authors.append({
                         "id": r[0],
                         "display_name": r[1],
                         "orcid": r[2],
                         "works_count": r[3],
                         "cited_by_count": r[4],
-                        "institution": r[5],
+                        "institution": inst_formatted,
                         "h_index": r[6],
                         "source_table": "authors_seed_mexico"
                     })
@@ -274,6 +308,7 @@ def openalex_search_authors(
 
 def openalex_search_works(
     query: str = "",
+    author_id: str = "",
     author_name: str = "",
     institution_name: str = "",
     institution_ror: str = "",
@@ -287,6 +322,8 @@ def openalex_search_works(
     """
     Busca publicaciones en rag.works_academic_all (1.65M de trabajos con autoría mexicana),
     con metadatos de impacto (FWCI, percentil, Top 10%), vías OA y gasto comercial APC (USD).
+    Soporta filtro directo por ID canónico OpenAlex de autor (author_id, ej: 'A5060963552')
+    o por nombre de autor (author_name, ej: 'Annie Pardo'), resolviendo variantes automáticamente.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -297,9 +334,30 @@ def openalex_search_works(
     if query:
         clean_q = query.replace("'", "\\'")
         where_clauses.append(f"positionCaseInsensitiveUTF8(title, '{clean_q}') > 0")
-    if author_name:
-        clean_a = author_name.replace("'", "\\'")
-        where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
+    if author_id:
+        clean_aid = author_id.strip()
+        if not clean_aid.startswith("http"):
+            uri_aid = f"https://openalex.org/{clean_aid}"
+        else:
+            uri_aid = clean_aid
+            clean_aid = clean_aid.replace("https://openalex.org/", "")
+        where_clauses.append(f"(has(author_names, '{uri_aid}') OR has(author_names, '{clean_aid}'))")
+    elif author_name:
+        clean_a = author_name.replace("'", "\\'").strip()
+        resolved_ids = []
+        try:
+            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE positionCaseInsensitiveUTF8(display_name, '{clean_a}') > 0 LIMIT 10")
+            for r_id in res_ids.result_rows:
+                resolved_ids.append(r_id[0])
+        except Exception:
+            pass
+        sub_conds = []
+        for aid in resolved_ids:
+            clean_short = aid.replace("https://openalex.org/", "")
+            sub_conds.append(f"has(author_names, '{aid}')")
+            sub_conds.append(f"has(author_names, '{clean_short}')")
+        sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
+        where_clauses.append(f"({' OR '.join(sub_conds)})")
     if institution_name:
         clean_inst = institution_name.replace("'", "\\'")
         where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
@@ -385,6 +443,8 @@ def openalex_search_works(
 
 def openalex_aggregate_mexico(
     group_by: str = "publication_year",
+    author_id: str = "",
+    author_name: str = "",
     filter_param: str = "1=1",
     institution_ror: Optional[str] = None,
     limit: int = 50
@@ -392,6 +452,7 @@ def openalex_aggregate_mexico(
     """
     Calcula métricas agregadas y series temporales sobre rag.works_academic_all:
     distribución anual, 6 vías OA (Diamond, Gold, Hybrid), gasto APC USD, FWCI y % Top 10%.
+    Soporta agregaciones específicas por autor (author_id o author_name) e institución (institution_ror).
     """
     client = get_clickhouse_client()
     if client is None:
@@ -408,10 +469,53 @@ def openalex_aggregate_mexico(
             "results": []
         }
 
-    where_clauses = [filter_param if filter_param else "1=1"]
+    where_clauses = []
+    if author_id:
+        clean_aid = author_id.strip()
+        if not clean_aid.startswith("http"):
+            uri_aid = f"https://openalex.org/{clean_aid}"
+        else:
+            uri_aid = clean_aid
+            clean_aid = clean_aid.replace("https://openalex.org/", "")
+        where_clauses.append(f"(has(author_names, '{uri_aid}') OR has(author_names, '{clean_aid}'))")
+    elif author_name:
+        clean_a = author_name.replace("'", "\\'").strip()
+        resolved_ids = []
+        try:
+            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE positionCaseInsensitiveUTF8(display_name, '{clean_a}') > 0 LIMIT 10")
+            for r_id in res_ids.result_rows:
+                resolved_ids.append(r_id[0])
+        except Exception:
+            pass
+        sub_conds = []
+        for aid in resolved_ids:
+            clean_short = aid.replace("https://openalex.org/", "")
+            sub_conds.append(f"has(author_names, '{aid}')")
+            sub_conds.append(f"has(author_names, '{clean_short}')")
+        sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
+        where_clauses.append(f"({' OR '.join(sub_conds)})")
+
     if institution_ror:
         clean_ror = institution_ror.replace("https://ror.org/", "").strip()
         where_clauses.append(f"(has(institution_rors, '{clean_ror}') OR has(institution_rors, 'https://ror.org/{clean_ror}'))")
+
+    if filter_param and filter_param.strip() != "1=1":
+        import re
+        fp = filter_param.strip()
+        if "author_id" in fp and "has(" not in fp:
+            m = re.search(r"author_id\s*=\s*'([^']+)'", fp)
+            if m:
+                aid_val = m.group(1).replace("https://openalex.org/", "")
+                fp = fp.replace(m.group(0), f"(has(author_names, 'https://openalex.org/{aid_val}') OR has(author_names, '{aid_val}'))")
+        if "author_name" in fp and "arrayExists" not in fp:
+            m = re.search(r"author_name\s*=\s*'([^']+)'", fp)
+            if m:
+                aname_val = m.group(1).replace("'", "\\'")
+                fp = fp.replace(m.group(0), f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{aname_val}') > 0, author_names)")
+        where_clauses.append(fp)
+
+    if not where_clauses:
+        where_clauses = ["1=1"]
 
     where_sql = " AND ".join(where_clauses)
     sanitize_no_joins(where_sql)
