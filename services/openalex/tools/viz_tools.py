@@ -421,6 +421,7 @@ def openalex_plot_timeseries(
         "chart_type": "timeseries",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "period": f"{years[0]}-{years[-1]}",
@@ -560,6 +561,7 @@ def openalex_plot_oa_donut(
         "chart_type": "oa-donut",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "total_works": total_works,
@@ -697,6 +699,7 @@ def openalex_plot_top_ranking(
         "chart_type": "top-ranking",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "entity_count": len(entities),
@@ -855,6 +858,7 @@ def openalex_plot_sunburst(
         "chart_type": "sunburst",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "total_topics_analyzed": len(df),
@@ -1026,6 +1030,7 @@ def openalex_plot_sdg_grid(
         "chart_type": "sdg-grid",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "active_sdgs": active_sdg_count,
@@ -1146,6 +1151,7 @@ def openalex_plot_dossier_works(
         "chart_type": "dossier-works",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "summary_kpis": {
             "works_count": len(works),
             "total_citations": tot_cites,
@@ -1211,13 +1217,16 @@ def openalex_plot_collaboration_network(
         if u in top_node_names and v in top_node_names:
             net.add_edge(u, v, value=weight, color="rgba(148, 163, 184, 0.4)")
 
-    net.save_graph(html_path)
+    net_html = net.generate_html()
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(net_html)
 
     return {
         "status": "success",
         "chart_type": "network",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "summary_kpis": {
             "nodes_count": len(top_nodes),
             "edges_count": len(edges)
@@ -1405,6 +1414,7 @@ def openalex_plot_quadrant_matrix(
         "chart_type": "quadrant-matrix",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "png_path": png_path,
         "summary_kpis": {
             "entities_count": len(entities),
@@ -1576,6 +1586,7 @@ def openalex_plot_geopolitical_sankey(
         "chart_type": "geopolitical-sankey",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "summary_kpis": {
             "partner_countries_count": len(country_counts),
             "top_block": top_block,
@@ -1740,6 +1751,7 @@ def openalex_plot_multidimensional_radar(
         "chart_type": "multidimensional-radar",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "summary_kpis": {
             "institutions_compared": len(summary_data),
             "metrics": summary_data
@@ -1878,6 +1890,7 @@ def openalex_plot_topic_dynamics(
         "chart_type": "topic-dynamics",
         "title": title_text,
         "html_path": html_path,
+        "html_content": full_html,
         "summary_kpis": {
             "top_subfield": top_subfields[0],
             "subfields_tracked": len(top_subfields),
