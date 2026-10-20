@@ -1,6 +1,5 @@
 ---
 name: openalex-mexico-institutions
-always-apply: true
 description: Consulta y mapeo del catálogo nacional de instituciones, universidades y centros de investigación de México sobre rag.institutions_seed_mexico, resolviendo identificadores ROR, acrónimos institucionales (UNAM, IPN, UAM, Cinvestav), estados y dependencias.
 metadata:
   python: "/home/ambientesPy/revistaslatam"
