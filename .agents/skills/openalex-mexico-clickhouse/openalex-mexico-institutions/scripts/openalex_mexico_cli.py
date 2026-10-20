@@ -17,6 +17,7 @@ import os
 import json
 import argparse
 import re
+import unicodedata
 from typing import Dict, List, Any, Optional
 
 try:
@@ -59,6 +60,181 @@ def sanitize_no_joins(sql: str) -> bool:
             "o filtros directos por arrays."
         )
     return True
+
+
+def _normalize_entity_key(s: str) -> str:
+    """Normaliza cadenas eliminando acentos, puntuación y mayúsculas para deduplicación segura."""
+    if not s:
+        return ""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).lower().replace("-", " ").replace(",", "").replace(".", "").strip()
+
+
+def _resolve_institutions_metadata(client, inst_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Resuelve metadatos canónicos (openalex_id y ror) para una lista de nombres de instituciones."""
+    inst_meta = {}
+    if not inst_names:
+        return inst_meta
+
+    escaped_names = [n.replace("'", "\'") for n in inst_names if n]
+    if not escaped_names:
+        return inst_meta
+
+    in_clause = ", ".join(f"'{n}'" for n in set(escaped_names))
+    sql_inst = f"""
+    SELECT display_name, any(id), any(ror)
+    FROM rag.institutions_seed_mexico
+    WHERE display_name IN ({in_clause})
+    GROUP BY display_name
+    """
+    sanitize_no_joins(sql_inst)
+    try:
+        res_seed = client.query(sql_inst)
+        for sr in res_seed.result_rows:
+            ror_val = sr[2] if (sr[2] and str(sr[2]).startswith("http")) else f"https://ror.org/{sr[2]}" if sr[2] else None
+            inst_meta[sr[0]] = {
+                "openalex_id": sr[1],
+                "ror": ror_val
+            }
+    except Exception:
+        pass
+
+    missing = [n for n in inst_names if n and n not in inst_meta]
+    for m in missing:
+        clean_m = m.replace("'", "\'")
+        try:
+            sql_alt = f"""
+            SELECT any(id), any(ror)
+            FROM rag.institutions_seed_mexico
+            WHERE positionCaseInsensitiveUTF8(raw_data, '{clean_m}') > 0
+            LIMIT 1
+            """
+            sanitize_no_joins(sql_alt)
+            res_alt = client.query(sql_alt)
+            if res_alt.result_rows and res_alt.result_rows[0][0]:
+                sr_id, sr_ror = res_alt.result_rows[0]
+                ror_val = sr_ror if (sr_ror and str(sr_ror).startswith("http")) else f"https://ror.org/{sr_ror}" if sr_ror else None
+                inst_meta[m] = {
+                    "openalex_id": sr_id,
+                    "ror": ror_val
+                }
+        except Exception:
+            pass
+
+    return inst_meta
+
+
+def _resolve_authors_metadata(client, author_keys: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Resuelve display_name real, openalex_id y últimas 2 instituciones para una lista de autores."""
+    author_meta = {}
+    if not author_keys:
+        return author_meta
+
+    id_keys = []
+    name_variants_map = {}
+
+    for key in author_keys:
+        if not key:
+            continue
+        if key.startswith("http"):
+            id_keys.append(key)
+        else:
+            name_variants_map[key] = key
+            if "," in key:
+                parts = [p.strip() for p in key.split(",") if p.strip()]
+                if len(parts) == 2:
+                    inverted = f"{parts[1]} {parts[0]}"
+                    name_variants_map[inverted] = key
+
+    # 1. Lookup por ID en authors_seed_mexico
+    if id_keys:
+        esc_ids = [i.replace("'", "\'") for i in set(id_keys)]
+        in_clause = ", ".join(f"'{i}'" for i in esc_ids)
+        sql_ids = f"""
+        SELECT id, any(display_name),
+               arraySlice(
+                   arrayFilter(x -> length(x) > 0,
+                       arrayMap(i -> JSONExtractString(i, 'display_name'),
+                           JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                       )
+                   ),
+                   1, 2
+               ) as insts
+        FROM rag.authors_seed_mexico
+        WHERE id IN ({in_clause})
+        GROUP BY id
+        """
+        sanitize_no_joins(sql_ids)
+        try:
+            res_id = client.query(sql_ids)
+            for sr in res_id.result_rows:
+                author_meta[sr[0]] = {
+                    "display_name": sr[1] if sr[1] else sr[0],
+                    "openalex_id": sr[0],
+                    "last_known_institutions": list(sr[2]) if sr[2] else []
+                }
+        except Exception:
+            pass
+
+    # 2. Lookup por Nombre en authors_seed_mexico
+    if name_variants_map:
+        esc_names = [n.replace("'", "\'") for n in set(name_variants_map.keys())]
+        in_names = ", ".join(f"'{n}'" for n in esc_names)
+        sql_names = f"""
+        SELECT any(id), display_name,
+               arraySlice(
+                   arrayFilter(x -> length(x) > 0,
+                       arrayMap(i -> JSONExtractString(i, 'display_name'),
+                           JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                       )
+                   ),
+                   1, 2
+               ) as insts
+        FROM rag.authors_seed_mexico
+        WHERE display_name IN ({in_names})
+        GROUP BY display_name
+        """
+        sanitize_no_joins(sql_names)
+        try:
+            res_names = client.query(sql_names)
+            for sr in res_names.result_rows:
+                raw_key = name_variants_map.get(sr[1])
+                if raw_key and raw_key not in author_meta:
+                    author_meta[raw_key] = {
+                        "display_name": sr[1],
+                        "openalex_id": sr[0],
+                        "last_known_institutions": list(sr[2]) if sr[2] else []
+                    }
+        except Exception:
+            pass
+
+    # 3. Fallback a academics_all para IDs o nombres no resueltos
+    unresolved_ids = [k for k in id_keys if k not in author_meta]
+    if unresolved_ids:
+        esc_u_ids = [i.replace("'", "\'") for i in set(unresolved_ids)]
+        in_u_ids = ", ".join(f"'{i}'" for i in esc_u_ids)
+        sql_acad = f"""
+        SELECT id, any(name), any(institution), any(dependency)
+        FROM rag.academics_all
+        WHERE id IN ({in_u_ids})
+        GROUP BY id
+        """
+        sanitize_no_joins(sql_acad)
+        try:
+            res_acad = client.query(sql_acad)
+            for ar in res_acad.result_rows:
+                insts = [i for i in [ar[2], ar[3]] if i][:2]
+                author_meta[ar[0]] = {
+                    "display_name": ar[1] if ar[1] else ar[0],
+                    "openalex_id": ar[0],
+                    "last_known_institutions": insts
+                }
+        except Exception:
+            pass
+
+    return author_meta
 
 
 def generate_hispanic_name_permutations(name: str) -> List[str]:
@@ -297,7 +473,13 @@ def cmd_search_authors(args):
                     "source_table": "authors_seed_mexico"
                 })
 
+    distinct_ids = set(a.get("id") for a in authors if a.get("id"))
+    distinct_names = set(_normalize_entity_key(a.get("display_name", "")) for a in authors if a.get("display_name"))
+    distinct_count = max(len(distinct_ids), len(distinct_names)) if authors else 0
+    disambiguation_required = distinct_count > 1
+
     output_data = {
+        "status": "success",
         "query_name": name_str,
         "filters": {
             "institution": args.institution,
@@ -306,8 +488,18 @@ def cmd_search_authors(args):
             "orcid": args.orcid
         },
         "total_returned": len(authors),
+        "distinct_count": distinct_count,
+        "disambiguation_required": disambiguation_required,
         "authors": authors
     }
+    if disambiguation_required:
+        output_data["instruction_for_agent"] = (
+            f"Se encontraron {distinct_count} autores coincidentes u homónimos. "
+            "EVALUACIÓN: Si la consulta del usuario coincide inequívocamente con uno de ellos (o si el usuario ya especificó institución, área temática u ORCID), "
+            "puedes decidir proceder directamente con el análisis de ese autor sin frenar. "
+            "Solo si existen múltiples candidatos verdaderamente distintos (homónimos en diferentes disciplinas o instituciones) "
+            "y no es claro a cuál se refiere el usuario, presenta la lista numerada y solicita confirmación antes de buscar sus obras."
+        )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
@@ -421,7 +613,7 @@ def cmd_top_entities(args):
     if client is None:
         sys.exit(1)
 
-    query_str = args.query.replace("'", "\\'").strip()
+    query_str = args.query.replace("'", "\'").strip()
     limit = min(args.limit or 20, 200)
 
     where_clauses = ["1=1"]
@@ -429,7 +621,9 @@ def cmd_top_entities(args):
         where_clauses.append(
             f"(positionCaseInsensitiveUTF8(title, '{query_str}') > 0 "
             f"OR positionCaseInsensitiveUTF8(topic, '{query_str}') > 0 "
-            f"OR positionCaseInsensitiveUTF8(subfield, '{query_str}') > 0)"
+            f"OR positionCaseInsensitiveUTF8(subfield, '{query_str}') > 0 "
+            f""
+            f"OR arrayExists(k -> positionCaseInsensitiveUTF8(k, '{query_str}') > 0, keywords))"
         )
     if args.year_min:
         where_clauses.append(f"publication_year >= {int(args.year_min)}")
@@ -449,6 +643,7 @@ def cmd_top_entities(args):
             sum(cited_by_count) AS total_citations,
             round(avg(fwci), 2) AS avg_fwci,
             round(avg(is_top_10) * 100, 2) AS pct_top_10,
+            round(avg(is_top_1) * 100, 2) AS pct_top_1,
             round(sum(apc_paid_usd), 2) AS total_apc_paid_usd
         FROM rag.works_academic_all
         ARRAY JOIN institution_names AS inst
@@ -456,19 +651,28 @@ def cmd_top_entities(args):
           AND inst != ''
         GROUP BY inst
         ORDER BY total_works DESC
-        LIMIT {limit}
+        LIMIT {limit * 2}
         """
         res = client.query(sql)
-        for rank, r in enumerate(res.result_rows, 1):
+        raw_rows = res.result_rows
+        inst_meta = _resolve_institutions_metadata(client, [r[0] for r in raw_rows])
+
+        for rank, r in enumerate(raw_rows, 1):
+            meta = inst_meta.get(r[0], {})
             entities.append({
-                "rank": rank,
+                "rank": len(entities) + 1,
                 "institution": r[0],
+                "openalex_id": meta.get("openalex_id"),
+                "ror": meta.get("ror"),
                 "total_works": r[1],
                 "total_citations": r[2],
                 "avg_fwci": r[3],
                 "pct_top_10": r[4],
-                "total_apc_paid_usd": r[5]
+                "pct_top_1": r[5],
+                "total_apc_paid_usd": r[6]
             })
+            if len(entities) >= limit:
+                break
 
     elif args.by == "authors":
         sql = f"""
@@ -477,68 +681,53 @@ def cmd_top_entities(args):
             count(*) AS total_works,
             sum(cited_by_count) AS total_citations,
             round(avg(fwci), 2) AS avg_fwci,
-            round(avg(is_top_10) * 100, 2) AS pct_top_10
+            round(avg(is_top_10) * 100, 2) AS pct_top_10,
+            round(avg(is_top_1) * 100, 2) AS pct_top_1
         FROM rag.works_academic_all
         ARRAY JOIN author_names AS author
         WHERE {where_sql}
           AND author != ''
         GROUP BY author
         ORDER BY total_works DESC
-        LIMIT {limit}
+        LIMIT {limit * 3}
         """
         res = client.query(sql)
         raw_rows = res.result_rows
 
-        ids_to_resolve = [r[0] for r in raw_rows if r[0].startswith("https://openalex.org/A")]
-        resolved_map = {}
-        if ids_to_resolve:
-            ids_sql = ",".join([f"'{i}'" for i in ids_to_resolve])
-            resolve_sql = f"""
-            SELECT id, any(display_name), any(orcid),
-                   any(JSONExtractString(raw_data, 'last_known_institutions', 1, 'display_name')) as inst,
-                   any(JSONExtractString(raw_data, 'last_known_institutions', 1, 'country_code')) as country
-            FROM rag.authors_seed_mexico
-            WHERE id IN ({ids_sql})
-            GROUP BY id
-            """
-            res_resolve = client.query(resolve_sql)
-            for row in res_resolve.result_rows:
-                resolved_map[row[0]] = {
-                    "name": row[1],
-                    "orcid": row[2],
-                    "institution": row[3],
-                    "country": row[4] or ""
-                }
-
-        for rank, r in enumerate(raw_rows, 1):
-            raw_id_or_name = r[0]
-            display_name = raw_id_or_name
-            orcid = ""
-            institution = ""
-            country = ""
-
-            if raw_id_or_name in resolved_map:
-                info = resolved_map[raw_id_or_name]
-                display_name = info["name"] or raw_id_or_name
-                orcid = info["orcid"]
-                institution = info["institution"]
-                country = info["country"]
+        author_meta = _resolve_authors_metadata(client, [r[0] for r in raw_rows if r[0]])
+        seen_ids = set()
+        seen_names = set()
+        for r in raw_rows:
+            key = r[0]
+            meta = author_meta.get(key, {})
+            display_name = meta.get("display_name") or key
+            openalex_id = meta.get("openalex_id") or (key if key.startswith("http") else None)
+            norm_name = _normalize_entity_key(display_name)
+            if openalex_id and openalex_id in seen_ids:
+                continue
+            if norm_name and norm_name in seen_names:
+                continue
+            if openalex_id:
+                seen_ids.add(openalex_id)
+            if norm_name:
+                seen_names.add(norm_name)
 
             entities.append({
-                "rank": rank,
+                "rank": len(entities) + 1,
                 "display_name": display_name,
-                "author_id": raw_id_or_name if raw_id_or_name.startswith("https://openalex.org/A") else None,
-                "orcid": orcid,
-                "institution": institution,
-                "country": country or "MX",
-                "is_mexican_affiliated": (country == "MX" or not country),
+                "openalex_id": openalex_id,
+                "last_known_institutions": meta.get("last_known_institutions") or [],
                 "total_works": r[1],
                 "total_citations": r[2],
                 "avg_fwci": r[3],
-                "pct_top_10": r[4]
+                "pct_top_10": r[4],
+                "pct_top_1": r[5]
             })
+            if len(entities) >= limit:
+                break
 
     output_data = {
+        "status": "success",
         "query": args.query,
         "by": args.by,
         "year_range": f"{args.year_min or 'all'}-{args.year_max or 'all'}",
@@ -552,7 +741,6 @@ def cmd_top_entities(args):
 
     print(f"Top {len(entities)} {args.by} en '{args.query}' guardado exitosamente en {args.output}")
     sys.exit(0)
-
 
 def cmd_semantic_search(args):
     """Búsqueda semántica usando embeddings locales nomic (768d) y similitud coseno en ClickHouse."""
@@ -574,26 +762,26 @@ def cmd_semantic_search(args):
 
     vec_str = str(query_vec)
     limit = min(args.limit or 20, 500)
-    target = args.target or "works"
+    target = (args.target or "works").lower().strip()
+
+    where_clauses = ["length(embedding_nomic) = 768", "title != ''"]
+    if args.year_min:
+        where_clauses.append(f"publication_year >= {int(args.year_min)}")
+    if args.year_max:
+        where_clauses.append(f"publication_year <= {int(args.year_max)}")
+    if args.oa_status:
+        where_clauses.append(f"lower(oa_status) = '{args.oa_status.lower()}'")
+    if getattr(args, "is_top_10", None) is not None:
+        val = 1 if str(args.is_top_10).lower() in ("true", "1") else 0
+        where_clauses.append(f"is_top_10 = {val}")
+    if getattr(args, "institution_name", None):
+        clean_inst = args.institution_name.replace("'", "\'")
+        where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
+
+    where_sql = " AND ".join(where_clauses)
+    sanitize_no_joins(where_sql)
 
     if target == "works":
-        where_clauses = ["length(embedding_nomic) = 768", "title != ''"]
-        if args.year_min:
-            where_clauses.append(f"publication_year >= {int(args.year_min)}")
-        if args.year_max:
-            where_clauses.append(f"publication_year <= {int(args.year_max)}")
-        if args.oa_status:
-            where_clauses.append(f"lower(oa_status) = '{args.oa_status.lower()}'")
-        if args.is_top_10 is not None:
-            val = 1 if str(args.is_top_10).lower() in ("true", "1") else 0
-            where_clauses.append(f"is_top_10 = {val}")
-        if args.institution_name:
-            clean_inst = args.institution_name.replace("'", "\\'")
-            where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
-
-        where_sql = " AND ".join(where_clauses)
-        sanitize_no_joins(where_sql)
-
         sql = f"""
         SELECT id, title, any(publication_year), max(cited_by_count), any(oa_status), any(is_oa),
                any(fwci), any(percentile), any(is_top_10), any(is_top_1), any(apc_paid_usd),
@@ -605,7 +793,6 @@ def cmd_semantic_search(args):
         ORDER BY cosine_dist ASC
         LIMIT {limit}
         """
-
         res = client.query(sql)
         works = []
         for row in res.result_rows:
@@ -635,6 +822,7 @@ def cmd_semantic_search(args):
         resolve_authors_for_works(works, client)
 
         output_data = {
+            "status": "success",
             "query": query_str,
             "target": "works",
             "model": "text-embedding-nomic-ai-nomic-embed-text-v2-moe (768d)",
@@ -643,70 +831,146 @@ def cmd_semantic_search(args):
             "results": works
         }
 
-    elif target == "authors":
-        where_clauses = ["length(embedding_nomic) = 768", "name != ''"]
-        if args.institution_name:
-            clean_inst = args.institution_name.replace("'", "\\'")
-            where_clauses.append(f"positionCaseInsensitiveUTF8(institution, '{clean_inst}') > 0")
-
-        where_sql = " AND ".join(where_clauses)
-        sanitize_no_joins(where_sql)
-
+    elif target == "institutions":
         sql = f"""
-        SELECT id, name, institution, dependency, subdependency, snii_level, orcid,
-               paper_count, citation_count,
-               cosineDistance(embedding_nomic, {vec_str}) as cosine_dist
-        FROM rag.academics_all
-        WHERE {where_sql}
-        ORDER BY cosine_dist ASC
-        LIMIT {limit}
+        SELECT
+            inst,
+            count(*) AS total_works,
+            sum(cited_by_count) AS total_citations,
+            round(avg(fwci), 2) AS avg_fwci,
+            round(avg(is_top_10) * 100, 2) AS pct_top_10,
+            round(avg(is_top_1) * 100, 2) AS pct_top_1,
+            round(avg(cosine_dist), 4) AS avg_cosine_dist
+        FROM (
+            SELECT
+                institution_names,
+                cited_by_count,
+                fwci,
+                is_top_10,
+                is_top_1,
+                cosineDistance(embedding_nomic, {vec_str}) AS cosine_dist
+            FROM rag.works_academic_all
+            WHERE {where_sql}
+            ORDER BY cosine_dist ASC
+            LIMIT 500
+        )
+        ARRAY JOIN institution_names AS inst
+        WHERE inst != ''
+        GROUP BY inst
+        ORDER BY total_works DESC, avg_cosine_dist ASC
+        LIMIT {limit * 2}
         """
-
         res = client.query(sql)
-        authors = []
-        ids_to_resolve = []
-        for row in res.result_rows:
-            dist = float(row[9])
-            similarity = round(1.0 - dist, 4)
-            ids_to_resolve.append(row[0])
-            authors.append({
-                "id": row[0],
-                "name": row[1],
-                "institution": row[2],
-                "dependency": row[3],
-                "subdependency": row[4],
-                "snii_level": row[5],
-                "orcid": row[6],
-                "paper_count": row[7],
-                "citation_count": row[8],
-                "cosine_distance": round(dist, 4),
-                "semantic_similarity": similarity
-            })
+        raw_rows = res.result_rows
+        inst_meta = _resolve_institutions_metadata(client, [r[0] for r in raw_rows])
 
-        if ids_to_resolve:
-            ids_sql = ",".join([f"'{aid}'" for aid in ids_to_resolve])
-            seed_sql = f"""
-            SELECT id, any(display_name), any(orcid),
-                   any(JSONExtractString(raw_data, 'last_known_institutions', 1, 'display_name')) as inst
-            FROM rag.authors_seed_mexico
-            WHERE id IN ({ids_sql})
-            GROUP BY id
-            """
-            res_seed = client.query(seed_sql)
-            seed_map = {r[0]: {"inst": r[3], "orcid": r[2]} for r in res_seed.result_rows}
-            for a in authors:
-                if not a["institution"] and a["id"] in seed_map:
-                    a["institution"] = seed_map[a["id"]]["inst"]
-                if not a["orcid"] and a["id"] in seed_map:
-                    a["orcid"] = seed_map[a["id"]]["orcid"]
+        institutions = []
+        for r in raw_rows:
+            meta = inst_meta.get(r[0], {})
+            sim = round(1.0 - float(r[6]), 4)
+            institutions.append({
+                "rank": len(institutions) + 1,
+                "institution": r[0],
+                "openalex_id": meta.get("openalex_id"),
+                "ror": meta.get("ror"),
+                "total_works": r[1],
+                "total_citations": r[2],
+                "avg_fwci": r[3],
+                "pct_top_10": r[4],
+                "pct_top_1": r[5],
+                "semantic_similarity": sim
+            })
+            if len(institutions) >= limit:
+                break
 
         output_data = {
+            "status": "success",
+            "query": query_str,
+            "target": "institutions",
+            "model": "text-embedding-nomic-ai-nomic-embed-text-v2-moe (768d)",
+            "limit": limit,
+            "total_returned": len(institutions),
+            "results": institutions,
+            "top_entities": institutions
+        }
+
+    elif target == "authors":
+        sql = f"""
+        SELECT
+            auth,
+            count(*) AS total_works,
+            sum(cited_by_count) AS total_citations,
+            round(avg(fwci), 2) AS avg_fwci,
+            round(avg(is_top_10) * 100, 2) AS pct_top_10,
+            round(avg(is_top_1) * 100, 2) AS pct_top_1,
+            round(avg(cosine_dist), 4) AS avg_cosine_dist
+        FROM (
+            SELECT
+                author_names,
+                cited_by_count,
+                fwci,
+                is_top_10,
+                is_top_1,
+                cosineDistance(embedding_nomic, {vec_str}) AS cosine_dist
+            FROM rag.works_academic_all
+            WHERE {where_sql}
+            ORDER BY cosine_dist ASC
+            LIMIT 500
+        )
+        ARRAY JOIN author_names AS auth
+        WHERE auth != ''
+        GROUP BY auth
+        ORDER BY total_works DESC, avg_cosine_dist ASC
+        LIMIT {limit * 3}
+        """
+        res = client.query(sql)
+        raw_rows = res.result_rows
+
+        author_meta = _resolve_authors_metadata(client, [r[0] for r in raw_rows if r[0]])
+        seen_ids = set()
+        seen_names = set()
+        authors = []
+
+        for r in raw_rows:
+            key = r[0]
+            meta = author_meta.get(key, {})
+            display_name = meta.get("display_name") or key
+            openalex_id = meta.get("openalex_id") or (key if key.startswith("http") else None)
+            norm_name = _normalize_entity_key(display_name)
+            if openalex_id and openalex_id in seen_ids:
+                continue
+            if norm_name and norm_name in seen_names:
+                continue
+            if openalex_id:
+                seen_ids.add(openalex_id)
+            if norm_name:
+                seen_names.add(norm_name)
+
+            sim = round(1.0 - float(r[6]), 4)
+            authors.append({
+                "rank": len(authors) + 1,
+                "display_name": display_name,
+                "openalex_id": openalex_id,
+                "last_known_institutions": meta.get("last_known_institutions") or [],
+                "total_works": r[1],
+                "total_citations": r[2],
+                "avg_fwci": r[3],
+                "pct_top_10": r[4],
+                "pct_top_1": r[5],
+                "semantic_similarity": sim
+            })
+            if len(authors) >= limit:
+                break
+
+        output_data = {
+            "status": "success",
             "query": query_str,
             "target": "authors",
             "model": "text-embedding-nomic-ai-nomic-embed-text-v2-moe (768d)",
             "limit": limit,
             "total_returned": len(authors),
-            "results": authors
+            "results": authors,
+            "top_entities": authors
         }
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
@@ -715,7 +979,6 @@ def cmd_semantic_search(args):
 
     print(f"Búsqueda semántica ({target}) completada: {len(output_data['results'])} resultados guardados en {args.output}")
     sys.exit(0)
-
 
 def cmd_aggregate(args):
     """Ejecuta agregaciones cienciométricas sobre rag.works_academic_all."""
@@ -840,13 +1103,13 @@ def cmd_get_institution(args):
     where_clauses = ["1=1"]
 
     if args.query:
-        clean_q = args.query.replace("'", "\\'")
+        clean_q = args.query.replace("'", "\'").strip()
         where_clauses.append(f"positionCaseInsensitiveUTF8(display_name, '{clean_q}') > 0")
     if args.acronym:
         clean_acr = args.acronym.strip().upper()
         where_clauses.append(f"has(acronyms, '{clean_acr}')")
     if args.state:
-        clean_st = args.state.replace("'", "\\'")
+        clean_st = args.state.replace("'", "\'").strip()
         where_clauses.append(f"positionCaseInsensitiveUTF8(state, '{clean_st}') > 0")
     if args.ror:
         clean_ror = args.ror.replace("https://ror.org/", "").strip()
@@ -859,28 +1122,44 @@ def cmd_get_institution(args):
 
     limit = min(args.limit or 25, 500)
     sql = f"""
-    SELECT id, display_name, ror, type, city, state, acronyms, parent_name
+    SELECT id, display_name, ror, type, city, state, acronyms, parent_id, parent_name
     FROM rag.institutions_seed_mexico
     WHERE {where_sql}
     ORDER BY display_name ASC
-    LIMIT {limit}
+    LIMIT {limit * 2}
     """
 
     res = client.query(sql)
+    seen_keys = set()
     institutions = []
     for r in res.result_rows:
+        inst_id = r[0]
+        ror_canonical = r[2] if str(r[2]).startswith("http") else f"https://ror.org/{r[2]}" if r[2] else None
+        dedup_key = (inst_id, ror_canonical, _normalize_entity_key(r[1]))
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
         institutions.append({
-            "id": r[0],
+            "openalex_id": inst_id,
             "display_name": r[1],
-            "ror": r[2],
+            "ror": ror_canonical,
             "type": r[3],
             "city": r[4],
             "state": r[5],
-            "acronyms": r[6],
-            "parent_name": r[7]
+            "acronyms": r[6] or [],
+            "parent_id": r[7],
+            "parent_name": r[8]
         })
+        if len(institutions) >= limit:
+            break
+
+    distinct_rors = set(i["ror"] for i in institutions if i["ror"])
+    distinct_names = set(_normalize_entity_key(i["display_name"]) for i in institutions if i.get("display_name"))
+    distinct_entities = max(len(distinct_rors), len(distinct_names), len(institutions)) if institutions else 0
+    disambiguation_required = distinct_entities > 1
 
     output_data = {
+        "status": "success",
         "filters": {
             "query": args.query,
             "acronym": args.acronym,
@@ -888,16 +1167,25 @@ def cmd_get_institution(args):
             "ror": args.ror
         },
         "total_returned": len(institutions),
+        "distinct_entities": distinct_entities,
+        "disambiguation_required": disambiguation_required,
         "institutions": institutions
     }
+    if disambiguation_required:
+        output_data["instruction_for_agent"] = (
+            f"Se encontraron {distinct_entities} instituciones o sedes coincidentes. "
+            "EVALUACIÓN: Si la consulta del usuario identifica con claridad a una de ellas (o si una es la institución matriz evidente y las demás son sedes o duplicados), "
+            "puedes decidir proceder directamente con el análisis usando su ROR u OpenAlex ID sin detenerte. "
+            "Solo si existe una ambigüedad genuina sobre cuál institución o sede desea analizar el usuario, "
+            "presenta la lista de opciones y pregúntale a cuál se refiere antes de continuar."
+        )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"Búsqueda de instituciones en México: {len(institutions)} encontradas. Guardado en {args.output}")
+    print(f"Catálogo de instituciones en México: {len(institutions)} registros guardados en {args.output}")
     sys.exit(0)
-
 
 def cmd_validate_query(args):
     """Valida la sintaxis defensiva de una consulta ClickHouse contra la regla de CERO JOINs."""
@@ -961,7 +1249,7 @@ def main():
     # Subcomando: semantic-search
     p_sem = subparsers.add_parser("semantic-search", help="Búsqueda semántica usando embeddings nomic locales (768d)")
     p_sem.add_argument("--query", required=True, help="Texto o pregunta en lenguaje natural")
-    p_sem.add_argument("--target", choices=["works", "authors"], default="works", help="Objetivo de búsqueda: works o authors")
+    p_sem.add_argument("--target", choices=["works", "institutions", "authors"], default="works", help="Objetivo de búsqueda: works, institutions o authors")
     p_sem.add_argument("--institution-name", help="Filtrar por institución")
     p_sem.add_argument("--year-min", type=int, help="Año mínimo")
     p_sem.add_argument("--year-max", type=int, help="Año máximo")
