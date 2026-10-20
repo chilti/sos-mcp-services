@@ -32,6 +32,9 @@ from services.openalex.tools.viz_tools import (
     openalex_plot_geopolitical_sankey,
     openalex_plot_multidimensional_radar,
     openalex_plot_topic_dynamics,
+    openalex_plot_collaborating_countries,
+    openalex_plot_scientific_vocabulary,
+    openalex_plot_coauthra_network,
 )
 
 mcp = FastMCP("openalex-clickhouse-gateway")
@@ -58,6 +61,9 @@ mcp.tool()(openalex_plot_quadrant_matrix)
 mcp.tool()(openalex_plot_geopolitical_sankey)
 mcp.tool()(openalex_plot_multidimensional_radar)
 mcp.tool()(openalex_plot_topic_dynamics)
+mcp.tool()(openalex_plot_collaborating_countries)
+mcp.tool()(openalex_plot_scientific_vocabulary)
+mcp.tool()(openalex_plot_coauthra_network)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()

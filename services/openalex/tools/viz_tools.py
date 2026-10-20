@@ -64,6 +64,7 @@ THEME_BG = "#0B0F19"
 THEME_CARD = "#111827"
 THEME_TEXT = "#F9FAFB"
 THEME_ACCENT = "#38BDF8"
+THEME_MUTED = "#94A3B8"
 
 SDG_INFO = {
     1: {"name": "Fin de la Pobreza", "color": "#E5243B"},
@@ -1897,4 +1898,684 @@ def openalex_plot_topic_dynamics(
             "period": f"{start_year}-{end_year}"
         },
         "message": f"Dinámica temporal de tópicos guardada en {html_path}"
+    }
+
+
+# ==============================================================================
+# DICCIONARIOS DE APOYO GEOGRÁFICO (ISO2 -> ISO3 Y NOMBRES EN ESPAÑOL)
+# ==============================================================================
+ISO2_TO_ISO3 = {
+    "AF": "AFG", "AX": "ALA", "AL": "ALB", "DZ": "DZA", "AS": "ASM", "AD": "AND", "AO": "AGO", "AI": "AIA", "AQ": "ATA", "AG": "ATG",
+    "AR": "ARG", "AM": "ARM", "AW": "ABW", "AU": "AUS", "AT": "AUT", "AZ": "AZE", "BS": "BHS", "BH": "BHR", "BD": "BGD", "BB": "BRB",
+    "BY": "BLR", "BE": "BEL", "BZ": "BLZ", "BJ": "BEN", "BM": "BMU", "BT": "BTN", "BO": "BOL", "BQ": "BES", "BA": "BIH", "BW": "BWA",
+    "BV": "BVT", "BR": "BRA", "IO": "IOT", "BN": "BRN", "BG": "BGR", "BF": "BFA", "BI": "BDI", "CV": "CPV", "KH": "KHM", "CM": "CMR",
+    "CA": "CAN", "KY": "CYM", "CF": "CAF", "TD": "TCD", "CL": "CHL", "CN": "CHN", "CX": "CXR", "CC": "CCK", "CO": "COL", "KM": "COM",
+    "CD": "COD", "CG": "COG", "CK": "COK", "CR": "CRI", "CI": "CIV", "HR": "HRV", "CU": "CUB", "CW": "CUW", "CY": "CYP", "CZ": "CZE",
+    "DK": "DNK", "DJ": "DJI", "DM": "DMA", "DO": "DOM", "EC": "ECU", "EG": "EGY", "SV": "SLV", "GQ": "GNQ", "ER": "ERI", "EE": "EST",
+    "SZ": "SWZ", "ET": "ETH", "FK": "FLK", "FO": "FRO", "FJ": "FJI", "FI": "FIN", "FR": "FRA", "GF": "GUF", "PF": "PYF", "TF": "ATF",
+    "GA": "GAB", "GM": "GMB", "GE": "GEO", "DE": "DEU", "GH": "GHA", "GI": "GIB", "GR": "GRC", "GL": "GRL", "GD": "GRD", "GP": "GLP",
+    "GU": "GUM", "GT": "GTM", "GG": "GGY", "GN": "GIN", "GW": "GNB", "GY": "GUY", "HT": "HTI", "HM": "HMD", "VA": "VAT", "HN": "HND",
+    "HK": "HKG", "HU": "HUN", "IS": "ISL", "IN": "IND", "ID": "IDN", "IR": "IRN", "IQ": "IRQ", "IE": "IRL", "IM": "IMN", "IL": "ISR",
+    "IT": "ITA", "JM": "JAM", "JP": "JPN", "JE": "JEY", "JO": "JOR", "KZ": "KAZ", "KE": "KEN", "KI": "KIR", "KP": "PRK", "KR": "KOR",
+    "KW": "KWT", "KG": "KGZ", "LA": "LAO", "LV": "LVA", "LB": "LBN", "LS": "LSO", "LR": "LBR", "LY": "LBY", "LI": "LIE", "LT": "LTU",
+    "LU": "LUX", "MO": "MAC", "MG": "MDG", "MW": "MWI", "MY": "MYS", "MV": "MDV", "ML": "MLI", "MT": "MLT", "MH": "MHL", "MQ": "MTQ",
+    "MR": "MRT", "MU": "MUS", "YT": "MYT", "MX": "MEX", "FM": "FSM", "MD": "MDA", "MC": "MCO", "MN": "MNG", "ME": "MNE", "MS": "MSR",
+    "MA": "MAR", "MZ": "MOZ", "MM": "MMR", "NA": "NAM", "NR": "NRU", "NP": "NPL", "NL": "NLD", "NC": "NCL", "NZ": "NZL", "NI": "NIC",
+    "NE": "NER", "NG": "NGA", "NU": "NIU", "NF": "NFK", "MP": "MNP", "NO": "NOR", "OM": "OMN", "PK": "PAK", "PW": "PLW", "PS": "PSE",
+    "PA": "PAN", "PG": "PNG", "PY": "PRY", "PE": "PER", "PH": "PHL", "PN": "PCN", "PL": "POL", "PT": "PRT", "PR": "PRI", "QA": "QAT",
+    "RE": "REU", "RO": "ROU", "RU": "RUS", "RW": "RWA", "BL": "BLM", "SH": "SHN", "KN": "KNA", "LC": "LCA", "MF": "MAF", "PM": "SPM",
+    "VC": "VCT", "WS": "WSM", "SM": "SMR", "ST": "STP", "SA": "SAU", "SN": "SEN", "RS": "SRB", "SC": "SYC", "SL": "SLE", "SG": "SGP",
+    "SX": "SXM", "SK": "SVK", "SI": "SVN", "SB": "SLB", "SO": "SOM", "ZA": "ZAF", "GS": "SGS", "SS": "SSD", "ES": "ESP", "LK": "LKA",
+    "SD": "SDN", "SR": "SUR", "SJ": "SJM", "SE": "SWE", "CH": "CHE", "SY": "SYR", "TW": "TWN", "TJ": "TJK", "TZ": "TZA", "TH": "THA",
+    "TL": "TLS", "TG": "TGO", "TK": "TKL", "TO": "TON", "TT": "TTO", "TN": "TUN", "TR": "TUR", "TM": "TKM", "TC": "TCA", "TV": "TUV",
+    "UG": "UGA", "UA": "UKR", "AE": "ARE", "GB": "GBR", "UM": "UMI", "US": "USA", "UY": "URY", "UZ": "UZB", "VU": "VUT", "VE": "VEN",
+    "VN": "VNM", "VG": "VGB", "VI": "VIR", "WF": "WLF", "EH": "ESH", "YE": "YEM", "ZM": "ZMB", "ZW": "ZWE"
+}
+
+ISO2_TO_NAME_ES = {
+    "US": "Estados Unidos", "ES": "España", "GB": "Reino Unido", "FR": "Francia", "DE": "Alemania",
+    "BR": "Brasil", "CA": "Canadá", "IT": "Italia", "CN": "China", "CO": "Colombia", "CL": "Chile",
+    "AR": "Argentina", "JP": "Japón", "NL": "Países Bajos", "CH": "Suiza", "AU": "Australia",
+    "SE": "Suecia", "BE": "Bélgica", "PT": "Portugal", "CU": "Cuba", "PE": "Perú", "IN": "India",
+    "KR": "Corea del Sur", "RU": "Rusia", "IL": "Israel", "PL": "Polonia", "DK": "Dinamarca",
+    "NO": "Noruega", "AT": "Austria", "ZA": "Sudáfrica", "NZ": "Nueva Zelanda", "CR": "Costa Rica",
+    "EC": "Ecuador", "UY": "Uruguay", "VE": "Venezuela", "GT": "Guatemala", "PA": "Panamá",
+    "IE": "Irlanda", "FI": "Finlandia", "CZ": "República Checa", "GR": "Grecia", "TR": "Turquía",
+    "SG": "Singapur", "TW": "Taiwán", "MY": "Malasia", "SA": "Arabia Saudita", "EG": "Egipto"
+}
+
+
+# ==============================================================================
+# 13. MAPA MUNDIAL DE PAÍSES COLABORADORES (Choropleth Colaboración Internacional)
+# ==============================================================================
+def openalex_plot_collaborating_countries(
+    author_id: Optional[str] = None,
+    orcid: Optional[str] = None,
+    academic_name: Optional[str] = None,
+    institution_id: Optional[str] = None,
+    query: Optional[str] = None,
+    title: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Genera un Mapa Mundial Coroplético interactivo (Plotly.js) que muestra la
+    distribución geográfica de las naciones aliadas en coautoría científica.
+    Excluye a México para resaltar los vínculos internacionales.
+    """
+    conds = ["length(all_country_codes) > 0"]
+    entity_label = "Producción Científica Nacional"
+
+    if author_id:
+        clean_aid = author_id.replace("https://openalex.org/", "").strip()
+        conds.append(f"(has(author_names, '{clean_aid}') OR arrayExists(x -> x ILIKE '%{clean_aid}%', author_names))")
+        entity_label = f"Investigador ({clean_aid})"
+    elif orcid:
+        clean_orc = orcid.replace("https://orcid.org/", "").strip()
+        q_orc = f"SELECT name FROM rag.academics_all WHERE orcid = '{clean_orc}' LIMIT 1"
+        res_orc = execute_safe_query(q_orc)
+        if res_orc.get("data"):
+            aname = res_orc["data"][0]["name"]
+            conds.append(f"arrayExists(x -> x ILIKE '%{aname}%', author_names)")
+            entity_label = f"{aname} (ORCID: {clean_orc})"
+        else:
+            entity_label = f"ORCID: {clean_orc}"
+    elif academic_name:
+        clean_name = academic_name.replace("'", "").strip()
+        conds.append(f"arrayExists(x -> x ILIKE '%{clean_name}%', author_names)")
+        entity_label = f"{clean_name}"
+    elif institution_id:
+        clean_inst = institution_id.replace("https://ror.org/", "").strip()
+        conds.append(f"(arrayExists(x -> x ILIKE '%{clean_inst}%', institution_names) OR arrayExists(x -> x ILIKE '%{clean_inst}%', institution_rors))")
+        entity_label = f"Institución ({clean_inst})"
+    elif query:
+        clean_q = query.replace("'", "").strip()
+        conds.append(f"(title ILIKE '%{clean_q}%' OR topic ILIKE '%{clean_q}%')")
+        entity_label = f"Tópico '{clean_q}'"
+
+    where_str = " AND ".join(conds)
+    sql = f"""
+    SELECT arrayJoin(all_country_codes) AS country_code, count(*) AS papers
+    FROM rag.works_academic_all
+    WHERE {where_str} AND country_code != '' AND country_code != 'MX'
+    GROUP BY country_code
+    ORDER BY papers DESC
+    LIMIT 120
+    """
+    ch_res = execute_safe_query(sql)
+    rows = ch_res.get("data", [])
+
+    if not rows:
+        return {"status": "error", "message": f"No se detectaron países colaboradores internacionales para {entity_label}."}
+
+    locations = []
+    z_vals = []
+    hover_texts = []
+    table_rows = []
+    total_papers_collab = 0
+
+    for r in rows:
+        c2 = r.get("country_code", "").upper().strip()
+        papers = int(r.get("papers", 0))
+        if not c2 or papers <= 0:
+            continue
+        c3 = ISO2_TO_ISO3.get(c2, c2)
+        name_es = ISO2_TO_NAME_ES.get(c2, c2)
+        locations.append(c3)
+        z_vals.append(papers)
+        hover_texts.append(f"<b>{name_es} ({c3})</b><br>{papers:,} artículos conjuntos")
+        total_papers_collab += papers
+        if len(table_rows) < 15:
+            table_rows.append({"iso2": c2, "iso3": c3, "name": name_es, "papers": papers})
+
+    title_text = title or f"Mapa Mundi de Países Colaboradores: {entity_label}"
+    html_path, png_path = _resolve_output_paths(output_dir, "collaborating_countries")
+
+    colorscale = [
+        [0.0, "#0f172a"],
+        [0.05, "#0369a1"],
+        [0.2, "#0284c7"],
+        [0.5, "#00f0ff"],
+        [1.0, "#38bdf8"]
+    ]
+
+    fig = go.Figure(data=go.Choropleth(
+        locations=locations,
+        locationmode="ISO-3",
+        z=z_vals,
+        text=hover_texts,
+        hoverinfo="text",
+        colorscale=colorscale,
+        autocolorscale=False,
+        marker=dict(line=dict(color="rgba(255,255,255,0.18)", width=0.6)),
+        colorbar=dict(
+            title=dict(text="Papers", font=dict(color="#94a3b8", size=11)),
+            tickfont=dict(color="#94a3b8", size=10),
+            len=0.75,
+            thickness=14
+        )
+    ))
+
+    fig.update_layout(
+        title=dict(
+            text=f"<b>{title_text}</b>",
+            font=dict(family="Inter, sans-serif", size=16, color=THEME_TEXT),
+            x=0.03, y=0.96
+        ),
+        paper_bgcolor=THEME_CARD,
+        plot_bgcolor=THEME_CARD,
+        margin=dict(t=50, b=10, l=10, r=10),
+        height=520,
+        geo=dict(
+            showframe=False,
+            showcoastlines=True,
+            coastlinecolor="rgba(255,255,255,0.15)",
+            bgcolor="rgba(0,0,0,0)",
+            showland=True,
+            landcolor="rgba(255,255,255,0.03)",
+            showocean=True,
+            oceancolor="rgba(15,23,42,0.6)",
+            projection=dict(type="natural earth")
+        )
+    )
+
+    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+
+    table_html = "".join([
+        f"<tr><td class='py-2 font-mono text-cyan-400'>{r['iso3']}</td>"
+        f"<td class='py-2 font-medium'>{r['name']}</td>"
+        f"<td class='py-2 text-right font-bold text-white'>{r['papers']:,}</td>"
+        f"<td class='py-2 text-right text-slate-400'>{round((r['papers']/total_papers_collab)*100, 1)}%</td></tr>"
+        for r in table_rows
+    ])
+
+    top_country = table_rows[0]["name"] if table_rows else "N/A"
+    top_papers = table_rows[0]["papers"] if table_rows else 0
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{title_text}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {{ background-color: {THEME_BG}; color: {THEME_TEXT}; font-family: 'Inter', sans-serif; }}
+        .card {{ background-color: {THEME_CARD}; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; }}
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <div class="max-w-7xl mx-auto space-y-5">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <span class="text-cyan-400">🗺️</span> {title_text}
+                </h1>
+                <p class="text-xs text-slate-400">Cartografía global de coautoría internacional ({len(locations)} naciones colaboradoras registradas).</p>
+            </div>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded text-xs font-semibold">
+                    {len(locations)} Países Aliados
+                </span>
+                <span class="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded text-xs font-semibold">
+                    {total_papers_collab:,} Colaboraciones
+                </span>
+            </div>
+        </header>
+
+        <section class="card p-3 shadow-xl overflow-hidden">
+            {plot_html}
+        </section>
+
+        <section class="card p-4">
+            <h2 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+                <span>🏆</span> Principales Naciones Socias de Coautoría
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400">
+                            <th class="py-2">Código</th>
+                            <th class="py-2">País</th>
+                            <th class="py-2 text-right">Papers Conjuntos</th>
+                            <th class="py-2 text-right">Participación (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-850">
+                        {table_html}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</body>
+</html>"""
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(full_html)
+
+    _render_png_card("collaboration-countries", {"locations": locations, "z": z_vals}, png_path, title_text)
+
+    return {
+        "status": "success",
+        "chart_type": "collaborating-countries",
+        "title": title_text,
+        "html_path": html_path,
+        "html_content": full_html,
+        "png_path": png_path,
+        "summary_kpis": {
+            "total_partner_countries": len(locations),
+            "total_collaborations": total_papers_collab,
+            "top_partner_country": top_country,
+            "top_partner_papers": top_papers
+        },
+        "message": f"Mapa mundi coroplético de países colaboradores guardado en {html_path}"
+    }
+
+
+# ==============================================================================
+# 14. VOCABULARIO CIENTÍFICO (Nube Interactiva de Palabras y Frecuencias)
+# ==============================================================================
+def openalex_plot_scientific_vocabulary(
+    author_id: Optional[str] = None,
+    orcid: Optional[str] = None,
+    academic_name: Optional[str] = None,
+    entity_name: Optional[str] = None,
+    institution_id: Optional[str] = None,
+    query: Optional[str] = None,
+    limit: int = 80,
+    title: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Genera una visualización interactiva del Vocabulario Científico (WordCloud y Frecuencias),
+    inspirada en WordCloudInteractive.jsx de SinapsisAI.
+    Soporta búsqueda en vivo, paleta neón por tiers de frecuencia y vista dual con gráfico de barras.
+    """
+    keywords_data = []
+    source_label = "Producción Científica"
+
+    # 1. Intentar consulta ultrarrápida a DuckDB de SinapsisAI si se especifica academic_name o entity_name
+    duckdb_path = "/home/sinapsisai/data/analytics_cache.duckdb"
+    if os.path.exists(duckdb_path) and (academic_name or entity_name):
+        try:
+            import duckdb
+            dconn = duckdb.connect(duckdb_path, read_only=True)
+            if academic_name:
+                clean_aname = academic_name.replace("'", "").strip()
+                d_res = dconn.execute(
+                    f"SELECT keyword, freq FROM keywords_investigador WHERE academic_name ILIKE '%{clean_aname}%' ORDER BY freq DESC LIMIT {limit}"
+                ).fetchall()
+                if d_res:
+                    keywords_data = [{"keyword": str(r[0]), "freq": int(r[1])} for r in d_res]
+                    source_label = f"Investigador: {clean_aname}"
+            elif entity_name:
+                clean_ename = entity_name.replace("'", "").strip()
+                d_res = dconn.execute(
+                    f"SELECT keyword, freq FROM keywords_institucion WHERE entity_name ILIKE '%{clean_ename}%' ORDER BY freq DESC LIMIT {limit}"
+                ).fetchall()
+                if d_res:
+                    keywords_data = [{"keyword": str(r[0]), "freq": int(r[1])} for r in d_res]
+                    source_label = f"Dependencia: {clean_ename}"
+            dconn.close()
+        except Exception:
+            pass
+
+    # 2. Fallback a ClickHouse si no se obtuvo de DuckDB
+    if not keywords_data:
+        conds = ["length(keywords) > 0"]
+        if author_id:
+            clean_aid = author_id.replace("https://openalex.org/", "").strip()
+            conds.append(f"arrayExists(x -> x ILIKE '%{clean_aid}%', author_names)")
+            source_label = f"Investigador ({clean_aid})"
+        elif academic_name:
+            clean_aname = academic_name.replace("'", "").strip()
+            conds.append(f"arrayExists(x -> x ILIKE '%{clean_aname}%', author_names)")
+            source_label = f"Investigador: {clean_aname}"
+        elif institution_id:
+            clean_inst = institution_id.replace("https://ror.org/", "").strip()
+            conds.append(f"(arrayExists(x -> x ILIKE '%{clean_inst}%', institution_names) OR arrayExists(x -> x ILIKE '%{clean_inst}%', institution_rors))")
+            source_label = f"Institución ({clean_inst})"
+        elif query:
+            clean_q = query.replace("'", "").strip()
+            conds.append(f"(title ILIKE '%{clean_q}%' OR topic ILIKE '%{clean_q}%')")
+            source_label = f"Tópico '{clean_q}'"
+
+        where_str = " AND ".join(conds)
+        sql = f"""
+        SELECT arrayJoin(keywords) AS keyword, count(*) AS freq
+        FROM rag.works_academic_all
+        WHERE {where_str} AND keyword != ''
+        GROUP BY keyword
+        ORDER BY freq DESC
+        LIMIT {limit}
+        """
+        ch_res = execute_safe_query(sql)
+        rows = ch_res.get("data", [])
+        keywords_data = [{"keyword": str(r["keyword"]), "freq": int(r["freq"])} for r in rows if r.get("keyword")]
+
+    if not keywords_data:
+        return {"status": "error", "message": f"No se encontraron palabras clave registradas para {source_label}."}
+
+    max_freq = max(k["freq"] for k in keywords_data) if keywords_data else 1
+    total_occurrences = sum(k["freq"] for k in keywords_data)
+    title_text = title or f"Vocabulario Científico: {source_label}"
+    html_path, png_path = _resolve_output_paths(output_dir, "scientific_vocabulary")
+
+    # Gráfica de barras complementaria Plotly (Top 25)
+    top25 = keywords_data[:25]
+    bar_y = [k["keyword"] for k in reversed(top25)]
+    bar_x = [k["freq"] for k in reversed(top25)]
+
+    fig = go.Figure(go.Bar(
+        x=bar_x,
+        y=bar_y,
+        orientation="h",
+        marker=dict(
+            color=bar_x,
+            colorscale=[[0, "#0369a1"], [0.5, "#00f0ff"], [1.0, "#38bdf8"]],
+            line=dict(color="rgba(255,255,255,0.1)", width=0.5)
+        ),
+        text=[f"{v:,}" for v in bar_x],
+        textposition="auto"
+    ))
+    fig.update_layout(
+        title=dict(
+            text="<b>Top 25 Términos por Frecuencia</b>",
+            font=dict(family="Inter, sans-serif", size=14, color=THEME_TEXT),
+            x=0.03
+        ),
+        paper_bgcolor=THEME_CARD,
+        plot_bgcolor=THEME_CARD,
+        height=480,
+        margin=dict(t=40, b=20, l=150, r=30),
+        xaxis=dict(gridcolor="rgba(255,255,255,0.06)", color=THEME_MUTED),
+        yaxis=dict(gridcolor="rgba(0,0,0,0)", color=THEME_TEXT)
+    )
+    bar_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+
+    words_json = json.dumps(keywords_data, ensure_ascii=False)
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{title_text}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {{ background-color: {THEME_BG}; color: {THEME_TEXT}; font-family: 'Inter', sans-serif; }}
+        .card {{ background-color: {THEME_CARD}; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; }}
+        .word-item {{
+            display: inline-block;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border-radius: 0.375rem;
+            padding: 0.2rem 0.5rem;
+            margin: 0.25rem;
+            user-select: none;
+        }}
+        .word-item:hover {{
+            transform: scale(1.12);
+            box-shadow: 0 0 16px rgba(0,240,255,0.4);
+            z-index: 10;
+        }}
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <div class="max-w-7xl mx-auto space-y-5">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <span class="text-cyan-400">🔑</span> {title_text}
+                </h1>
+                <p class="text-xs text-slate-400">Nube de términos y conceptos clave extraídos de la producción científica ({len(keywords_data)} términos analizados).</p>
+            </div>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded text-xs font-semibold">
+                    {len(keywords_data)} Términos Únicos
+                </span>
+                <span class="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded text-xs font-semibold">
+                    {total_occurrences:,} Ocurrencias Totales
+                </span>
+            </div>
+        </header>
+
+        <!-- Controles interactivos -->
+        <div class="card p-3 flex flex-wrap gap-3 items-center justify-between">
+            <div class="flex items-center gap-2 w-full md:w-80">
+                <span class="text-slate-400 text-sm">🔍</span>
+                <input id="wordSearch" type="text" placeholder="Filtrar términos en tiempo real..."
+                       class="w-full bg-slate-900 border border-slate-750 text-xs text-slate-200 px-3 py-1.5 rounded focus:outline-none focus:border-cyan-400"
+                       oninput="filterWords(this.value)">
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+                <span>Mostrar:</span>
+                <button onclick="setWordLimit(40)" class="px-2 py-1 bg-slate-800 rounded hover:bg-slate-700 text-slate-300">40</button>
+                <button onclick="setWordLimit(80)" class="px-2 py-1 bg-cyan-900 text-cyan-200 rounded font-bold">80</button>
+                <button onclick="setWordLimit(150)" class="px-2 py-1 bg-slate-800 rounded hover:bg-slate-700 text-slate-300">Todos</button>
+            </div>
+        </div>
+
+        <!-- Nube de Palabras Interactiva HTML5 -->
+        <section class="card p-6 shadow-xl text-center leading-loose min-h-[340px] flex items-center justify-center flex-wrap" id="wordCloudBox">
+            <!-- Palabras inyectadas dinámicamente -->
+        </section>
+
+        <!-- Gráfica de Barras Horizontal -->
+        <section class="card p-3 shadow-xl">
+            {bar_html}
+        </section>
+    </div>
+
+    <script>
+        const allWords = {words_json};
+        const maxFreq = {max_freq};
+        const totalOcc = {total_occurrences};
+        let currentLimit = 80;
+        let currentFilter = "";
+
+        const COLOR_TIERS_DARK = [
+            {{ threshold: 0.85, color: '#00f0ff', bg: 'rgba(0, 240, 255, 0.14)', weight: '800' }},
+            {{ threshold: 0.65, color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)', weight: '700' }},
+            {{ threshold: 0.45, color: '#818cf8', bg: 'rgba(129, 140, 248, 0.10)', weight: '600' }},
+            {{ threshold: 0.25, color: '#c084fc', bg: 'rgba(192, 132, 252, 0.10)', weight: '600' }},
+            {{ threshold: 0.10, color: '#f472b6', bg: 'rgba(244, 114, 182, 0.08)', weight: '500' }},
+            {{ threshold: 0.00, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.08)', weight: '500' }}
+        ];
+
+        function getTier(ratio) {{
+            for (let t of COLOR_TIERS_DARK) {{
+                if (ratio >= t.threshold) return t;
+            }}
+            return COLOR_TIERS_DARK[COLOR_TIERS_DARK.length - 1];
+        }}
+
+        function renderCloud() {{
+            const box = document.getElementById('wordCloudBox');
+            box.innerHTML = '';
+            let filtered = allWords.filter(w => w.keyword.toLowerCase().includes(currentFilter.toLowerCase()));
+            let visible = filtered.slice(0, currentLimit);
+
+            if (visible.length === 0) {{
+                box.innerHTML = '<span class="text-slate-500 text-sm">No se encontraron términos que coincidan con la búsqueda.</span>';
+                return;
+            }}
+
+            visible.forEach(w => {{
+                const ratio = maxFreq > 0 ? (w.freq / maxFreq) : 0.1;
+                const tier = getTier(ratio);
+                const fontSize = Math.max(12, Math.round(13 + Math.sqrt(ratio) * 26));
+
+                const span = document.createElement('span');
+                span.className = 'word-item';
+                span.style.fontSize = fontSize + 'px';
+                span.style.color = tier.color;
+                span.style.backgroundColor = tier.bg;
+                span.style.fontWeight = tier.weight;
+                span.title = `${{w.keyword}}: ${{w.freq.toLocaleString()}} apariciones (${{((w.freq/totalOcc)*100).toFixed(1)}}%)`;
+                span.innerText = w.keyword;
+                box.appendChild(span);
+            }});
+        }}
+
+        function filterWords(val) {{
+            currentFilter = val;
+            renderCloud();
+        }}
+
+        function setWordLimit(lim) {{
+            currentLimit = lim;
+            renderCloud();
+        }}
+
+        renderCloud();
+    </script>
+</body>
+</html>"""
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(full_html)
+
+    _render_png_card("scientific-vocabulary", {"keywords": keywords_data[:30]}, png_path, title_text)
+
+    return {
+        "status": "success",
+        "chart_type": "scientific-vocabulary",
+        "title": title_text,
+        "html_path": html_path,
+        "html_content": full_html,
+        "png_path": png_path,
+        "summary_kpis": {
+            "total_keywords_analyzed": len(keywords_data),
+            "total_occurrences": total_occurrences,
+            "top_keyword": keywords_data[0]["keyword"] if keywords_data else "",
+            "top_keyword_freq": keywords_data[0]["freq"] if keywords_data else 0
+        },
+        "message": f"Vocabulario científico interactivo guardado en {html_path}"
+    }
+
+
+# ==============================================================================
+# 15. RED DE COLABORACIÓN CIENTÍFICA (Integración de CoAuthra vía ORCID / OpenAlex ID)
+# ==============================================================================
+def openalex_plot_coauthra_network(
+    author_id: Optional[str] = None,
+    orcid: Optional[str] = None,
+    academic_name: Optional[str] = None,
+    title: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Genera un Artefacto interactivo integrado con CoAuthra (Joe Barnier, CC BY-NC-ND 4.0),
+    la plataforma especializada en grafos dinámicos de coautoría basada en OpenAlex.
+    Acepta OpenAlex ID, ORCID o Nombre de investigador (resolviendo automáticamente su identificador).
+    """
+    clean_id = ""
+    display_name = academic_name or "Investigador"
+    resolved_orcid = orcid or ""
+
+    # 1. Si viene OpenAlex ID directo
+    if author_id:
+        clean_id = author_id.replace("https://openalex.org/", "").strip()
+    # 2. Si viene ORCID
+    elif orcid:
+        clean_id = orcid.replace("https://orcid.org/", "").strip()
+        resolved_orcid = clean_id
+    # 3. Si viene nombre de académico, resolver en ClickHouse (rag.academics_all o rag.authors_seed_mexico)
+    elif academic_name:
+        clean_name = academic_name.replace("'", "").strip()
+        sql_search = f"""
+        SELECT id, name, orcid FROM rag.academics_all
+        WHERE name ILIKE '%{clean_name}%'
+        ORDER BY paper_count DESC
+        LIMIT 1
+        """
+        res_ac = execute_safe_query(sql_search)
+        if res_ac.get("data"):
+            row = res_ac["data"][0]
+            display_name = row.get("name") or clean_name
+            resolved_orcid = row.get("orcid") or ""
+            raw_id = row.get("id") or ""
+            clean_id = raw_id.replace("https://openalex.org/", "").strip()
+            if not clean_id and resolved_orcid:
+                clean_id = resolved_orcid
+
+    if not clean_id:
+        return {
+            "status": "error",
+            "message": "Se requiere al menos author_id (OpenAlex ID, ej. A5012345678), orcid (ej. 0000-0002-1825-0097) o un academic_name resoluble para cargar CoAuthra."
+        }
+
+    coauthra_url = f"https://coauthra.com/?author={clean_id}"
+    title_text = title or f"Red de Colaboración Científica: {display_name}"
+    html_path, png_path = _resolve_output_paths(output_dir, "coauthra_network")
+
+    badge_openalex = f"<span class='px-2.5 py-1 bg-cyan-950 border border-cyan-800 text-cyan-300 rounded text-xs font-mono font-semibold'>OpenAlex: {clean_id}</span>" if clean_id.startswith("A") else ""
+    badge_orcid = f"<span class='px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-300 rounded text-xs font-mono font-semibold'>ORCID: {resolved_orcid}</span>" if resolved_orcid else ""
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{title_text}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {{ margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: {THEME_BG}; color: {THEME_TEXT}; font-family: 'Inter', sans-serif; }}
+        .header-bar {{ background-color: {THEME_CARD}; border-bottom: 1px solid rgba(255,255,255,0.08); }}
+        iframe {{ width: 100%; height: calc(100vh - 86px); border: none; }}
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+    <!-- Barra superior institucional estilo SinapsisAI -->
+    <header class="header-bar px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-xl text-cyan-400">🕸️</span>
+            <div>
+                <h1 class="text-sm font-bold text-white leading-tight">{title_text}</h1>
+                <p class="text-[11px] text-slate-400">Mapa dinámico de coautorías, agrupamiento de comunidades y autores puente.</p>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 ml-2">
+                {badge_openalex}
+                {badge_orcid}
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-[11px] text-slate-400 hidden lg:inline">
+                Motor provisto por <strong class="text-slate-200">CoAuthra</strong> (Joe Barnier, CC BY-NC-ND 4.0)
+            </span>
+            <a href="{coauthra_url}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs rounded transition-all shadow-md">
+                Abrir en CoAuthra.com ↗
+            </a>
+        </div>
+    </header>
+
+    <!-- Visor de CoAuthra con parámetro ?author= para carga directa inmediata -->
+    <main class="flex-1 w-full bg-slate-950 relative">
+        <iframe src="{coauthra_url}"
+                allow="fullscreen"
+                loading="eager"
+                title="{title_text}">
+        </iframe>
+    </main>
+</body>
+</html>"""
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(full_html)
+
+    _render_png_card("coauthra-network", {"author": clean_id, "name": display_name}, png_path, title_text)
+
+    return {
+        "status": "success",
+        "chart_type": "coauthra-network",
+        "title": title_text,
+        "html_path": html_path,
+        "html_content": full_html,
+        "png_path": png_path,
+        "summary_kpis": {
+            "author_id": clean_id,
+            "display_name": display_name,
+            "orcid": resolved_orcid,
+            "coauthra_url": coauthra_url
+        },
+        "message": f"Red interactiva CoAuthra lista y guardada en {html_path}"
     }

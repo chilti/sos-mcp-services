@@ -24,6 +24,11 @@ from services.sinapsisai.tools.snii_tools import (
     get_snii_historical_trajectory,
     query_snii_census_overview
 )
+from services.openalex.tools.viz_tools import (
+    openalex_plot_collaborating_countries,
+    openalex_plot_scientific_vocabulary,
+    openalex_plot_coauthra_network,
+)
 
 mcp = FastMCP("sinapsisai-graphrag-engine")
 
@@ -36,6 +41,11 @@ mcp.tool()(get_entity_statistics)
 mcp.tool()(query_knowledge_graph_cypher)
 mcp.tool()(search_scientific_papers_semantic)
 mcp.tool()(query_duckdb_analytics)
+
+# Registro de Herramientas de Visualización SinapsisAI (Países, Vocabulario y CoAuthra)
+mcp.tool()(openalex_plot_collaborating_countries)
+mcp.tool()(openalex_plot_scientific_vocabulary)
+mcp.tool()(openalex_plot_coauthra_network)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()

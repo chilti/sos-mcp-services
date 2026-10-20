@@ -48,6 +48,9 @@ Tipos disponibles (`--type`):
 - `oa-donut`: Para gráficos de proporción de vías de Acceso Abierto y gasto APC en USD.
 - `dossier-works`: Para catálogos de publicaciones con desglose de coautoría internacional.
 - `network`: Para redes interactivas de colaboración científica.
+- `collaborating-countries`: Para el mapa mundi coroplético interactivo de países colaboradores internacionales (Plotly.js).
+- `scientific-vocabulary`: Para el vocabulario científico y nube interactiva de palabras con buscador en vivo y gráfica de frecuencias.
+- `coauthra-network`: Para la red dinámica de coautoría interactiva con CoAuthra (vía ORCID u OpenAlex ID).
 
 **Ejemplo para Sunburst de líneas de investigación:**
 ```bash
