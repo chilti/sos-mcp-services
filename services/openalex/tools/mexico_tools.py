@@ -581,10 +581,10 @@ def openalex_top_entities(
 ) -> Dict[str, Any]:
     """
     Clasifica las instituciones o autores líderes en un tema o subcampo dentro de México,
-    calculando volumen de papers, citas acumuladas, promedio de FWCI y porcentaje en el Top 10%.
+    calculando volumen de papers, citas acumuladas, promedio de FWCI, porcentaje en el Top 10% y Top 1%.
     Búsqueda exhaustiva en título, subcampo, tópico y palabras clave (keywords).
-    Devuelve para instituciones: openalex_id, ror y métricas.
-    Devuelve para autores: display_name resuelto, openalex_id, las últimas 2 afiliaciones conocidas y métricas.
+    Devuelve para instituciones: openalex_id, ror y métricas (incluyendo pct_top_10 y pct_top_1).
+    Devuelve para autores: display_name resuelto, openalex_id, las últimas 2 afiliaciones conocidas y métricas (incluyendo pct_top_10 y pct_top_1).
     """
     client = get_clickhouse_client()
     if client is None:
@@ -619,7 +619,8 @@ def openalex_top_entities(
                 count(*) AS total_works,
                 sum(cited_by_count) AS total_citations,
                 round(avg(fwci), 3) AS avg_fwci,
-                round(avg(is_top_10) * 100, 2) AS pct_top_10
+                round(avg(is_top_10) * 100, 2) AS pct_top_10,
+                round(avg(is_top_1) * 100, 2) AS pct_top_1
             FROM rag.works_academic_all
             ARRAY JOIN institution_names AS inst_name
             WHERE {where_sql} AND inst_name != ''
@@ -686,7 +687,8 @@ def openalex_top_entities(
                     "total_works": r[1],
                     "total_citations": r[2],
                     "avg_fwci": r[3],
-                    "pct_top_10": r[4]
+                    "pct_top_10": r[4],
+                    "pct_top_1": r[5]
                 })
         else:
             sql = f"""
@@ -695,7 +697,8 @@ def openalex_top_entities(
                 count(*) AS total_works,
                 sum(cited_by_count) AS total_citations,
                 round(avg(fwci), 3) AS avg_fwci,
-                round(avg(is_top_10) * 100, 2) AS pct_top_10
+                round(avg(is_top_10) * 100, 2) AS pct_top_10,
+                round(avg(is_top_1) * 100, 2) AS pct_top_1
             FROM rag.works_academic_all
             ARRAY JOIN author_names AS auth_name
             WHERE {where_sql} AND auth_name != ''
@@ -816,7 +819,8 @@ def openalex_top_entities(
                     "total_works": r[1],
                     "total_citations": r[2],
                     "avg_fwci": r[3],
-                    "pct_top_10": r[4]
+                    "pct_top_10": r[4],
+                    "pct_top_1": r[5]
                 })
 
         return {
