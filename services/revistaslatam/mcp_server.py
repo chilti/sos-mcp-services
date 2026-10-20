@@ -27,9 +27,12 @@ mcp.tool()(analyze_country_editorial_landscape)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
-    if transport == "http":
-        port = int(os.getenv("PORT", 8004))
-        print(f"Iniciando revistaslatam-journals-engine en modo SSE (http://0.0.0.0:{port}/sse)...")
-        mcp.run(transport="sse", host="0.0.0.0", port=port)
+    if transport in ["http", "sse"]:
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", 8013))
+        mcp.settings.host = host
+        mcp.settings.port = port
+        print(f"Iniciando revistaslatam-journals-engine en modo SSE (http://{host}:{port}/sse)...")
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio", show_banner=False)

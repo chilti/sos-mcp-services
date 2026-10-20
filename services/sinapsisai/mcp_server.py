@@ -35,9 +35,12 @@ mcp.tool()(query_duckdb_analytics)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
-    if transport == "http":
-        port = int(os.getenv("PORT", 8002))
-        print(f"Iniciando sinapsisai-graphrag-engine en modo SSE (http://0.0.0.0:{port}/sse)...")
-        mcp.run(transport="sse", host="0.0.0.0", port=port)
+    if transport in ["http", "sse"]:
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", 8011))
+        mcp.settings.host = host
+        mcp.settings.port = port
+        print(f"Iniciando sinapsisai-graphrag-engine en modo SSE (http://{host}:{port}/sse)...")
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio", show_banner=False)

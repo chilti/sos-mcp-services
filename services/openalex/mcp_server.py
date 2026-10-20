@@ -33,10 +33,13 @@ mcp.tool()(openalex_run_select_query)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
-    if transport == "http" or transport == "sse":
-        port = int(os.getenv("PORT", 8006))
-        print(f"Iniciando openalex-clickhouse-gateway en modo SSE (http://0.0.0.0:{port}/sse)...")
-        mcp.run(transport="sse", host="0.0.0.0", port=port)
+    if transport in ["http", "sse"]:
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", 8015))
+        mcp.settings.host = host
+        mcp.settings.port = port
+        print(f"Iniciando openalex-clickhouse-gateway en modo SSE (http://{host}:{port}/sse)...")
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")
 

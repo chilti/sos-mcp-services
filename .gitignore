@@ -34,6 +34,8 @@ wheels/
 .coverage
 htmlcov/
 *.log
+logs/
+.pids.json
 data/cache/
 data/*.db
 *.db
