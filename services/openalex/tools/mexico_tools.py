@@ -122,8 +122,8 @@ def openalex_get_institution(
     """
     Consulta y mapea instituciones, universidades y centros de investigación de México
     en rag.institutions_seed_mexico. Resuelve códigos canónicos ROR, sedes y dependencias matriz.
-    IMPORTANTE: Si el resultado contiene 2 o más instituciones o sedes, DETÉN las llamadas a herramientas
-    y solicita al usuario confirmar cuál desea analizar antes de proceder.
+    Si el resultado contiene múltiples entidades distintas y la consulta es ambigua, solicita confirmación
+    al usuario antes de proceder. Si es una entidad única o evidente, procede con su ROR/ID.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -167,11 +167,17 @@ def openalex_get_institution(
 
     try:
         res = client.query(sql)
+        seen_keys = set()
         institutions = []
         for r in res.result_rows:
+            inst_id = r[0]
             ror_canonical = r[2] if str(r[2]).startswith("http") else f"https://ror.org/{r[2]}" if r[2] else None
+            dedup_key = (inst_id, ror_canonical, _normalize_entity_key(r[1]))
+            if dedup_key in seen_keys:
+                continue
+            seen_keys.add(dedup_key)
             institutions.append({
-                "openalex_id": r[0],
+                "openalex_id": inst_id,
                 "display_name": r[1],
                 "ror": ror_canonical,
                 "type": r[3],
@@ -182,7 +188,11 @@ def openalex_get_institution(
                 "parent_name": r[8]
             })
 
-        disambiguation_required = len(institutions) > 1
+        distinct_rors = set(i["ror"] for i in institutions if i["ror"])
+        distinct_names = set(_normalize_entity_key(i["display_name"]) for i in institutions if i.get("display_name"))
+        distinct_entities = max(len(distinct_rors), len(distinct_names), len(institutions)) if institutions else 0
+        disambiguation_required = distinct_entities > 1
+
         response = {
             "status": "success",
             "total_found": len(institutions),
@@ -191,9 +201,11 @@ def openalex_get_institution(
         }
         if disambiguation_required:
             response["instruction_for_agent"] = (
-                f"Se encontraron {len(institutions)} instituciones o sedes coincidentes. "
-                "ALTO: No intentes adivinar ni hagas llamadas adicionales de herramientas. "
-                "Presenta esta lista al usuario indicando el nombre, ROR y estado para que especifique cuál desea analizar antes de continuar."
+                f"Se encontraron {distinct_entities} instituciones o sedes coincidentes. "
+                "EVALUACIÓN: Si la consulta del usuario identifica con claridad a una de ellas (o si una es la institución matriz evidente y las demás son sedes o duplicados), "
+                "puedes decidir proceder directamente con el análisis usando su ROR u OpenAlex ID sin detenerte. "
+                "Solo si existe una ambigüedad genuina sobre cuál institución o sede desea analizar el usuario, "
+                "presenta la lista de opciones y pregúntale a cuál se refiere antes de continuar."
             )
         return response
     except Exception as e:
@@ -211,8 +223,8 @@ def openalex_search_authors(
     """
     Busca y desambigua investigadoras e investigadores de México en rag.authors_seed_mexico
     y rag.academics_all, considerando variantes de nombres hispanos, SNII, adscripción y ORCID.
-    IMPORTANTE: Si el resultado contiene 2 o más autores u homónimos, DETÉN las llamadas a herramientas
-    y solicita al usuario confirmar cuál desea analizar antes de buscar sus publicaciones u obras.
+    Si existen múltiples candidatos verdaderamente distintos y no es claro a cuál se refiere la consulta,
+    solicita confirmación al usuario antes de buscar sus obras. Si el perfil es evidente, procede con su ID.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -323,7 +335,11 @@ def openalex_search_authors(
             if not authors:
                 return {"status": "error", "message": str(e), "authors": []}
 
-    disambiguation_required = len(authors) > 1
+    distinct_ids = set(a.get("id") for a in authors if a.get("id"))
+    distinct_names = set(_normalize_entity_key(a.get("display_name", "")) for a in authors if a.get("display_name"))
+    distinct_count = max(len(distinct_ids), len(distinct_names)) if authors else 0
+    disambiguation_required = distinct_count > 1
+
     response = {
         "status": "success",
         "total_found": len(authors),
@@ -332,10 +348,11 @@ def openalex_search_authors(
     }
     if disambiguation_required:
         response["instruction_for_agent"] = (
-            f"Se encontraron {len(authors)} autores coincidentes u homónimos. "
-            "ALTO: No intentes adivinar ni hagas llamadas adicionales de herramientas como openalex_search_works. "
-            "Presenta esta lista numerada al usuario (indicando Nombre, Institución, ORCID y Trabajos) "
-            "y pregúntale a cuál de ellos se refiere antes de continuar con el análisis."
+            f"Se encontraron {distinct_count} autores coincidentes u homónimos. "
+            "EVALUACIÓN: Si la consulta del usuario coincide inequívocamente con uno de ellos (o si el usuario ya especificó institución, área temática u ORCID), "
+            "puedes decidir proceder directamente con el análisis de ese autor sin frenar. "
+            "Solo si existen múltiples candidatos verdaderamente distintos (homónimos en diferentes disciplinas o instituciones) "
+            "y no es claro a cuál se refiere el usuario, presenta la lista numerada y solicita confirmación antes de buscar sus obras."
         )
     return response
 
