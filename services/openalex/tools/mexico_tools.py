@@ -122,6 +122,8 @@ def openalex_get_institution(
     """
     Consulta y mapea instituciones, universidades y centros de investigación de México
     en rag.institutions_seed_mexico. Resuelve códigos canónicos ROR, sedes y dependencias matriz.
+    IMPORTANTE: Si el resultado contiene 2 o más instituciones o sedes, DETÉN las llamadas a herramientas
+    y solicita al usuario confirmar cuál desea analizar antes de proceder.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -180,11 +182,20 @@ def openalex_get_institution(
                 "parent_name": r[8]
             })
 
-        return {
+        disambiguation_required = len(institutions) > 1
+        response = {
             "status": "success",
             "total_found": len(institutions),
+            "disambiguation_required": disambiguation_required,
             "institutions": institutions
         }
+        if disambiguation_required:
+            response["instruction_for_agent"] = (
+                f"Se encontraron {len(institutions)} instituciones o sedes coincidentes. "
+                "ALTO: No intentes adivinar ni hagas llamadas adicionales de herramientas. "
+                "Presenta esta lista al usuario indicando el nombre, ROR y estado para que especifique cuál desea analizar antes de continuar."
+            )
+        return response
     except Exception as e:
         return {"status": "error", "message": str(e), "institutions": []}
 
@@ -200,6 +211,8 @@ def openalex_search_authors(
     """
     Busca y desambigua investigadoras e investigadores de México en rag.authors_seed_mexico
     y rag.academics_all, considerando variantes de nombres hispanos, SNII, adscripción y ORCID.
+    IMPORTANTE: Si el resultado contiene 2 o más autores u homónimos, DETÉN las llamadas a herramientas
+    y solicita al usuario confirmar cuál desea analizar antes de buscar sus publicaciones u obras.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -310,11 +323,21 @@ def openalex_search_authors(
             if not authors:
                 return {"status": "error", "message": str(e), "authors": []}
 
-    return {
+    disambiguation_required = len(authors) > 1
+    response = {
         "status": "success",
         "total_found": len(authors),
+        "disambiguation_required": disambiguation_required,
         "authors": authors
     }
+    if disambiguation_required:
+        response["instruction_for_agent"] = (
+            f"Se encontraron {len(authors)} autores coincidentes u homónimos. "
+            "ALTO: No intentes adivinar ni hagas llamadas adicionales de herramientas como openalex_search_works. "
+            "Presenta esta lista numerada al usuario (indicando Nombre, Institución, ORCID y Trabajos) "
+            "y pregúntale a cuál de ellos se refiere antes de continuar con el análisis."
+        )
+    return response
 
 
 def openalex_search_works(
