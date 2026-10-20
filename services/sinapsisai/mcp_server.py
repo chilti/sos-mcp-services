@@ -20,17 +20,21 @@ from services.sinapsisai.tools.graph_tools import (
 )
 from services.sinapsisai.tools.snii_tools import (
     get_researcher_profile,
-    resolve_snii_identity
+    resolve_snii_identity,
+    get_snii_historical_trajectory,
+    query_snii_census_overview
 )
 
 mcp = FastMCP("sinapsisai-graphrag-engine")
 
-# Registro de Herramientas de GraphRAG, SNII y DuckDB Analytics
-mcp.tool()(query_knowledge_graph_cypher)
-mcp.tool()(search_scientific_papers_semantic)
+# Registro de Herramientas de GraphRAG, SNII 2026, Padrón Histórico y DuckDB Analytics
+mcp.tool()(resolve_snii_identity)
+mcp.tool()(get_snii_historical_trajectory)
+mcp.tool()(query_snii_census_overview)
 mcp.tool()(get_researcher_profile)
 mcp.tool()(get_entity_statistics)
-mcp.tool()(resolve_snii_identity)
+mcp.tool()(query_knowledge_graph_cypher)
+mcp.tool()(search_scientific_papers_semantic)
 mcp.tool()(query_duckdb_analytics)
 
 if __name__ == "__main__":
