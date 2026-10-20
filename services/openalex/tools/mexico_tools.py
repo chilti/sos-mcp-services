@@ -1,10 +1,21 @@
 import os
 import json
+import unicodedata
 import urllib.request
 import urllib.error
 from typing import Dict, List, Any, Optional
 from shared.config import settings
 from shared.clickhouse import get_clickhouse_client, sanitize_no_joins, execute_safe_query
+
+
+def _normalize_entity_key(s: str) -> str:
+    """Normaliza cadenas eliminando acentos, puntuación y mayúsculas para deduplicación segura."""
+    if not s:
+        return ""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).lower().replace("-", " ").replace(",", "").replace(".", "").strip()
 
 
 def generate_hispanic_name_permutations(name: str) -> List[str]:
@@ -572,6 +583,171 @@ def openalex_aggregate_mexico(
         return {"status": "error", "message": str(e), "results": []}
 
 
+def _resolve_institutions_metadata(client, inst_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Resuelve metadatos canónicos (openalex_id y ror) para una lista de nombres de instituciones."""
+    inst_meta = {}
+    if not inst_names:
+        return inst_meta
+
+    escaped_names = [n.replace("'", "\\'") for n in inst_names if n]
+    if not escaped_names:
+        return inst_meta
+
+    in_clause = ", ".join(f"'{n}'" for n in set(escaped_names))
+    sql_inst = f"""
+    SELECT display_name, any(id), any(ror)
+    FROM rag.institutions_seed_mexico
+    WHERE display_name IN ({in_clause})
+    GROUP BY display_name
+    """
+    sanitize_no_joins(sql_inst)
+    try:
+        res_seed = client.query(sql_inst)
+        for sr in res_seed.result_rows:
+            ror_val = sr[2] if (sr[2] and str(sr[2]).startswith("http")) else f"https://ror.org/{sr[2]}" if sr[2] else None
+            inst_meta[sr[0]] = {
+                "openalex_id": sr[1],
+                "ror": ror_val
+            }
+    except Exception:
+        pass
+
+    missing = [n for n in inst_names if n and n not in inst_meta]
+    for m in missing:
+        clean_m = m.replace("'", "\\'")
+        try:
+            sql_alt = f"""
+            SELECT any(id), any(ror)
+            FROM rag.institutions_seed_mexico
+            WHERE positionCaseInsensitiveUTF8(raw_data, '{clean_m}') > 0
+            LIMIT 1
+            """
+            sanitize_no_joins(sql_alt)
+            res_alt = client.query(sql_alt)
+            if res_alt.result_rows and res_alt.result_rows[0][0]:
+                sr_id, sr_ror = res_alt.result_rows[0]
+                ror_val = sr_ror if (sr_ror and str(sr_ror).startswith("http")) else f"https://ror.org/{sr_ror}" if sr_ror else None
+                inst_meta[m] = {
+                    "openalex_id": sr_id,
+                    "ror": ror_val
+                }
+        except Exception:
+            pass
+
+    return inst_meta
+
+
+def _resolve_authors_metadata(client, author_keys: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Resuelve display_name real, openalex_id y últimas 2 instituciones para una lista de autores."""
+    author_meta = {}
+    if not author_keys:
+        return author_meta
+
+    id_keys = []
+    name_variants_map = {}
+
+    for key in author_keys:
+        if not key:
+            continue
+        if key.startswith("http"):
+            id_keys.append(key)
+        else:
+            name_variants_map[key] = key
+            if "," in key:
+                parts = [p.strip() for p in key.split(",") if p.strip()]
+                if len(parts) == 2:
+                    inverted = f"{parts[1]} {parts[0]}"
+                    name_variants_map[inverted] = key
+
+    # 1. Lookup por ID en authors_seed_mexico
+    if id_keys:
+        esc_ids = [i.replace("'", "\\'") for i in set(id_keys)]
+        in_clause = ", ".join(f"'{i}'" for i in esc_ids)
+        sql_ids = f"""
+        SELECT id, any(display_name),
+               arraySlice(
+                   arrayFilter(x -> length(x) > 0,
+                       arrayMap(i -> JSONExtractString(i, 'display_name'),
+                           JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                       )
+                   ),
+                   1, 2
+               ) as insts
+        FROM rag.authors_seed_mexico
+        WHERE id IN ({in_clause})
+        GROUP BY id
+        """
+        sanitize_no_joins(sql_ids)
+        try:
+            res_id = client.query(sql_ids)
+            for sr in res_id.result_rows:
+                author_meta[sr[0]] = {
+                    "display_name": sr[1] if sr[1] else sr[0],
+                    "openalex_id": sr[0],
+                    "last_known_institutions": list(sr[2]) if sr[2] else []
+                }
+        except Exception:
+            pass
+
+    # 2. Lookup por Nombre en authors_seed_mexico
+    if name_variants_map:
+        esc_names = [n.replace("'", "\\'") for n in set(name_variants_map.keys())]
+        in_names = ", ".join(f"'{n}'" for n in esc_names)
+        sql_names = f"""
+        SELECT any(id), display_name,
+               arraySlice(
+                   arrayFilter(x -> length(x) > 0,
+                       arrayMap(i -> JSONExtractString(i, 'display_name'),
+                           JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                       )
+                   ),
+                   1, 2
+               ) as insts
+        FROM rag.authors_seed_mexico
+        WHERE display_name IN ({in_names})
+        GROUP BY display_name
+        """
+        sanitize_no_joins(sql_names)
+        try:
+            res_names = client.query(sql_names)
+            for sr in res_names.result_rows:
+                raw_key = name_variants_map.get(sr[1])
+                if raw_key and raw_key not in author_meta:
+                    author_meta[raw_key] = {
+                        "display_name": sr[1],
+                        "openalex_id": sr[0],
+                        "last_known_institutions": list(sr[2]) if sr[2] else []
+                    }
+        except Exception:
+            pass
+
+    # 3. Fallback a academics_all para IDs o nombres no resueltos
+    unresolved_ids = [k for k in id_keys if k not in author_meta]
+    if unresolved_ids:
+        esc_u_ids = [i.replace("'", "\\'") for i in set(unresolved_ids)]
+        in_u_ids = ", ".join(f"'{i}'" for i in esc_u_ids)
+        sql_acad = f"""
+        SELECT id, any(name), any(institution), any(dependency)
+        FROM rag.academics_all
+        WHERE id IN ({in_u_ids})
+        GROUP BY id
+        """
+        sanitize_no_joins(sql_acad)
+        try:
+            res_acad = client.query(sql_acad)
+            for ar in res_acad.result_rows:
+                insts = [i for i in [ar[2], ar[3]] if i][:2]
+                author_meta[ar[0]] = {
+                    "display_name": ar[1] if ar[1] else ar[0],
+                    "openalex_id": ar[0],
+                    "last_known_institutions": insts
+                }
+        except Exception:
+            pass
+
+    return author_meta
+
+
 def openalex_top_entities(
     query: str,
     by: str = "institutions",
@@ -632,57 +808,28 @@ def openalex_top_entities(
             res = client.query(sql)
             raw_rows = res.result_rows
 
-            inst_names = [r[0] for r in raw_rows if r[0]]
-            inst_meta = {}
-
-            if inst_names:
-                escaped_names = [n.replace("'", "\\'") for n in inst_names]
-                in_clause = ", ".join(f"'{n}'" for n in escaped_names)
-                sql_inst = f"""
-                SELECT display_name, any(id), any(ror)
-                FROM rag.institutions_seed_mexico
-                WHERE display_name IN ({in_clause})
-                GROUP BY display_name
-                """
-                sanitize_no_joins(sql_inst)
-                res_seed = client.query(sql_inst)
-                for sr in res_seed.result_rows:
-                    ror_val = sr[2] if (sr[2] and str(sr[2]).startswith("http")) else f"https://ror.org/{sr[2]}" if sr[2] else None
-                    inst_meta[sr[0]] = {
-                        "openalex_id": sr[1],
-                        "ror": ror_val
-                    }
-
-                missing = [n for n in inst_names if n not in inst_meta]
-                for m in missing:
-                    clean_m = m.replace("'", "\\'")
-                    try:
-                        sql_alt = f"""
-                        SELECT any(id), any(ror)
-                        FROM rag.institutions_seed_mexico
-                        WHERE positionCaseInsensitiveUTF8(raw_data, '{clean_m}') > 0
-                        LIMIT 1
-                        """
-                        sanitize_no_joins(sql_alt)
-                        res_alt = client.query(sql_alt)
-                        if res_alt.result_rows and res_alt.result_rows[0][0]:
-                            sr_id, sr_ror = res_alt.result_rows[0]
-                            ror_val = sr_ror if (sr_ror and str(sr_ror).startswith("http")) else f"https://ror.org/{sr_ror}" if sr_ror else None
-                            inst_meta[m] = {
-                                "openalex_id": sr_id,
-                                "ror": ror_val
-                            }
-                    except Exception:
-                        pass
-
+            inst_meta = _resolve_institutions_metadata(client, [r[0] for r in raw_rows if r[0]])
+            seen_ids = set()
+            seen_names = set()
             entities = []
-            for rank, r in enumerate(raw_rows, 1):
+            for r in raw_rows:
                 name = r[0]
                 meta = inst_meta.get(name, {})
+                inst_id = meta.get("openalex_id")
+                norm_name = _normalize_entity_key(name)
+                if inst_id and inst_id in seen_ids:
+                    continue
+                if norm_name and norm_name in seen_names:
+                    continue
+                if inst_id:
+                    seen_ids.add(inst_id)
+                if norm_name:
+                    seen_names.add(norm_name)
+
                 entities.append({
-                    "rank": rank,
+                    "rank": len(entities) + 1,
                     "display_name": name,
-                    "openalex_id": meta.get("openalex_id"),
+                    "openalex_id": inst_id,
                     "ror": meta.get("ror"),
                     "total_works": r[1],
                     "total_citations": r[2],
@@ -690,6 +837,8 @@ def openalex_top_entities(
                     "pct_top_10": r[4],
                     "pct_top_1": r[5]
                 })
+                if len(entities) >= limit_val:
+                    break
         else:
             sql = f"""
             SELECT
@@ -704,115 +853,34 @@ def openalex_top_entities(
             WHERE {where_sql} AND auth_name != ''
             GROUP BY auth_name
             ORDER BY total_works DESC
-            LIMIT {limit_val}
+            LIMIT {min(limit_val * 2, 100)}
             """
             sanitize_no_joins(sql)
             res = client.query(sql)
             raw_rows = res.result_rows
 
-            author_meta = {}
-            id_keys = []
-            name_variants_map = {}
-
-            for r in raw_rows:
-                key = r[0]
-                if key.startswith("http"):
-                    id_keys.append(key)
-                else:
-                    name_variants_map[key] = key
-                    if "," in key:
-                        parts = [p.strip() for p in key.split(",") if p.strip()]
-                        if len(parts) == 2:
-                            inverted = f"{parts[1]} {parts[0]}"
-                            name_variants_map[inverted] = key
-
-            # 1. Lookup por ID en authors_seed_mexico
-            if id_keys:
-                escaped_ids = [i.replace("'", "\\'") for i in id_keys]
-                in_clause = ", ".join(f"'{i}'" for i in escaped_ids)
-                sql_ids = f"""
-                SELECT id, any(display_name),
-                       arraySlice(
-                           arrayFilter(x -> length(x) > 0,
-                               arrayMap(i -> JSONExtractString(i, 'display_name'),
-                                   JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
-                               )
-                           ),
-                           1, 2
-                       ) as insts
-                FROM rag.authors_seed_mexico
-                WHERE id IN ({in_clause})
-                GROUP BY id
-                """
-                sanitize_no_joins(sql_ids)
-                res_id = client.query(sql_ids)
-                for sr in res_id.result_rows:
-                    author_meta[sr[0]] = {
-                        "display_name": sr[1] if sr[1] else sr[0],
-                        "openalex_id": sr[0],
-                        "last_known_institutions": list(sr[2]) if sr[2] else []
-                    }
-
-            # 2. Lookup por Nombre en authors_seed_mexico
-            if name_variants_map:
-                escaped_names = [n.replace("'", "\\'") for n in name_variants_map.keys()]
-                in_names = ", ".join(f"'{n}'" for n in escaped_names)
-                sql_names = f"""
-                SELECT any(id), display_name,
-                       arraySlice(
-                           arrayFilter(x -> length(x) > 0,
-                               arrayMap(i -> JSONExtractString(i, 'display_name'),
-                                   JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
-                               )
-                           ),
-                           1, 2
-                       ) as insts
-                FROM rag.authors_seed_mexico
-                WHERE display_name IN ({in_names})
-                GROUP BY display_name
-                """
-                sanitize_no_joins(sql_names)
-                res_names = client.query(sql_names)
-                for sr in res_names.result_rows:
-                    raw_key = name_variants_map.get(sr[1])
-                    if raw_key and raw_key not in author_meta:
-                        author_meta[raw_key] = {
-                            "display_name": sr[1],
-                            "openalex_id": sr[0],
-                            "last_known_institutions": list(sr[2]) if sr[2] else []
-                        }
-
-            # 3. Fallback a academics_all para autores aún no resueltos
-            unresolved_ids = [k for k in id_keys if k not in author_meta]
-            if unresolved_ids:
-                esc_u_ids = [i.replace("'", "\\'") for i in unresolved_ids]
-                in_u_ids = ", ".join(f"'{i}'" for i in esc_u_ids)
-                sql_acad = f"""
-                SELECT id, any(name), any(institution), any(dependency)
-                FROM rag.academics_all
-                WHERE id IN ({in_u_ids})
-                GROUP BY id
-                """
-                sanitize_no_joins(sql_acad)
-                res_acad = client.query(sql_acad)
-                for ar in res_acad.result_rows:
-                    insts = [i for i in [ar[2], ar[3]] if i][:2]
-                    author_meta[ar[0]] = {
-                        "display_name": ar[1] if ar[1] else ar[0],
-                        "openalex_id": ar[0],
-                        "last_known_institutions": insts
-                    }
-
+            author_meta = _resolve_authors_metadata(client, [r[0] for r in raw_rows if r[0]])
+            seen_ids = set()
+            seen_names = set()
             entities = []
-            for rank, r in enumerate(raw_rows, 1):
+            for r in raw_rows:
                 key = r[0]
                 meta = author_meta.get(key, {})
                 display_name = meta.get("display_name") or key
                 openalex_id = meta.get("openalex_id") or (key if key.startswith("http") else None)
-                last_known_institutions = meta.get("last_known_institutions") or []
+                norm_name = _normalize_entity_key(display_name)
+                if openalex_id and openalex_id in seen_ids:
+                    continue
+                if norm_name and norm_name in seen_names:
+                    continue
+                if openalex_id:
+                    seen_ids.add(openalex_id)
+                if norm_name:
+                    seen_names.add(norm_name)
 
+                last_known_institutions = meta.get("last_known_institutions") or []
                 entities.append({
-                    "rank": rank,
+                    "rank": len(entities) + 1,
                     "display_name": display_name,
                     "openalex_id": openalex_id,
                     "last_known_institutions": last_known_institutions,
@@ -822,6 +890,8 @@ def openalex_top_entities(
                     "pct_top_10": r[4],
                     "pct_top_1": r[5]
                 })
+                if len(entities) >= limit_val:
+                    break
 
         return {
             "status": "success",
@@ -839,67 +909,88 @@ def openalex_semantic_search(
     target: str = "works",
     institution_name: Optional[str] = None,
     year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
     oa_status: Optional[str] = None,
     limit: int = 15
 ) -> Dict[str, Any]:
     """
     Búsqueda semántica conceptual mediante embeddings locales Nomic (768d) y similitud coseno
-    en rag.works_academic_all o rag.academics_all en ClickHouse.
+    sobre 1.37M publicaciones en rag.works_academic_all en ClickHouse.
+    Permite descubrir trabajos, instituciones líderes o autores más activos en un concepto o nicho científico.
+    target puede ser 'works', 'institutions' o 'authors'.
+    Para instituciones y autores devuelve métricas completas: volumen, citas, fwci, pct_top_10, pct_top_1,
+    similitud semántica, openalex_id, ror y últimas afiliaciones conocidas.
     """
     client = get_clickhouse_client()
     if client is None:
-        return {"status": "offline", "message": "ClickHouse no disponible", "results": []}
+        return {"status": "offline", "message": "ClickHouse no disponible", "results": [], "top_entities": []}
 
     target_clean = target.lower().strip()
-    if target_clean not in ("works", "authors"):
-        return {"status": "error", "message": "target debe ser 'works' o 'authors'", "results": []}
+    if target_clean not in ("works", "institutions", "authors"):
+        return {"status": "error", "message": "Parámetro target debe ser 'works', 'institutions' o 'authors'", "results": [], "top_entities": []}
 
     try:
         query_vec = get_text_embedding(query)
     except Exception as e:
-        return {"status": "error", "message": f"Error generando embedding conceptual: {str(e)}", "results": []}
+        return {"status": "error", "message": f"Error generando embedding conceptual: {str(e)}", "results": [], "top_entities": []}
 
     vec_str = str(query_vec)
     limit_val = min(max(limit, 1), 50)
 
-    if target_clean == "works":
-        where_clauses = ["length(embedding_nomic) = 768", "title != ''"]
-        if year_min is not None:
-            where_clauses.append(f"publication_year >= {int(year_min)}")
-        if oa_status:
-            where_clauses.append(f"lower(oa_status) = '{oa_status.lower().strip()}'")
-        if institution_name:
-            clean_inst = institution_name.replace("'", "\\'")
-            where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
+    where_clauses = ["length(embedding_nomic) = 768", "title != ''"]
+    if year_min is not None:
+        where_clauses.append(f"publication_year >= {int(year_min)}")
+    if year_max is not None:
+        where_clauses.append(f"publication_year <= {int(year_max)}")
+    if oa_status:
+        where_clauses.append(f"lower(oa_status) = '{oa_status.lower().strip()}'")
+    if institution_name:
+        clean_inst = institution_name.replace("'", "\\'")
+        where_clauses.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
 
-        where_sql = " AND ".join(where_clauses)
-        sanitize_no_joins(where_sql)
+    where_sql = " AND ".join(where_clauses)
+    sanitize_no_joins(where_sql)
 
-        sql = f"""
-        SELECT
-            id,
-            title,
-            any(publication_year) as year,
-            max(cited_by_count) as citations,
-            any(oa_status) as oa,
-            any(fwci) as fwci_val,
-            any(is_top_10) as top10,
-            any(author_names) as authors,
-            any(institution_names) as inst_names,
-            any(subfield) as subfield_name,
-            min(cosineDistance(embedding_nomic, {vec_str})) as cosine_dist
-        FROM rag.works_academic_all
-        WHERE {where_sql}
-        GROUP BY id, title
-        ORDER BY cosine_dist ASC
-        LIMIT {limit_val}
-        """
-
-        try:
+    try:
+        if target_clean == "works":
+            sql = f"""
+            SELECT
+                id,
+                title,
+                any(publication_year) as year,
+                max(cited_by_count) as citations,
+                any(oa_status) as oa,
+                any(fwci) as fwci_val,
+                any(is_top_10) as top10,
+                any(is_top_1) as top1,
+                any(author_names) as authors,
+                any(institution_names) as inst_names,
+                any(subfield) as subfield_name,
+                min(cosineDistance(embedding_nomic, {vec_str})) as cosine_dist
+            FROM rag.works_academic_all
+            WHERE {where_sql}
+            GROUP BY id, title
+            ORDER BY cosine_dist ASC
+            LIMIT {limit_val}
+            """
+            sanitize_no_joins(sql)
             res = client.query(sql)
+
+            # Resolver nombres legibles de autores para las publicaciones devueltas
+            all_author_keys = []
+            for r in res.result_rows:
+                if r[8]:
+                    all_author_keys.extend(r[8])
+            auth_meta = _resolve_authors_metadata(client, all_author_keys) if all_author_keys else {}
+
             results = []
             for r in res.result_rows:
-                dist = float(r[10])
+                dist = float(r[11])
+                raw_authors = r[8] or []
+                resolved_authors = [
+                    auth_meta.get(a, {}).get("display_name") or a
+                    for a in raw_authors
+                ]
                 results.append({
                     "id": r[0],
                     "title": r[1],
@@ -908,9 +999,10 @@ def openalex_semantic_search(
                     "oa_status": r[4],
                     "fwci": round(float(r[5]), 3) if r[5] is not None else None,
                     "is_top_10": bool(r[6] == 1),
-                    "author_names": r[7] or [],
-                    "institution_names": r[8] or [],
-                    "subfield": r[9],
+                    "is_top_1": bool(r[7] == 1),
+                    "author_names": resolved_authors,
+                    "institution_names": r[9] or [],
+                    "subfield": r[10],
                     "cosine_distance": round(dist, 4),
                     "semantic_similarity": round(1.0 - dist, 4)
                 })
@@ -923,63 +1015,155 @@ def openalex_semantic_search(
                 "total_returned": len(results),
                 "results": results
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e), "results": []}
 
-    else:
-        where_clauses = ["length(embedding_nomic) = 768", "name != ''"]
-        if institution_name:
-            clean_inst = institution_name.replace("'", "\\'")
-            where_clauses.append(f"positionCaseInsensitiveUTF8(institution, '{clean_inst}') > 0")
-
-        where_sql = " AND ".join(where_clauses)
-        sanitize_no_joins(where_sql)
-
-        sql = f"""
-        SELECT
-            id,
-            name,
-            institution,
-            dependency,
-            snii_level,
-            orcid,
-            paper_count,
-            citation_count,
-            cosineDistance(embedding_nomic, {vec_str}) as cosine_dist
-        FROM rag.academics_all
-        WHERE {where_sql}
-        ORDER BY cosine_dist ASC
-        LIMIT {limit_val}
-        """
-
-        try:
+        elif target_clean == "institutions":
+            sql = f"""
+            WITH top_works AS (
+                SELECT id, cited_by_count, fwci, is_top_10, is_top_1, institution_names, cosineDistance(embedding_nomic, {vec_str}) as dist
+                FROM rag.works_academic_all
+                WHERE {where_sql}
+                ORDER BY dist ASC
+                LIMIT 300
+            )
+            SELECT 
+                inst_name AS entity_name,
+                count(*) AS total_works,
+                sum(cited_by_count) AS total_citations,
+                round(avg(fwci), 3) AS avg_fwci,
+                round(avg(is_top_10) * 100, 2) AS pct_top_10,
+                round(avg(is_top_1) * 100, 2) AS pct_top_1,
+                round(avg(dist), 4) AS avg_cosine_dist,
+                round(1.0 - avg(dist), 4) AS avg_semantic_similarity
+            FROM top_works
+            ARRAY JOIN institution_names AS inst_name
+            WHERE inst_name != ''
+            GROUP BY inst_name
+            ORDER BY total_works DESC, avg_semantic_similarity DESC
+            LIMIT {min(limit_val * 2, 100)}
+            """
+            sanitize_no_joins(sql)
             res = client.query(sql)
-            results = []
-            for r in res.result_rows:
-                dist = float(r[8])
-                results.append({
-                    "id": r[0],
-                    "name": r[1],
-                    "institution": r[2],
-                    "dependency": r[3],
-                    "snii_level": r[4],
-                    "orcid": r[5],
-                    "paper_count": r[6],
-                    "citation_count": r[7],
-                    "cosine_distance": round(dist, 4),
-                    "semantic_similarity": round(1.0 - dist, 4)
+            raw_rows = res.result_rows
+
+            inst_meta = _resolve_institutions_metadata(client, [r[0] for r in raw_rows if r[0]])
+            seen_ids = set()
+            seen_names = set()
+            entities = []
+            for r in raw_rows:
+                name = r[0]
+                meta = inst_meta.get(name, {})
+                inst_id = meta.get("openalex_id")
+                norm_name = _normalize_entity_key(name)
+                if inst_id and inst_id in seen_ids:
+                    continue
+                if norm_name and norm_name in seen_names:
+                    continue
+                if inst_id:
+                    seen_ids.add(inst_id)
+                if norm_name:
+                    seen_names.add(norm_name)
+
+                entities.append({
+                    "rank": len(entities) + 1,
+                    "display_name": name,
+                    "openalex_id": inst_id,
+                    "ror": meta.get("ror"),
+                    "total_works": r[1],
+                    "total_citations": r[2],
+                    "avg_fwci": r[3],
+                    "pct_top_10": r[4],
+                    "pct_top_1": r[5],
+                    "avg_cosine_distance": r[6],
+                    "avg_semantic_similarity": r[7]
                 })
+                if len(entities) >= limit_val:
+                    break
+
+            return {
+                "status": "success",
+                "query": query,
+                "target": "institutions",
+                "embedding_model": settings.embedding_model,
+                "total_entities": len(entities),
+                "top_entities": entities
+            }
+
+        else:  # target_clean == "authors"
+            sql = f"""
+            WITH top_works AS (
+                SELECT id, cited_by_count, fwci, is_top_10, is_top_1, author_names, cosineDistance(embedding_nomic, {vec_str}) as dist
+                FROM rag.works_academic_all
+                WHERE {where_sql}
+                ORDER BY dist ASC
+                LIMIT 300
+            )
+            SELECT 
+                auth_name AS entity_name,
+                count(*) AS total_works,
+                sum(cited_by_count) AS total_citations,
+                round(avg(fwci), 3) AS avg_fwci,
+                round(avg(is_top_10) * 100, 2) AS pct_top_10,
+                round(avg(is_top_1) * 100, 2) AS pct_top_1,
+                round(avg(dist), 4) AS avg_cosine_dist,
+                round(1.0 - avg(dist), 4) AS avg_semantic_similarity
+            FROM top_works
+            ARRAY JOIN author_names AS auth_name
+            WHERE auth_name != ''
+            GROUP BY auth_name
+            ORDER BY total_works DESC, avg_semantic_similarity DESC
+            LIMIT {min(limit_val * 2, 100)}
+            """
+            sanitize_no_joins(sql)
+            res = client.query(sql)
+            raw_rows = res.result_rows
+
+            author_meta = _resolve_authors_metadata(client, [r[0] for r in raw_rows if r[0]])
+            seen_ids = set()
+            seen_names = set()
+            entities = []
+            for r in raw_rows:
+                key = r[0]
+                meta = author_meta.get(key, {})
+                display_name = meta.get("display_name") or key
+                openalex_id = meta.get("openalex_id") or (key if key.startswith("http") else None)
+                norm_name = _normalize_entity_key(display_name)
+                if openalex_id and openalex_id in seen_ids:
+                    continue
+                if norm_name and norm_name in seen_names:
+                    continue
+                if openalex_id:
+                    seen_ids.add(openalex_id)
+                if norm_name:
+                    seen_names.add(norm_name)
+
+                last_known_institutions = meta.get("last_known_institutions") or []
+                entities.append({
+                    "rank": len(entities) + 1,
+                    "display_name": display_name,
+                    "openalex_id": openalex_id,
+                    "last_known_institutions": last_known_institutions,
+                    "total_works": r[1],
+                    "total_citations": r[2],
+                    "avg_fwci": r[3],
+                    "pct_top_10": r[4],
+                    "pct_top_1": r[5],
+                    "avg_cosine_distance": r[6],
+                    "avg_semantic_similarity": r[7]
+                })
+                if len(entities) >= limit_val:
+                    break
 
             return {
                 "status": "success",
                 "query": query,
                 "target": "authors",
                 "embedding_model": settings.embedding_model,
-                "total_returned": len(results),
-                "results": results
+                "total_entities": len(entities),
+                "top_entities": entities
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e), "results": []}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e), "results": [], "top_entities": []}
 
 
 def openalex_run_select_query(query: str, limit: int = 50) -> Dict[str, Any]:
