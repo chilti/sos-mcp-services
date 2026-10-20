@@ -46,6 +46,7 @@ if __name__ == "__main__":
         port = int(os.getenv("PORT", 8016))
         mcp.settings.host = host
         mcp.settings.port = port
+        mcp.settings.transport_security = None
         print(f"Iniciando openproject-pm-gateway en modo SSE (http://{host}:{port}/sse)...")
         mcp.run(transport="sse")
     else:
