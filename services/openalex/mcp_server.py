@@ -19,6 +19,20 @@ from services.openalex.tools.mexico_tools import (
     openalex_semantic_search,
     openalex_run_select_query,
 )
+from services.openalex.tools.viz_tools import (
+    openalex_plot_timeseries,
+    openalex_plot_oa_donut,
+    openalex_plot_top_ranking,
+    openalex_plot_sunburst,
+    openalex_plot_sdg_grid,
+    openalex_plot_dossier_works,
+    openalex_plot_collaboration_network,
+    openalex_render_visualization_from_json,
+    openalex_plot_quadrant_matrix,
+    openalex_plot_geopolitical_sankey,
+    openalex_plot_multidimensional_radar,
+    openalex_plot_topic_dynamics,
+)
 
 mcp = FastMCP("openalex-clickhouse-gateway")
 
@@ -30,6 +44,20 @@ mcp.tool()(openalex_aggregate_mexico)
 mcp.tool()(openalex_top_entities)
 mcp.tool()(openalex_semantic_search)
 mcp.tool()(openalex_run_select_query)
+
+# Registro de Herramientas de Visualización y Artefactos OpenAlex México
+mcp.tool()(openalex_plot_timeseries)
+mcp.tool()(openalex_plot_oa_donut)
+mcp.tool()(openalex_plot_top_ranking)
+mcp.tool()(openalex_plot_sunburst)
+mcp.tool()(openalex_plot_sdg_grid)
+mcp.tool()(openalex_plot_dossier_works)
+mcp.tool()(openalex_plot_collaboration_network)
+mcp.tool()(openalex_render_visualization_from_json)
+mcp.tool()(openalex_plot_quadrant_matrix)
+mcp.tool()(openalex_plot_geopolitical_sankey)
+mcp.tool()(openalex_plot_multidimensional_radar)
+mcp.tool()(openalex_plot_topic_dynamics)
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
