@@ -1,7 +1,31 @@
 import os
-from fastmcp import FastMCP
-from services.knomap.tools.som_tools import suggest_grid_size, train_som, evaluate_som_clusters, recluster_som
-from services.knomap.tools.bibliometrics_tools import parse_bibliographic_file, detect_louvain_communities
+import sys
+from pathlib import Path
+
+# Configurar sys.path para sos-mcp-services y KnoMap Engine
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+KNOMAP_ENGINE_DIR = Path("/home/labsom/knomap/engine")
+KNOMAP_LIB_DIR = KNOMAP_ENGINE_DIR / "lib"
+
+for p in [str(BASE_DIR), str(KNOMAP_ENGINE_DIR), str(KNOMAP_LIB_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from fastmcp import FastMCP
+except ImportError:
+    from mcp.server.fastmcp import FastMCP
+
+from services.knomap.tools.som_tools import (
+    suggest_grid_size,
+    train_som,
+    evaluate_som_clusters,
+    recluster_som
+)
+from services.knomap.tools.bibliometrics_tools import (
+    parse_bibliographic_file,
+    detect_louvain_communities
+)
 from services.knomap.tools.incites_tools import (
     inspect_incites_package,
     get_incites_unit_matrix,
@@ -47,7 +71,7 @@ mcp.tool()(estimate_intrinsic_dimension)
 mcp.tool()(reduce_semantic_dimension)
 mcp.tool()(cluster_semantic_documents)
 
-# Registro de Nuevas Herramientas de Visualización (Viz Extensions)
+# Registro de Herramientas de Visualización (Viz Extensions)
 mcp.tool()(knomap_render_alluvial_diagram)
 mcp.tool()(knomap_render_dumbbell_chart)
 mcp.tool()(knomap_render_connection_map)

@@ -5,8 +5,13 @@ from shared.config import settings
 
 
 def sanitize_no_joins(sql: str) -> bool:
-    """Verifica y bloquea de manera estricta cualquier intento de usar JOIN en ClickHouse."""
-    if re.search(r"\bjoin\b", sql, re.IGNORECASE):
+    """
+    Verifica y bloquea de manera estricta cualquier intento de usar JOIN relacional en ClickHouse.
+    Permite ARRAY JOIN nativo para desanidar columnas de arrays en la misma fila.
+    """
+    # Excluir 'ARRAY JOIN' antes de verificar palabras reservadas 'JOIN'
+    sql_without_array_join = re.sub(r"\barray\s+join\b", "", sql, flags=re.IGNORECASE)
+    if re.search(r"\bjoin\b", sql_without_array_join, re.IGNORECASE):
         raise ValueError(
             "Violación de política cienciométrica de datos UNAM: Las sentencias JOIN están estrictamente prohibidas en ClickHouse. "
             "Utilice las tablas materializadas precalculadas (rag.works_academic_all, rag.authors_seed_mexico, rag.institutions_seed_mexico) "

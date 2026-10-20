@@ -1,6 +1,21 @@
 import os
-from fastmcp import FastMCP
-from services.topics.tools.fronts_tools import detect_research_fronts_multimodal, track_front_evolution_longitudinal
+import sys
+from pathlib import Path
+
+# Configurar sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+try:
+    from fastmcp import FastMCP
+except ImportError:
+    from mcp.server.fastmcp import FastMCP
+
+from services.topics.tools.fronts_tools import (
+    detect_research_fronts_multimodal,
+    track_front_evolution_longitudinal
+)
 from services.topics.tools.geopolitics_tools import (
     get_geopolitical_collaboration_matrix,
     get_open_access_transition_data,
@@ -9,7 +24,7 @@ from services.topics.tools.geopolitics_tools import (
 
 mcp = FastMCP("topics-research-fronts-engine")
 
-# Registro de Herramientas 7.1 - 7.5
+# Registro de Herramientas de Topics y Frentes de Investigación
 mcp.tool()(detect_research_fronts_multimodal)
 mcp.tool()(track_front_evolution_longitudinal)
 mcp.tool()(get_geopolitical_collaboration_matrix)
