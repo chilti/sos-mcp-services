@@ -144,3 +144,88 @@ def analyze_scientific_growth_phases(years: List[int], counts: List[int]) -> dic
         "current_maturity_phase": dominant_model,
         "summary": f"El campo muestra mejor ajuste {dominant_model}. R² Exponencial: {r2_exp:.3f}, R² Logístico: {r2_log:.3f}."
     }
+
+
+def compute_author_impact_metrics(citations: List[int], career_years: int = None) -> dict:
+    """Calcula la suite de impacto de autor: Índices H, G, e y m (Hirsch, Egghe, Zhang)."""
+    if not citations or len(citations) == 0:
+        return {"error": "Se requiere lista de citas por publicación del autor."}
+
+    cits = sorted([int(c) for c in citations if c >= 0], reverse=True)
+    n = len(cits)
+    total_cits = sum(cits)
+    mean_cits = round(total_cits / n, 2) if n > 0 else 0.0
+
+    # H-index
+    h = 0
+    for i, c in enumerate(cits):
+        if c >= i + 1:
+            h = i + 1
+        else:
+            break
+
+    # G-index (Egghe, 2006): largest g such that top g articles have at least g^2 citations
+    accum = 0
+    g = 0
+    for i, c in enumerate(cits):
+        accum += c
+        if accum >= (i + 1) ** 2:
+            g = i + 1
+
+    # e-index (Zhang, 2009): square root of excess citations above h^2
+    top_h_cits = sum(cits[:h])
+    e_val = math.sqrt(max(0, top_h_cits - (h ** 2))) if h > 0 else 0.0
+
+    # i10-index
+    i10 = sum(1 for c in cits if c >= 10)
+
+    # m-index (H divided by career duration in years)
+    m_val = round(h / career_years, 3) if career_years and career_years > 0 else None
+
+    return {
+        "total_works": n,
+        "total_citations": total_cits,
+        "mean_citations_per_work": mean_cits,
+        "h_index": h,
+        "g_index": g,
+        "e_index": round(e_val, 2),
+        "i10_index": i10,
+        "m_index": m_val,
+        "career_years": career_years,
+        "top_cited_works": cits[:5],
+        "summary": f"Índice H = {h}, Índice G = {g}, i10 = {i10}. Citas acumuladas: {total_cits} en {n} trabajos."
+    }
+
+
+def compute_gini_inequality(values: List[float], metric_name: str = "Citas") -> dict:
+    """Calcula el Coeficiente de Concentración de Gini (0 = igualdad absoluta, 1 = máxima concentración)."""
+    if not values or len(values) == 0:
+        return {"error": "Se requiere lista de valores numéricos para calcular Gini."}
+
+    vals = np.array([float(v) for v in values if v >= 0], dtype=float)
+    if len(vals) == 0 or np.sum(vals) == 0:
+        return {"gini_coefficient": 0.0, "interpretation": "Sin dispersión (valores nulos o vacíos)."}
+
+    vals = np.sort(vals)
+    n = len(vals)
+    index = np.arange(1, n + 1)
+    gini = float((np.sum((2 * index - n - 1) * vals)) / (n * np.sum(vals)))
+    gini_rounded = round(gini, 4)
+
+    if gini_rounded >= 0.7:
+        interp = "Desigualdad extrema / Alta concentración en pocas unidades (Típica en citas científicas)."
+    elif gini_rounded >= 0.5:
+        interp = "Desigualdad considerable."
+    elif gini_rounded >= 0.3:
+        interp = "Desigualdad moderada."
+    else:
+        interp = "Distribución equitativa."
+
+    return {
+        "metric_analyzed": metric_name,
+        "sample_size": n,
+        "gini_coefficient": gini_rounded,
+        "interpretation": interp,
+        "summary": f"Coeficiente de Gini para {metric_name} = {gini_rounded:.4f}. {interp}"
+    }
+
