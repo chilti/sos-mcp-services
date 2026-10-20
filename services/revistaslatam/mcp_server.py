@@ -1,5 +1,17 @@
 import os
-from fastmcp import FastMCP
+import sys
+from pathlib import Path
+
+# Configurar sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+try:
+    from fastmcp import FastMCP
+except ImportError:
+    from mcp.server.fastmcp import FastMCP
+
 from services.revistaslatam.tools.journals_tools import (
     get_journal_impact_profile,
     compare_journals_benchmarking,
@@ -8,7 +20,7 @@ from services.revistaslatam.tools.journals_tools import (
 
 mcp = FastMCP("revistaslatam-journals-engine")
 
-# Registro de Herramientas 9.1 - 9.3
+# Registro de Herramientas de Revistas Iberoamericanas y Evaluación Editorial
 mcp.tool()(get_journal_impact_profile)
 mcp.tool()(compare_journals_benchmarking)
 mcp.tool()(analyze_country_editorial_landscape)
