@@ -582,6 +582,9 @@ def openalex_top_entities(
     """
     Clasifica las instituciones o autores líderes en un tema o subcampo dentro de México,
     calculando volumen de papers, citas acumuladas, promedio de FWCI y porcentaje en el Top 10%.
+    Búsqueda exhaustiva en título, subcampo, tópico y palabras clave (keywords).
+    Devuelve para instituciones: openalex_id, ror y métricas.
+    Devuelve para autores: display_name resuelto, openalex_id, las últimas 2 afiliaciones conocidas y métricas.
     """
     client = get_clickhouse_client()
     if client is None:
@@ -593,7 +596,10 @@ def openalex_top_entities(
 
     clean_q = query.replace("'", "\\'")
     where_clauses = [
-        f"(positionCaseInsensitiveUTF8(title, '{clean_q}') > 0 OR positionCaseInsensitiveUTF8(subfield, '{clean_q}') > 0 OR positionCaseInsensitiveUTF8(topic, '{clean_q}') > 0)"
+        f"(positionCaseInsensitiveUTF8(title, '{clean_q}') > 0 "
+        f"OR positionCaseInsensitiveUTF8(subfield, '{clean_q}') > 0 "
+        f"OR positionCaseInsensitiveUTF8(topic, '{clean_q}') > 0 "
+        f"OR arrayExists(k -> positionCaseInsensitiveUTF8(k, '{clean_q}') > 0, keywords))"
     ]
     if year_min is not None:
         where_clauses.append(f"publication_year >= {int(year_min)}")
@@ -605,49 +611,213 @@ def openalex_top_entities(
 
     limit_val = min(max(limit, 1), 50)
 
-    if by_clean == "institutions":
-        sql = f"""
-        SELECT
-            inst_name AS entity_name,
-            count(*) AS total_works,
-            sum(cited_by_count) AS total_citations,
-            round(avg(fwci), 3) AS avg_fwci,
-            round(avg(is_top_10) * 100, 2) AS pct_top_10
-        FROM rag.works_academic_all
-        ARRAY JOIN institution_names AS inst_name
-        WHERE {where_sql} AND inst_name != ''
-        GROUP BY inst_name
-        ORDER BY total_works DESC
-        LIMIT {limit_val}
-        """
-    else:
-        sql = f"""
-        SELECT
-            auth_name AS entity_name,
-            count(*) AS total_works,
-            sum(cited_by_count) AS total_citations,
-            round(avg(fwci), 3) AS avg_fwci,
-            round(avg(is_top_10) * 100, 2) AS pct_top_10
-        FROM rag.works_academic_all
-        ARRAY JOIN author_names AS auth_name
-        WHERE {where_sql} AND auth_name != ''
-        GROUP BY auth_name
-        ORDER BY total_works DESC
-        LIMIT {limit_val}
-        """
-
     try:
-        res = client.query(sql)
-        entities = []
-        for rank, r in enumerate(res.result_rows, 1):
-            entities.append({
-                "rank": rank,
-                "display_name": r[0],
-                "total_works": r[1],
-                "total_citations": r[2],
-                "avg_fwci": r[3],
-                "pct_top_10": r[4]
-            })
+        if by_clean == "institutions":
+            sql = f"""
+            SELECT
+                inst_name AS entity_name,
+                count(*) AS total_works,
+                sum(cited_by_count) AS total_citations,
+                round(avg(fwci), 3) AS avg_fwci,
+                round(avg(is_top_10) * 100, 2) AS pct_top_10
+            FROM rag.works_academic_all
+            ARRAY JOIN institution_names AS inst_name
+            WHERE {where_sql} AND inst_name != ''
+            GROUP BY inst_name
+            ORDER BY total_works DESC
+            LIMIT {limit_val}
+            """
+            sanitize_no_joins(sql)
+            res = client.query(sql)
+            raw_rows = res.result_rows
+
+            inst_names = [r[0] for r in raw_rows if r[0]]
+            inst_meta = {}
+
+            if inst_names:
+                escaped_names = [n.replace("'", "\\'") for n in inst_names]
+                in_clause = ", ".join(f"'{n}'" for n in escaped_names)
+                sql_inst = f"""
+                SELECT display_name, any(id), any(ror)
+                FROM rag.institutions_seed_mexico
+                WHERE display_name IN ({in_clause})
+                GROUP BY display_name
+                """
+                sanitize_no_joins(sql_inst)
+                res_seed = client.query(sql_inst)
+                for sr in res_seed.result_rows:
+                    ror_val = sr[2] if (sr[2] and str(sr[2]).startswith("http")) else f"https://ror.org/{sr[2]}" if sr[2] else None
+                    inst_meta[sr[0]] = {
+                        "openalex_id": sr[1],
+                        "ror": ror_val
+                    }
+
+                missing = [n for n in inst_names if n not in inst_meta]
+                for m in missing:
+                    clean_m = m.replace("'", "\\'")
+                    try:
+                        sql_alt = f"""
+                        SELECT any(id), any(ror)
+                        FROM rag.institutions_seed_mexico
+                        WHERE positionCaseInsensitiveUTF8(raw_data, '{clean_m}') > 0
+                        LIMIT 1
+                        """
+                        sanitize_no_joins(sql_alt)
+                        res_alt = client.query(sql_alt)
+                        if res_alt.result_rows and res_alt.result_rows[0][0]:
+                            sr_id, sr_ror = res_alt.result_rows[0]
+                            ror_val = sr_ror if (sr_ror and str(sr_ror).startswith("http")) else f"https://ror.org/{sr_ror}" if sr_ror else None
+                            inst_meta[m] = {
+                                "openalex_id": sr_id,
+                                "ror": ror_val
+                            }
+                    except Exception:
+                        pass
+
+            entities = []
+            for rank, r in enumerate(raw_rows, 1):
+                name = r[0]
+                meta = inst_meta.get(name, {})
+                entities.append({
+                    "rank": rank,
+                    "display_name": name,
+                    "openalex_id": meta.get("openalex_id"),
+                    "ror": meta.get("ror"),
+                    "total_works": r[1],
+                    "total_citations": r[2],
+                    "avg_fwci": r[3],
+                    "pct_top_10": r[4]
+                })
+        else:
+            sql = f"""
+            SELECT
+                auth_name AS entity_name,
+                count(*) AS total_works,
+                sum(cited_by_count) AS total_citations,
+                round(avg(fwci), 3) AS avg_fwci,
+                round(avg(is_top_10) * 100, 2) AS pct_top_10
+            FROM rag.works_academic_all
+            ARRAY JOIN author_names AS auth_name
+            WHERE {where_sql} AND auth_name != ''
+            GROUP BY auth_name
+            ORDER BY total_works DESC
+            LIMIT {limit_val}
+            """
+            sanitize_no_joins(sql)
+            res = client.query(sql)
+            raw_rows = res.result_rows
+
+            author_meta = {}
+            id_keys = []
+            name_variants_map = {}
+
+            for r in raw_rows:
+                key = r[0]
+                if key.startswith("http"):
+                    id_keys.append(key)
+                else:
+                    name_variants_map[key] = key
+                    if "," in key:
+                        parts = [p.strip() for p in key.split(",") if p.strip()]
+                        if len(parts) == 2:
+                            inverted = f"{parts[1]} {parts[0]}"
+                            name_variants_map[inverted] = key
+
+            # 1. Lookup por ID en authors_seed_mexico
+            if id_keys:
+                escaped_ids = [i.replace("'", "\\'") for i in id_keys]
+                in_clause = ", ".join(f"'{i}'" for i in escaped_ids)
+                sql_ids = f"""
+                SELECT id, any(display_name),
+                       arraySlice(
+                           arrayFilter(x -> length(x) > 0,
+                               arrayMap(i -> JSONExtractString(i, 'display_name'),
+                                   JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                               )
+                           ),
+                           1, 2
+                       ) as insts
+                FROM rag.authors_seed_mexico
+                WHERE id IN ({in_clause})
+                GROUP BY id
+                """
+                sanitize_no_joins(sql_ids)
+                res_id = client.query(sql_ids)
+                for sr in res_id.result_rows:
+                    author_meta[sr[0]] = {
+                        "display_name": sr[1] if sr[1] else sr[0],
+                        "openalex_id": sr[0],
+                        "last_known_institutions": list(sr[2]) if sr[2] else []
+                    }
+
+            # 2. Lookup por Nombre en authors_seed_mexico
+            if name_variants_map:
+                escaped_names = [n.replace("'", "\\'") for n in name_variants_map.keys()]
+                in_names = ", ".join(f"'{n}'" for n in escaped_names)
+                sql_names = f"""
+                SELECT any(id), display_name,
+                       arraySlice(
+                           arrayFilter(x -> length(x) > 0,
+                               arrayMap(i -> JSONExtractString(i, 'display_name'),
+                                   JSONExtractArrayRaw(any(raw_data), 'last_known_institutions')
+                               )
+                           ),
+                           1, 2
+                       ) as insts
+                FROM rag.authors_seed_mexico
+                WHERE display_name IN ({in_names})
+                GROUP BY display_name
+                """
+                sanitize_no_joins(sql_names)
+                res_names = client.query(sql_names)
+                for sr in res_names.result_rows:
+                    raw_key = name_variants_map.get(sr[1])
+                    if raw_key and raw_key not in author_meta:
+                        author_meta[raw_key] = {
+                            "display_name": sr[1],
+                            "openalex_id": sr[0],
+                            "last_known_institutions": list(sr[2]) if sr[2] else []
+                        }
+
+            # 3. Fallback a academics_all para autores aún no resueltos
+            unresolved_ids = [k for k in id_keys if k not in author_meta]
+            if unresolved_ids:
+                esc_u_ids = [i.replace("'", "\\'") for i in unresolved_ids]
+                in_u_ids = ", ".join(f"'{i}'" for i in esc_u_ids)
+                sql_acad = f"""
+                SELECT id, any(name), any(institution), any(dependency)
+                FROM rag.academics_all
+                WHERE id IN ({in_u_ids})
+                GROUP BY id
+                """
+                sanitize_no_joins(sql_acad)
+                res_acad = client.query(sql_acad)
+                for ar in res_acad.result_rows:
+                    insts = [i for i in [ar[2], ar[3]] if i][:2]
+                    author_meta[ar[0]] = {
+                        "display_name": ar[1] if ar[1] else ar[0],
+                        "openalex_id": ar[0],
+                        "last_known_institutions": insts
+                    }
+
+            entities = []
+            for rank, r in enumerate(raw_rows, 1):
+                key = r[0]
+                meta = author_meta.get(key, {})
+                display_name = meta.get("display_name") or key
+                openalex_id = meta.get("openalex_id") or (key if key.startswith("http") else None)
+                last_known_institutions = meta.get("last_known_institutions") or []
+
+                entities.append({
+                    "rank": rank,
+                    "display_name": display_name,
+                    "openalex_id": openalex_id,
+                    "last_known_institutions": last_known_institutions,
+                    "total_works": r[1],
+                    "total_citations": r[2],
+                    "avg_fwci": r[3],
+                    "pct_top_10": r[4]
+                })
 
         return {
             "status": "success",
