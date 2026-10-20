@@ -1167,6 +1167,7 @@ def openalex_plot_dossier_works(
 # ==============================================================================
 def openalex_plot_collaboration_network(
     data: Optional[Union[Dict[str, Any], str]] = None,
+    academic_name: str = "",
     institution_id: str = "",
     author_id: str = "",
     query: str = "",
@@ -1175,8 +1176,29 @@ def openalex_plot_collaboration_network(
     output_dir: str = "./reports"
 ) -> Dict[str, Any]:
     """
-    Grafo interactivo de red de coautoría científica o interinstitucional con física de partículas (PyVis).
+    Grafo interactivo de red de coautoría científica.
+    Para investigadores individuales (ej. 'Annie Pardo'), delega automáticamente a CoAuthra.
+    Para tópicos amplios o instituciones, genera un grafo local en PyVis con física de resortes.
     """
+    # 1. Detectar si la consulta corresponde a un investigador individual
+    target_author = academic_name or (author_id if (author_id and not author_id.startswith("http") and not (author_id.startswith("A") and author_id[1:].isdigit())) else "")
+    if not target_author and query and not data:
+        clean_q = query.strip().replace("'", "")
+        chk_sql = f"SELECT id, name FROM rag.academics_all WHERE name ILIKE '%{clean_q}%' LIMIT 1"
+        chk_res = execute_safe_query(chk_sql)
+        if chk_res.get("data"):
+            target_author = clean_q
+
+    if target_author:
+        coauthra_res = openalex_plot_coauthra_network(
+            academic_name=target_author,
+            author_id=author_id if (author_id and author_id.startswith("A")) else None,
+            title=title,
+            output_dir=output_dir
+        )
+        if coauthra_res.get("status") == "success":
+            return coauthra_res
+
     raw = _load_data(data)
     works = raw.get("works") or raw.get("results") or []
     if not works:
@@ -1184,6 +1206,17 @@ def openalex_plot_collaboration_network(
         works = raw.get("works") or []
 
     if not works:
+        # Intento final con CoAuthra si hay algún autor o query
+        fallback_target = academic_name or author_id or query
+        if fallback_target:
+            coauthra_res = openalex_plot_coauthra_network(
+                academic_name=fallback_target,
+                author_id=author_id,
+                title=title,
+                output_dir=output_dir
+            )
+            if coauthra_res.get("status") == "success":
+                return coauthra_res
         return {"status": "error", "message": "No hay publicaciones suficientes para construir la red de coautoría."}
 
     title_text = title or "Red Interactiva de Colaboración Científica"
@@ -2457,19 +2490,24 @@ def openalex_plot_scientific_vocabulary(
 # 15. RED DE COLABORACIÓN CIENTÍFICA (Integración de CoAuthra vía ORCID / OpenAlex ID)
 # ==============================================================================
 def openalex_plot_coauthra_network(
+    academic_name: Optional[str] = None,
     author_id: Optional[str] = None,
     orcid: Optional[str] = None,
-    academic_name: Optional[str] = None,
+    query: Optional[str] = None,
     title: Optional[str] = None,
     output_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Genera un Artefacto interactivo integrado con CoAuthra (Joe Barnier, CC BY-NC-ND 4.0),
-    la plataforma especializada en grafos dinámicos de coautoría basada en OpenAlex.
-    Acepta OpenAlex ID, ORCID o Nombre de investigador (resolviendo automáticamente su identificador).
+    HERRAMIENTA PRINCIPAL PARA REDES DE COAUTORÍA DE INVESTIGADORES Y AUTORES INDIVIDUALES.
+    Dibuja la red interactiva de colaboración científica y grafo de coautores de un investigador
+    utilizando CoAuthra (física de fuerzas D3.js, comunidades y filtros por año y citas).
+    Úsala siempre que el usuario pida 'red de colaboración de [investigador/autor]',
+    'grafo de coautoría de [investigador]', 'colaboradores de [investigador]'.
+    Acepta Nombre del investigador (ej. 'Annie Pardo'), OpenAlex ID o ORCID.
     """
+    effective_name = academic_name or query or ""
     clean_id = ""
-    display_name = academic_name or "Investigador"
+    display_name = effective_name or "Investigador"
     resolved_orcid = orcid or ""
 
     # 1. Si viene OpenAlex ID directo
@@ -2479,9 +2517,9 @@ def openalex_plot_coauthra_network(
     elif orcid:
         clean_id = orcid.replace("https://orcid.org/", "").strip()
         resolved_orcid = clean_id
-    # 3. Si viene nombre de académico, resolver en ClickHouse (rag.academics_all o rag.authors_seed_mexico)
-    elif academic_name:
-        clean_name = academic_name.replace("'", "").strip()
+    # 3. Si viene nombre de académico (o query de persona), resolver en ClickHouse
+    elif effective_name:
+        clean_name = effective_name.replace("'", "").strip()
         sql_search = f"""
         SELECT id, name, orcid FROM rag.academics_all
         WHERE name ILIKE '%{clean_name}%'
