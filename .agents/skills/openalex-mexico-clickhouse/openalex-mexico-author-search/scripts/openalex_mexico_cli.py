@@ -1037,7 +1037,7 @@ def cmd_aggregate(args):
             sum(cited_by_count) AS total_citations,
             round(avg(fwci), 3) AS avg_fwci
         FROM rag.works_academic_all
-        ARRAY JOIN sdg_ids AS sdg_id
+        ARRAY JOIN arrayDistinct(arrayConcat(sdgs, sdg_ids)) AS sdg_id
         WHERE {where_sql}
           AND sdg_id != ''
         GROUP BY sdg_num

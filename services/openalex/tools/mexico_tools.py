@@ -3,9 +3,75 @@ import json
 import unicodedata
 import urllib.request
 import urllib.error
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from shared.config import settings
 from shared.clickhouse import get_clickhouse_client, sanitize_no_joins, execute_safe_query
+
+
+def normalize_author_ids(val: Any) -> List[str]:
+    """
+    Normaliza author_id o author_ids permitiendo:
+    - Una lista/tupla: ['A5060963552', 'A5035451110']
+    - Un string único: 'A5060963552' o 'https://openalex.org/A5060963552'
+    - Un string separado por comas o punto y coma: 'A5060963552, A5035451110'
+    - Un string separado por espacios de IDs: 'A5060963552 A5035451110'
+    Devuelve lista de IDs canónicos limpios: ['A5060963552', 'A5035451110'].
+    """
+    if not val:
+        return []
+    if isinstance(val, (list, tuple, set)):
+        items = [str(x).strip() for x in val if x]
+    elif isinstance(val, str):
+        val = val.strip()
+        if not val:
+            return []
+        if "," in val:
+            items = [p.strip() for p in val.split(",") if p.strip()]
+        elif ";" in val:
+            items = [p.strip() for p in val.split(";") if p.strip()]
+        else:
+            tokens = val.split()
+            if len(tokens) > 1 and all((t.startswith("A") and any(ch.isdigit() for ch in t)) or t.startswith("http") for t in tokens):
+                items = tokens
+            else:
+                items = [val]
+    else:
+        items = [str(val).strip()]
+
+    cleaned = []
+    for item in items:
+        c = item.replace("https://openalex.org/", "").strip()
+        if c.startswith("A") and any(ch.isdigit() for ch in c):
+            if c not in cleaned:
+                cleaned.append(c)
+        elif item.startswith("http") and "openalex.org" in item:
+            part = item.rstrip("/").split("/")[-1].strip()
+            if part and part not in cleaned:
+                cleaned.append(part)
+    return cleaned
+
+
+def build_authors_condition(author_ids: List[str]) -> str:
+    """
+    Construye la cláusula WHERE en ClickHouse sobre author_names.
+    Usa hasAny(author_names, [...]) si hay más de un ID, o (has(...) OR has(...)) si hay uno solo.
+    Garantiza CERO JOINs (Regla estricta del proyecto).
+    """
+    if not author_ids:
+        return "1=1"
+    targets = []
+    for aid in author_ids:
+        clean = aid.replace("https://openalex.org/", "").strip()
+        if clean:
+            targets.append(f"https://openalex.org/{clean}")
+            targets.append(clean)
+
+    if len(author_ids) == 1:
+        clean = author_ids[0].replace("https://openalex.org/", "").strip()
+        return f"(has(author_names, 'https://openalex.org/{clean}') OR has(author_names, '{clean}'))"
+    else:
+        elements = ", ".join(f"'{t}'" for t in targets)
+        return f"hasAny(author_names, [{elements}])"
 
 
 def _normalize_entity_key(s: str) -> str:
@@ -359,7 +425,7 @@ def openalex_search_authors(
 
 def openalex_search_works(
     query: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     author_name: str = "",
     institution_name: str = "",
     institution_ror: str = "",
@@ -373,7 +439,8 @@ def openalex_search_works(
     """
     Busca publicaciones en rag.works_academic_all (1.65M de trabajos con autoría mexicana),
     con metadatos de impacto (FWCI, percentil, Top 10%), vías OA y gasto comercial APC (USD).
-    Soporta filtro directo por ID canónico OpenAlex de autor (author_id, ej: 'A5060963552')
+    Soporta filtro directo por ID canónico OpenAlex de autor (author_id, ej: 'A5060963552',
+    o múltiples IDs como lista ['A5060963552', 'A5035451110'] o string 'A5060963552, A5035451110')
     o por nombre de autor (author_name, ej: 'Annie Pardo'), resolviendo variantes automáticamente.
     """
     client = get_clickhouse_client()
@@ -385,14 +452,13 @@ def openalex_search_works(
     if query:
         clean_q = query.replace("'", "\\'")
         where_clauses.append(f"positionCaseInsensitiveUTF8(title, '{clean_q}') > 0")
-    if author_id:
-        clean_aid = author_id.strip()
-        if not clean_aid.startswith("http"):
-            uri_aid = f"https://openalex.org/{clean_aid}"
-        else:
-            uri_aid = clean_aid
-            clean_aid = clean_aid.replace("https://openalex.org/", "")
-        where_clauses.append(f"(has(author_names, '{uri_aid}') OR has(author_names, '{clean_aid}'))")
+
+    aids = normalize_author_ids(author_id)
+    if not aids and author_id and isinstance(author_id, str) and not author_name:
+        author_name = author_id.strip()
+
+    if aids:
+        where_clauses.append(build_authors_condition(aids))
     elif author_name:
         clean_a = author_name.replace("'", "\\'").strip()
         resolved_ids = []
@@ -494,7 +560,7 @@ def openalex_search_works(
 
 def openalex_aggregate_mexico(
     group_by: str = "publication_year",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     author_name: str = "",
     filter_param: str = "1=1",
     institution_ror: Optional[str] = None,
@@ -503,7 +569,7 @@ def openalex_aggregate_mexico(
     """
     Calcula métricas agregadas y series temporales sobre rag.works_academic_all:
     distribución anual, 6 vías OA (Diamond, Gold, Hybrid), gasto APC USD, FWCI y % Top 10%.
-    Soporta agregaciones específicas por autor (author_id o author_name) e institución (institution_ror).
+    Soporta agregaciones específicas por autor (author_id como string único, lista de IDs o separados por comas, o author_name) e institución (institution_ror).
     """
     client = get_clickhouse_client()
     if client is None:
@@ -511,7 +577,7 @@ def openalex_aggregate_mexico(
 
     allowed_groups = [
         "publication_year", "oa_status", "type", "subfield", "field",
-        "domain", "is_top_10", "is_top_1", "country_code", "language", "sdgs"
+        "domain", "is_top_10", "is_top_1", "country_code", "language", "sdg", "sdgs"
     ]
     if group_by not in allowed_groups:
         return {
@@ -521,14 +587,21 @@ def openalex_aggregate_mexico(
         }
 
     where_clauses = []
-    if author_id:
-        clean_aid = author_id.strip()
-        if not clean_aid.startswith("http"):
-            uri_aid = f"https://openalex.org/{clean_aid}"
-        else:
-            uri_aid = clean_aid
-            clean_aid = clean_aid.replace("https://openalex.org/", "")
-        where_clauses.append(f"(has(author_names, '{uri_aid}') OR has(author_names, '{clean_aid}'))")
+    aids = normalize_author_ids(author_id)
+    if not aids and author_id and isinstance(author_id, str) and not author_name:
+        author_name = author_id.strip()
+
+    if aids:
+        sub_conds = [build_authors_condition(aids)]
+        for aid in aids:
+            try:
+                res_disp = client.query(f"SELECT display_name FROM rag.authors_seed_mexico WHERE id = 'https://openalex.org/{aid}' LIMIT 1")
+                if res_disp.result_rows:
+                    dname = res_disp.result_rows[0][0].replace("'", "\\'")
+                    sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{dname}') > 0, author_names)")
+            except Exception:
+                pass
+        where_clauses.append(f"({' OR '.join(sub_conds)})")
     elif author_name:
         clean_a = author_name.replace("'", "\\'").strip()
         resolved_ids = []
@@ -546,9 +619,47 @@ def openalex_aggregate_mexico(
         sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
         where_clauses.append(f"({' OR '.join(sub_conds)})")
 
+    COMMON_MX_INSTITUTIONS = {
+        "unam": "01tmp8f25",
+        "cinvestav": "009eqmr18",
+        "ipn": "059sp8j34",
+        "uam": "02kta5139",
+        "itesm": "02kv51203",
+        "tec de monterrey": "02kv51203",
+        "colmex": "05h31g570",
+        "uanl": "01sw1e998",
+        "udg": "00bgvbt47",
+        "buap": "032h52c15"
+    }
+
     if institution_ror:
         clean_ror = institution_ror.replace("https://ror.org/", "").strip()
-        where_clauses.append(f"(has(institution_rors, '{clean_ror}') OR has(institution_rors, 'https://ror.org/{clean_ror}'))")
+        if clean_ror.startswith("0") or "ror.org" in institution_ror:
+            where_clauses.append(f"(has(institution_rors, '{clean_ror}') OR has(institution_rors, 'https://ror.org/{clean_ror}'))")
+        else:
+            clean_inst = institution_ror.replace("'", "\\'")
+            resolved_rors = []
+            if clean_inst.lower() in COMMON_MX_INSTITUTIONS:
+                resolved_rors.append(COMMON_MX_INSTITUTIONS[clean_inst.lower()])
+            try:
+                res_inst = client.query(f"""
+                    SELECT ror FROM rag.institutions_seed_mexico 
+                    WHERE (country_code = 'MX' OR country_code = '')
+                      AND (has(acronyms, '{clean_inst.upper()}') OR positionCaseInsensitiveUTF8(display_name, '{clean_inst}') > 0)
+                    ORDER BY if(country_code = 'MX', 1, 0) DESC, if(has(acronyms, '{clean_inst.upper()}'), 1, 0) DESC
+                    LIMIT 10
+                """)
+                for r_ror in res_inst.result_rows:
+                    if r_ror[0]:
+                        resolved_rors.append(r_ror[0].replace("https://ror.org/", "").strip())
+            except Exception:
+                pass
+            inst_conds = []
+            for rr in resolved_rors:
+                inst_conds.append(f"has(institution_rors, '{rr}')")
+                inst_conds.append(f"has(institution_rors, 'https://ror.org/{rr}')")
+            inst_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_inst}') > 0, institution_names)")
+            where_clauses.append(f"({' OR '.join(inst_conds)})")
 
     if filter_param and filter_param.strip() != "1=1":
         import re
@@ -590,6 +701,21 @@ def openalex_aggregate_mexico(
         WHERE {where_sql} AND publication_year > 1960
         GROUP BY publication_year
         ORDER BY publication_year ASC
+        LIMIT {limit_val}
+        """
+    elif group_by in ("sdg", "sdgs"):
+        sql = f"""
+        SELECT
+            arrayJoin(arrayDistinct(arrayConcat(sdgs, sdg_ids))) AS dimension,
+            count(*) AS total_works,
+            sum(cited_by_count) AS total_citations,
+            round(avg(fwci), 3) AS avg_fwci,
+            round(avg(is_top_10) * 100, 2) AS pct_top_10,
+            round(sum(apc_paid_usd), 2) AS total_apc_paid_usd
+        FROM rag.works_academic_all
+        WHERE {where_sql} AND notEmpty(arrayConcat(sdgs, sdg_ids))
+        GROUP BY dimension
+        ORDER BY total_works DESC
         LIMIT {limit_val}
         """
     else:

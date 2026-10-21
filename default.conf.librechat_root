@@ -1,0 +1,637 @@
+
+limit_req_zone $binary_remote_addr zone=llm_limit:10m rate=10r/m;
+
+# 1. BLOQUE DE REDIRECCIÓN (Puerto 80)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name dinamica1.fciencias.unam.mx;
+
+    # Mantenemos esto para que Certbot pueda renovar el certificado en el futuro
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Todo lo que entre por HTTP se envía a HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+
+
+server {
+#    listen 443 ssl;
+#    server_name _;
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name dinamica1.fciencias.unam.mx;
+
+    # Rutas exactas donde Certbot guardó los archivos
+    ssl_certificate     /etc/letsencrypt/live/dinamica1.fciencias.unam.mx/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/dinamica1.fciencias.unam.mx/privkey.pem;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Bloque de validación (déjalo para futuras renovaciones)
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # ------------------------------------------------------------
+    # REPORTES INTERACTIVOS FASTMCP (Puerto 8015)
+    # ------------------------------------------------------------
+    location /reports/ {
+        proxy_pass http://127.0.0.1:8015/reports/;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_cache off;
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+
+    # ------------------------------------------------------------
+    # 1. LIBRECHAT (TEMPORAL EN LA RAÍZ)
+    # ------------------------------------------------------------
+    location / {
+        proxy_pass http://127.0.0.1:3080;
+        proxy_http_version 1.1;
+
+        # Soporte para WebSockets
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Cabeceras estándar de proxy
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Streaming en tiempo real (Server-Sent Events / SSE)
+        proxy_buffering off;
+        proxy_cache off;
+
+        # Timeouts para modelos extensos (10 minutos)
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_connect_timeout 600s;
+        client_max_body_size 100M;
+    }
+
+    # ------------------------------------------------------------
+    # RESPALDO OVERLEAF (DESCOMENTAR CUANDO SE DESEE RESTAURAR)
+    # ------------------------------------------------------------
+    # location / {
+    #     proxy_pass http://localhost:9000;
+    #     proxy_set_header X-Forwarded-Host $host;
+    #     proxy_set_header X-Forwarded-Server $host;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header Host $http_host;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection "upgrade";
+    #     proxy_read_timeout 600s;
+    #     client_max_body_size 100M;
+    # }
+
+    
+    # Ajustar para permitir la carga de archivos bibliométricos pesados (e.g., WoS/PubMed)
+    client_max_body_size 100M;
+
+	# ------------------------------------------------------------
+    # DASHBOARD DE ESTADÍSTICAS Y ACCESOS EN TIEMPO REAL (GOACCESS)
+    # ------------------------------------------------------------
+    location /stats/ {
+        alias /var/www/html/stats/;
+        index index.html;
+        try_files $uri $uri/ /stats/index.html;
+    }
+    # Canal WebSocket para actualización en vivo
+    location /stats/ws {
+        proxy_pass http://127.0.0.1:7890;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+        # ==========================================================
+    # TlachIA Metrics - Scientometric Intelligence Platform
+    # ==========================================================
+    location = /tlachiametrics {
+        return 301 /tlachiametrics/;
+    }
+
+    location /tlachiametrics/ {
+        proxy_pass http://10.17.7.1:5020/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Permitir carga de archivos grandes de corpus (JSON/CSV)
+        client_max_body_size 200M;
+        proxy_read_timeout 600s;
+        proxy_buffering off;
+
+        # Evitar bloqueo de contenido mixto
+        add_header Content-Security-Policy "upgrade-insecure-requests";
+    }
+
+
+    location /labsom/ {
+    proxy_pass http://127.0.0.1:5015/;
+    
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Tiempos de espera prolongados para procesos de análisis pesados
+    proxy_connect_timeout 3600s;
+    proxy_send_timeout    3600s;
+    proxy_read_timeout    3600s;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+   }
+
+   location /knomap/ {
+    proxy_pass http://127.0.0.1:5015/;
+    client_max_body_size 500M;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Tiempos de espera prolongados para procesos de análisis pesados
+    proxy_connect_timeout 3600s;
+    proxy_send_timeout    3600s;
+    proxy_read_timeout    3600s;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+   }
+
+
+    
+
+    location /portal/ {
+        proxy_pass http://localhost:8080/;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+    # RESPALDO TEMPORAL: /api/ apuntaba a localhost:8000 (interferia con la API de LibreChat en /api/)
+    # location /api/ {
+    #     proxy_pass http://localhost:8000/;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto $scheme;
+    # }
+
+        # ------------------------------------------------------------
+    # TILE SERVER PARA DEEPSCATTER (HTTP Range Requests)
+    # ------------------------------------------------------------
+    location /tiles/ {
+        alias /home/sinapsisai/public/tiles/;
+        add_header Access-Control-Allow-Origin "*";
+        add_header Accept-Ranges bytes;
+        autoindex on;
+    }
+
+
+    location /redes/ {
+        alias /home/jlja/Mexico/;
+        index index.html index.htm;
+    }
+
+    location /rag/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Esto ayuda a que el navegador no bloquee contenido "mixto"
+        add_header Content-Security-Policy "upgrade-insecure-requests";
+
+    }
+
+    location /sinapsisai/ {
+        proxy_pass http://192.168.72.120:5011/sinapsisai/;
+        proxy_http_version 1.1;
+	proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+    location /infotlachia/ {
+        proxy_pass http://192.168.72.120:5011/sinapsisai/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+
+    location /sinapsisai_dev/ {
+        proxy_pass http://192.168.72.120:5014/sinapsisai_dev/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+    location /icn/ {
+        proxy_pass http://10.17.7.1:5007/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+
+
+    location /tuapp/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5009/cuali.ai/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+
+    location /cuali.ai/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5009/cuali.ai/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+     location /topics/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5013/topics/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade"; # En minúsculas es más estándar
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; # AGREGADO
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Esto ayuda a que el navegador no bloquee contenido "mixto"
+        add_header Content-Security-Policy "upgrade-insecure-requests";
+
+        # ----------------------------------------------------------------------
+    # INYECCIÓN DE METADATOS (OPEN GRAPH / WHATSAPP)
+    # ----------------------------------------------------------------------
+    # Importante: Deshabilitar la compresión desde el backend para que sub_filter funcione
+    # Aunque Streamlit ya suele enviar texto plano, es buena práctica.
+    proxy_set_header Accept-Encoding "";
+
+    # 1. Reemplaza el título por defecto
+    sub_filter '<title>Streamlit</title>' '<title>Dashboard Bibliométrico Topics</title>';
+
+    # 2. Inyecta los tags de Open Graph justo después de <head>
+    # Nota: Asegúrate de tener una imagen og_preview.png accesible en esa URL
+    sub_filter '<head>' '<head>
+    <meta name="description" content="Análisis interactivo de la producción científica.">
+    <meta property="og:title" content="Dashboard Bibliométrico Topics">
+    <meta property="og:description" content="Análisis interactivo de la producción científica.">
+    <meta property="og:url" content="https://dinamica1.fciencias.unam.mx/topics/">
+    <meta property="og:type" content="website">
+    #<meta property="og:image" content="https://dinamica1.fciencias.unam.mx/revistaslatam/static/og_preview.png">';
+
+    # Asegura que solo se reemplace la primera ocurrencia (para title y head)
+    sub_filter_once on;
+    # Tipos de contenido donde aplicar el filtro
+    sub_filter_types text/html;
+    }
+
+
+    location /revistaslatam/ {
+         proxy_pass http://10.17.7.1:5005/;
+	 proxy_http_version 1.1;
+	 proxy_set_header Upgrade $http_upgrade;
+	 proxy_set_header Connection "upgrade";
+	 proxy_set_header Host $host;
+	 proxy_set_header X-Real-IP $remote_addr;
+	 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	 proxy_set_header X-Forwarded-Proto $scheme;
+	 # Evita bloqueo de contenido mixto
+	 add_header Content-Security-Policy "upgrade-insecure-requests";
+    }
+
+    # Redirige /plmetrix (sin slash) → /plmetrix/ para evitar que caiga a Overleaf
+    location = /plmetrix {
+         return 301 /plmetrix/;
+    }
+
+    # Frontend
+    location /plmetrix/ {
+        proxy_pass http://10.17.7.1:5006/plmetrix/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Esto ayuda a que el navegador no bloquee contenido "mixto"
+        add_header Content-Security-Policy "upgrade-insecure-requests";
+
+
+#        proxy_set_header Upgrade $http_upgrade;
+#        proxy_set_header Connection 'upgrade';
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend (avoiding conflict with existing /api)
+    location /plmetrix-api/ {
+        proxy_pass http://10.17.7.1:8003/; # Internal path remains /api/
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50M; # <--- Para permitir archivos grandes
+    }
+    
+
+
+    location /integra/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5004;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /chatbot/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://192.168.72.120:8501/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /observatorio/ {
+        auth_basic "Zona protegida";
+        auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:8050/;
+        client_max_body_size 100M;
+        #proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /bibliomate/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5002/;
+        proxy_http_version 1.1;
+	#Configuración de websockets para streamlit
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+	}
+
+    location /bibliomateopenalex/ {
+        #auth_basic "Zona protegida";
+        #auth_basic_user_file /etc/apache2/.htpasswd;
+        proxy_pass http://10.17.7.1:5003/;
+        proxy_http_version 1.1;
+
+	proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+    }
+
+
+
+    location /rag/_stcore/stream {
+        proxy_pass http://10.17.7.1:5000/_stcore/stream;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /chatbot/_stcore/stream {
+        proxy_pass http://10.17.7.1:8501/_stcore/stream;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+
+    
+
+    location /lmstudio/ {
+        # Transmitir el token de LM Studio transparente
+        proxy_set_header Authorization $http_authorization;
+        # Aplica el límite. Si alguien supera el límite, Nginx devuelve 429 Too Many Requests
+        limit_req zone=llm_limit burst=3 nodelay;
+
+	proxy_pass http://192.168.72.120:1234/;
+	proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+	# --- AGREGA ESTAS LÍNEAS ---
+        proxy_read_timeout 600s;     # Espera hasta 10 minutos para leer la respuesta
+        proxy_connect_timeout 600s;  # Espera hasta 10 minutos para conectar
+        proxy_send_timeout 600s;     # Espera hasta 10 minutos para enviar datos
+        # ---------------------------
+
+        }
+
+    location /v1/ {
+        # Transmitir el token de LM Studio transparente
+        proxy_set_header Authorization $http_authorization;
+         # Aplica el límite. Si alguien supera el límite, Nginx devuelve 429 Too Many Requests
+        limit_req zone=llm_limit burst=3 nodelay;
+        # Redirigir directamente al endpoint /v1/ de LM Studio        
+        proxy_pass http://127.0.0.1:1234/v1/;
+        # Cabeceras estándar
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Streaming y WebSockets
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        # Timeouts de 10 minutos
+        proxy_read_timeout 600s;
+        proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+        # ------------------------------------------------------------------
+    # CONFIGURACIÓN DEL FRONTEND (INTERFAZ ANGULAR)
+    # ------------------------------------------------------------------
+    location /dspace/ {
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Host $http_host;
+        
+        # Redirige al contenedor de Docker de Angular (puerto 4000)
+        proxy_pass http://localhost:4000;
+        proxy_cookie_path /server /;
+        
+        proxy_redirect off;
+        proxy_read_timeout 600s;
+        proxy_connect_timeout 600s;
+
+        # Corregir el base href para renderizado del lado del cliente (CSR)
+        proxy_set_header Accept-Encoding "";
+        sub_filter '<base href="/">' '<base href="/dspace/">';
+        sub_filter_once on;
+        sub_filter_types text/html;
+    }
+
+    # ------------------------------------------------------------------
+    # CONFIGURACIÓN DEL BACKEND (REST API TOMCAT)
+    # ------------------------------------------------------------------
+    location /dspace-api/ {
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Prefix /dspace-api;  # <--- ¡AGREGAR ESTA LÍNEA!
+        
+        # IMPORTANTE: Nota la barra diagonal final en ambas rutas
+        proxy_pass http://localhost:8090/server/;
+        #proxy_cookie_path /server /dspace-api;
+        proxy_cookie_path /server /;
+        
+        proxy_redirect off;
+        client_max_body_size 512M; 
+        proxy_read_timeout 600s;
+        proxy_connect_timeout 600s;
+    }
+
+    location /server/ {
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Host $http_host;
+        
+        # IMPORTANTE: Nota la barra diagonal final en ambas rutas
+        proxy_pass http://localhost:8090/server/;
+        proxy_cookie_path /server /server;
+        
+        proxy_redirect off;
+        client_max_body_size 512M; 
+        proxy_read_timeout 600s;
+        proxy_connect_timeout 600s;
+    }
+
+
+    # ------------------------------------------------------------
+    # OPENPROJECT
+    # ------------------------------------------------------------
+    location /openproject {
+        proxy_pass http://127.0.0.1:8085/openproject;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Server $host;
+
+        # Soporte WebSockets / ActionCable / Hocuspocus / MCP
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Streaming SSE y respuestas interactivas sin buffer
+        proxy_buffering off;
+
+        # Carga de archivos y adjuntos
+        client_max_body_size 100M;
+
+        proxy_connect_timeout 300s;
+        proxy_send_timeout    300s;
+        proxy_read_timeout    300s;
+    }
+}

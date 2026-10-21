@@ -48,6 +48,8 @@ from services.openalex.tools.mexico_tools import (
     openalex_aggregate_mexico,
     openalex_top_entities,
     openalex_search_works,
+    normalize_author_ids,
+    build_authors_condition,
 )
 
 # Paletas cienciométricas oficiales
@@ -167,6 +169,137 @@ def _resolve_output_paths(output_dir: str, prefix: str) -> tuple[str, str]:
     return html_path, png_path
 
 
+REPORTS_BASE_URL = os.getenv("REPORTS_BASE_URL", "https://dinamica1.fciencias.unam.mx/reports").rstrip("/")
+
+
+def _build_artifact_iframe_html(report_url: str, title: str) -> str:
+    """
+    Genera un contenedor ultraligero (~350 bytes) con iframe para el artefacto de LibreChat.
+    Permite que LibreChat cargue el reporte completo vía HTTP sin que el LLM deba
+    transcribir código HTML/JS pesado (evitando truncamiento o errores de renderizado).
+    """
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <style>
+        html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0B0F19; font-family: 'Inter', -apple-system, sans-serif; }}
+        .topbar {{ height: 38px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; box-sizing: border-box; }}
+        .title {{ color: #F9FAFB; font-size: 12px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }}
+        .btn {{ color: #38bdf8; text-decoration: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border: 1px solid rgba(56,189,248,0.3); border-radius: 4px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }}
+        .btn:hover {{ background: rgba(56,189,248,0.1); border-color: #38bdf8; }}
+        iframe {{ width: 100%; height: calc(100% - 38px); border: none; }}
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <span class="title">📊 {title}</span>
+        <a id="report-btn" class="btn" href="{report_url}" target="_blank" rel="noopener noreferrer">Abrir en pestaña completa ↗</a>
+    </div>
+    <iframe id="report-frame" src="{report_url}" allow="fullscreen" loading="eager" title="{title}"></iframe>
+</body>
+</html>"""
+
+
+def _build_viz_result(
+    chart_type: str,
+    title: str,
+    html_path: str,
+    png_path: str,
+    summary_kpis: Dict[str, Any],
+    message: str = ""
+) -> Dict[str, Any]:
+    """Empaqueta la respuesta estandarizada para LibreChat con report_url y artefacto iframe ultraligero."""
+    report_url = f"{REPORTS_BASE_URL}/{os.path.basename(html_path)}"
+    artifact_html = _build_artifact_iframe_html(report_url, title)
+    msg = message or f"{title} generado en {html_path}"
+    if report_url not in msg:
+        msg = f"{msg}. Disponible en {report_url}"
+    return {
+        "status": "success",
+        "chart_type": chart_type,
+        "title": title,
+        "report_url": report_url,
+        "html_path": html_path,
+        "html_content": artifact_html,
+        "png_path": png_path,
+        "summary_kpis": summary_kpis,
+        "message": msg
+    }
+
+
+PLOTLY_CDN_URL = "https://cdn.plot.ly/plotly-2.35.2.min.js"
+
+
+def _compact_plotly_html(fig, div_id: str = "plot", default_height: int = 480) -> str:
+    """
+    Serializa una figura Plotly como bloque HTML COMPACTO y autosuficiente.
+
+    Motivo: en LibreChat el LLM re-transcribe el `html_content` dentro de un artefacto.
+    `pio.to_html` incrusta el template completo de Plotly (~10 KB de JSON), un id UUID,
+    el atributo SRI y JSON indentado; el modelo lo trunca/altera y el gráfico no se dibuja.
+    Aquí se elimina el template (aplicando sus colores esenciales de forma explícita),
+    se emite JSON sin espacios y se carga Plotly 2.35.2 con una sola etiqueta <script>.
+    """
+    from plotly.utils import PlotlyJSONEncoder
+
+    f = go.Figure(fig)  # copia: no mutar la figura original
+    f.update_layout(template="none")
+    if f.layout.font.color is None:
+        f.update_layout(font=dict(color="#f2f5fa"))
+    f.update_xaxes(gridcolor="#283442", zerolinecolor="#283442", linecolor="#506784", overwrite=False)
+    f.update_yaxes(gridcolor="#283442", zerolinecolor="#283442", linecolor="#506784", overwrite=False)
+
+    import base64
+    import numpy as np
+
+    def _decode(obj):
+        """Convierte typed arrays base64 {'dtype','bdata'} de Plotly 6 en listas planas."""
+        if isinstance(obj, dict):
+            if "bdata" in obj and "dtype" in obj:
+                arr = np.frombuffer(base64.b64decode(obj["bdata"]), dtype=np.dtype(obj["dtype"]))
+                if obj.get("shape"):
+                    shape = obj["shape"]
+                    if isinstance(shape, str):
+                        shape = [int(x) for x in shape.split(",")]
+                    arr = arr.reshape(shape)
+                if arr.dtype.kind == "f":
+                    arr = np.round(arr, 4)
+                return arr.tolist()
+            return {k: _decode(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_decode(v) for v in obj]
+        return obj
+
+    def _dump(obj) -> str:
+        plain = json.loads(json.dumps(obj, cls=PlotlyJSONEncoder))
+        return json.dumps(
+            _decode(plain), separators=(",", ":"), ensure_ascii=False
+        ).replace("</", "<\\/")
+
+    spec = f.to_plotly_json()
+    for tr in spec.get("data", []):
+        if tr.get("type") in ("sunburst", "treemap", "icicle") and tr.get("ids") is not None \
+                and tr.get("parents") is not None:
+            ids = list(tr["ids"])
+            idmap = {old: str(i) for i, old in enumerate(ids)}
+            tr["ids"] = [str(i) for i in range(len(ids))]
+            tr["parents"] = [idmap.get(p, "") for p in tr["parents"]]
+            tr["hovertemplate"] = "%{label}<br>Publicaciones: %{value}<extra></extra>"
+    layout = spec.get("layout", {}) or {}
+    layout.pop("template", None)
+    height = layout.get("height") or default_height
+    layout.setdefault("autosize", True)
+
+    return (
+        f'<script src="{PLOTLY_CDN_URL}"></script>'
+        f'<div id="{div_id}" style="width:100%;height:{int(height)}px"></div>'
+        f'<script>Plotly.newPlot("{div_id}",{_dump(spec.get("data", []))},{_dump(layout)},'
+        f'{{"responsive":true,"displaylogo":false}});</script>'
+    )
+
+
 def _render_png_card(data_type: str, data: Dict[str, Any], output_png: str, title: str) -> None:
     """Genera una tarjeta estática PNG a 200 DPI con Matplotlib."""
     if plt is None:
@@ -242,7 +375,7 @@ def detect_data_type(data: Dict[str, Any]) -> str:
 def openalex_plot_timeseries(
     data: Optional[Union[Dict[str, Any], str]] = None,
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     start_year: int = 2010,
     end_year: int = 2026,
@@ -336,7 +469,7 @@ def openalex_plot_timeseries(
     fig.update_yaxes(title_text="Artículos Publicados", secondary_y=False)
     fig.update_yaxes(title_text="FWCI Normalizado", secondary_y=True)
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
     tot_works = sum(works)
     tot_cites = sum(cites)
     tot_apc = sum(apc)
@@ -417,22 +550,20 @@ def openalex_plot_timeseries(
 
     _render_png_card("timeseries", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "timeseries",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="timeseries",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "period": f"{years[0]}-{years[-1]}",
             "total_works": tot_works,
             "total_citations": tot_cites,
             "avg_fwci": avg_fwci,
             "total_apc_usd": tot_apc
         },
-        "message": f"Serie temporal interactiva guardada en {html_path}"
-    }
+        message=f"Serie temporal interactiva guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -441,7 +572,7 @@ def openalex_plot_timeseries(
 def openalex_plot_oa_donut(
     data: Optional[Union[Dict[str, Any], str]] = None,
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     year: Optional[int] = None,
     title: str = "",
@@ -506,7 +637,7 @@ def openalex_plot_oa_donut(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     total_works = sum(values)
     total_apc = sum(apc_totals)
@@ -557,22 +688,20 @@ def openalex_plot_oa_donut(
 
     _render_png_card("oa-donut", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "oa-donut",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="oa-donut",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "total_works": total_works,
             "diamond_works": diamond_works,
             "diamond_percentage": diamond_pct,
             "gold_apc_works": gold_works,
             "total_apc_paid_usd": total_apc
         },
-        "message": f"Dona interactiva de Acceso Abierto guardada en {html_path}"
-    }
+        message=f"Dona interactiva de Acceso Abierto guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -631,7 +760,7 @@ def openalex_plot_top_ranking(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     table_rows = []
     for e in entities:
@@ -695,20 +824,18 @@ def openalex_plot_top_ranking(
 
     _render_png_card("top-ranking", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "top-ranking",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="top-ranking",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "entity_count": len(entities),
             "top_entity": entities[0].get("display_name") or entities[0].get("institution") if entities else "",
             "max_works": entities[0].get("total_works", 0) if entities else 0
         },
-        "message": f"Ranking interactivo guardado en {html_path}"
-    }
+        message=f"Ranking interactivo guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -717,7 +844,7 @@ def openalex_plot_top_ranking(
 def openalex_plot_sunburst(
     data: Optional[Union[Dict[str, Any], str]] = None,
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     title: str = "",
     output_dir: str = "./reports"
@@ -747,6 +874,9 @@ def openalex_plot_sunburst(
         where_conds = ["domain != ''", "field != ''", "subfield != ''", "topic != ''"]
         if institution_id:
             where_conds.append(f"(has(institution_names, '{institution_id}') OR has(institution_rors, '{institution_id}'))")
+        aids = normalize_author_ids(author_id)
+        if aids:
+            where_conds.append(build_authors_condition(aids))
         if query:
             where_conds.append(f"ilike(title, '%{query}%')")
         where_clause = " AND ".join(where_conds)
@@ -775,7 +905,7 @@ def openalex_plot_sunburst(
     if 'total_works' not in df.columns:
         df['total_works'] = 1
 
-    df = df.sort_values('total_works', ascending=False).head(150)
+    df = df.sort_values('total_works', ascending=False).head(40)
     title_text = title or "Estructura de Especialización Científica (Taxonomía Concéntrica)"
     html_path, png_path = _resolve_output_paths(output_dir, "sunburst")
 
@@ -794,7 +924,7 @@ def openalex_plot_sunburst(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     top_topics_rows = []
     top_df = df.sort_values('total_works', ascending=False).head(15)
@@ -854,19 +984,17 @@ def openalex_plot_sunburst(
 
     _render_png_card("sunburst", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "sunburst",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="sunburst",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "total_topics_analyzed": len(df),
             "top_topic": str(top_df.iloc[0]['topic']) if not top_df.empty else ""
         },
-        "message": f"Sunburst taxonómico interactivo guardado en {html_path}"
-    }
+        message=f"Sunburst taxonómico interactivo guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -875,7 +1003,10 @@ def openalex_plot_sunburst(
 def openalex_plot_sdg_grid(
     data: Optional[Union[Dict[str, Any], str]] = None,
     institution_id: str = "",
-    author_id: str = "",
+    institution_name: str = "",
+    author_id: Union[str, List[str]] = "",
+    author_name: str = "",
+    academic_name: str = "",
     query: str = "",
     title: str = "",
     output_dir: str = "./reports"
@@ -883,24 +1014,30 @@ def openalex_plot_sdg_grid(
     """
     Cuadrícula interactiva de los 17 Objetivos de Desarrollo Sostenible (ODS de la ONU)
     con colores oficiales, porcentaje del corpus y tabla comparativa de impacto por ODS.
+    Soporta análisis a nivel nacional (México completo), institucional, de autor/investigador (ID único o lista) o temático.
     """
     raw = _load_data(data)
     results = raw.get("results") or []
+    aids = normalize_author_ids(author_id)
+    target_author_name = (author_name or academic_name).strip()
+    target_inst = (institution_id or institution_name).strip()
+    target_author_id = aids if aids else ""
+    if not aids and author_id and isinstance(author_id, str) and not target_author_name:
+        target_author_name = author_id.strip()
+
     if not results:
         clauses = []
         if query:
             clean_q = query.replace("'", "\\'")
             clauses.append(f"(ilike(title, '%{clean_q}%') OR ilike(subfield, '%{clean_q}%'))")
-        if institution_id and not ("ror.org" in institution_id or institution_id.startswith("0")):
-            clean_i = institution_id.replace("'", "\\'")
-            clauses.append(f"has(institution_names, '{clean_i}')")
 
         filter_param = " AND ".join(clauses) if clauses else "1=1"
-        ror_param = institution_id if ("ror.org" in institution_id or institution_id.startswith("0")) else None
+        ror_param = target_inst if target_inst else None
 
         raw = openalex_aggregate_mexico(
-            group_by="sdg",
-            author_id=author_id,
+            group_by="sdgs",
+            author_id=target_author_id,
+            author_name=target_author_name,
             filter_param=filter_param,
             institution_ror=ror_param,
             limit=50
@@ -910,15 +1047,38 @@ def openalex_plot_sdg_grid(
     sdg_map = {}
     if results:
         for r in results:
-            dim = str(r.get("sdg_num") or r.get("dimension", "")).strip()
-            match = re.search(r'\d+', dim)
-            if match:
-                num = int(match.group())
-                sdg_map[num] = r
+            dim = r.get("sdg_num") or r.get("dimension", "")
+            if isinstance(dim, list):
+                dims = [str(d) for d in dim]
+            else:
+                dims = [str(dim)]
+            for d in dims:
+                match = re.search(r'sdg/(\d+)|\b(\d+)\b', d, re.IGNORECASE)
+                if match:
+                    num = int(match.group(1) or match.group(2))
+                    if 1 <= num <= 17:
+                        if num not in sdg_map:
+                            sdg_map[num] = dict(r)
+                        else:
+                            sdg_map[num]["total_works"] = sdg_map[num].get("total_works", 0) + r.get("total_works", 0)
+                            sdg_map[num]["total_citations"] = sdg_map[num].get("total_citations", 0) + r.get("total_citations", 0)
 
     total_works_all_sdgs = sum(r.get("total_works", 0) for r in sdg_map.values())
     total_citations_all_sdgs = sum(r.get("total_citations", 0) for r in sdg_map.values())
-    title_text = title or "Alineación Científica con los 17 Objetivos de Desarrollo Sostenible (ONU)"
+
+    if not title:
+        if target_author_name or target_author_id:
+            auth_lbl = target_author_name or target_author_id
+            title_text = f"Distribución de ODS en las publicaciones de {auth_lbl}"
+        elif target_inst:
+            title_text = f"Distribución de ODS en {target_inst}"
+        elif query:
+            title_text = f"Distribución de ODS en {query} (México)"
+        else:
+            title_text = "Alineación de México con los 17 Objetivos de Desarrollo Sostenible (ONU)"
+    else:
+        title_text = title
+
     html_path, png_path = _resolve_output_paths(output_dir, "sdg_grid")
 
     cards_html = []
@@ -1026,19 +1186,17 @@ def openalex_plot_sdg_grid(
 
     _render_png_card("sdg-grid", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "sdg-grid",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="sdg-grid",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "active_sdgs": active_sdg_count,
             "total_sdg_works": total_works_all_sdgs
         },
-        "message": f"Cuadrícula interactiva de ODS guardada en {html_path}"
-    }
+        message=f"Cuadrícula interactiva de ODS guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1047,7 +1205,7 @@ def openalex_plot_sdg_grid(
 def openalex_plot_dossier_works(
     data: Optional[Union[Dict[str, Any], str]] = None,
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     limit: int = 25,
     title: str = "",
@@ -1147,19 +1305,18 @@ def openalex_plot_dossier_works(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    return {
-        "status": "success",
-        "chart_type": "dossier-works",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="dossier-works",
+        title=title_text,
+        html_path=html_path,
+        png_path="",
+        summary_kpis={
             "works_count": len(works),
             "total_citations": tot_cites,
             "avg_fwci": avg_fwci
         },
-        "message": f"Dossier de publicaciones guardado en {html_path}"
-    }
+        message=f"Dossier de publicaciones guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1169,7 +1326,7 @@ def openalex_plot_collaboration_network(
     data: Optional[Union[Dict[str, Any], str]] = None,
     academic_name: str = "",
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     limit_works: int = 50,
     title: str = "",
@@ -1181,7 +1338,9 @@ def openalex_plot_collaboration_network(
     Para tópicos amplios o instituciones, genera un grafo local en PyVis con física de resortes.
     """
     # 1. Detectar si la consulta corresponde a un investigador individual
-    target_author = academic_name or (author_id if (author_id and not author_id.startswith("http") and not (author_id.startswith("A") and author_id[1:].isdigit())) else "")
+    aids = normalize_author_ids(author_id)
+    first_aid = aids[0] if aids else None
+    target_author = academic_name or ("" if aids else (author_id if (author_id and isinstance(author_id, str) and not author_id.startswith("http") and not (author_id.startswith("A") and author_id[1:].isdigit())) else ""))
     if not target_author and query and not data:
         clean_q = query.strip().replace("'", "")
         chk_sql = f"SELECT id, name FROM rag.academics_all WHERE name ILIKE '%{clean_q}%' LIMIT 1"
@@ -1189,10 +1348,10 @@ def openalex_plot_collaboration_network(
         if chk_res.get("data"):
             target_author = clean_q
 
-    if target_author:
+    if target_author or first_aid:
         coauthra_res = openalex_plot_coauthra_network(
             academic_name=target_author,
-            author_id=author_id if (author_id and author_id.startswith("A")) else None,
+            author_id=first_aid,
             title=title,
             output_dir=output_dir
         )
@@ -1255,18 +1414,17 @@ def openalex_plot_collaboration_network(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(net_html)
 
-    return {
-        "status": "success",
-        "chart_type": "network",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="network",
+        title=title_text,
+        html_path=html_path,
+        png_path="",
+        summary_kpis={
             "nodes_count": len(top_nodes),
             "edges_count": len(edges)
         },
-        "message": f"Red interactiva de colaboración guardada en {html_path}"
-    }
+        message=f"Red interactiva de colaboración guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1394,7 +1552,7 @@ def openalex_plot_quadrant_matrix(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     high_fwci_count = sum(1 for f in fwci if f >= 1.0)
     top_fwci_entity = entities[fwci.index(max(fwci))].get("display_name") or entities[fwci.index(max(fwci))].get("institution") if fwci else ""
@@ -1443,21 +1601,19 @@ def openalex_plot_quadrant_matrix(
 
     _render_png_card("quadrant", raw, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "quadrant-matrix",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="quadrant-matrix",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "entities_count": len(entities),
             "high_fwci_count": high_fwci_count,
             "top_fwci_entity": top_fwci_entity,
             "top_volume_entity": top_volume_entity
         },
-        "message": f"Matriz de cuadrantes guardada en {html_path}"
-    }
+        message=f"Matriz de cuadrantes guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1572,7 +1728,7 @@ def openalex_plot_geopolitical_sankey(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     tot_intl_collab = sum(country_counts.values())
     top_partner = COUNTRY_NAMES.get(country_list[0], country_list[0]) if country_list else ""
@@ -1615,20 +1771,19 @@ def openalex_plot_geopolitical_sankey(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    return {
-        "status": "success",
-        "chart_type": "geopolitical-sankey",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="geopolitical-sankey",
+        title=title_text,
+        html_path=html_path,
+        png_path="",
+        summary_kpis={
             "partner_countries_count": len(country_counts),
             "top_block": top_block,
             "top_partner": top_partner,
             "total_international_collaborations": tot_intl_collab
         },
-        "message": f"Diagrama de flujo geopolítico guardado en {html_path}"
-    }
+        message=f"Diagrama de flujo geopolítico guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1720,7 +1875,7 @@ def openalex_plot_multidimensional_radar(
         plot_bgcolor="rgba(17,24,39,0.7)",
         showlegend=True
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     table_rows = []
     for s in summary_data:
@@ -1780,18 +1935,17 @@ def openalex_plot_multidimensional_radar(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    return {
-        "status": "success",
-        "chart_type": "multidimensional-radar",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="multidimensional-radar",
+        title=title_text,
+        html_path=html_path,
+        png_path="",
+        summary_kpis={
             "institutions_compared": len(summary_data),
             "metrics": summary_data
         },
-        "message": f"Radar multidimensional guardado en {html_path}"
-    }
+        message=f"Radar multidimensional guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1799,7 +1953,7 @@ def openalex_plot_multidimensional_radar(
 # ==============================================================================
 def openalex_plot_topic_dynamics(
     institution_id: str = "",
-    author_id: str = "",
+    author_id: Union[str, List[str]] = "",
     query: str = "",
     top_n_topics: int = 8,
     start_year: int = 2014,
@@ -1814,8 +1968,9 @@ def openalex_plot_topic_dynamics(
     where_conds = [f"publication_year >= {start_year}", f"publication_year <= {end_year}", "subfield != ''"]
     if institution_id:
         where_conds.append(f"(has(institution_names, '{institution_id}') OR has(institution_rors, '{institution_id}'))")
-    if author_id:
-        where_conds.append(f"has(author_names, '{author_id}')")
+    aids = normalize_author_ids(author_id)
+    if aids:
+        where_conds.append(build_authors_condition(aids))
     if query:
         where_conds.append(f"ilike(title, '%{query}%')")
 
@@ -1880,7 +2035,7 @@ def openalex_plot_topic_dynamics(
         plot_bgcolor="rgba(17,24,39,0.7)",
         legend=dict(orientation="h", y=-0.2)
     )
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     full_html = f"""<!DOCTYPE html>
 <html lang="es">
@@ -1919,19 +2074,18 @@ def openalex_plot_topic_dynamics(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    return {
-        "status": "success",
-        "chart_type": "topic-dynamics",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="topic-dynamics",
+        title=title_text,
+        html_path=html_path,
+        png_path="",
+        summary_kpis={
             "top_subfield": top_subfields[0],
             "subfields_tracked": len(top_subfields),
             "period": f"{start_year}-{end_year}"
         },
-        "message": f"Dinámica temporal de tópicos guardada en {html_path}"
-    }
+        message=f"Dinámica temporal de tópicos guardada en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -1982,7 +2136,7 @@ ISO2_TO_NAME_ES = {
 # 13. MAPA MUNDIAL DE PAÍSES COLABORADORES (Choropleth Colaboración Internacional)
 # ==============================================================================
 def openalex_plot_collaborating_countries(
-    author_id: Optional[str] = None,
+    author_id: Optional[Union[str, List[str]]] = None,
     orcid: Optional[str] = None,
     academic_name: Optional[str] = None,
     institution_id: Optional[str] = None,
@@ -1998,10 +2152,10 @@ def openalex_plot_collaborating_countries(
     conds = ["length(all_country_codes) > 0"]
     entity_label = "Producción Científica Nacional"
 
-    if author_id:
-        clean_aid = author_id.replace("https://openalex.org/", "").strip()
-        conds.append(f"(has(author_names, '{clean_aid}') OR arrayExists(x -> x ILIKE '%{clean_aid}%', author_names))")
-        entity_label = f"Investigador ({clean_aid})"
+    aids = normalize_author_ids(author_id)
+    if aids:
+        conds.append(build_authors_condition(aids))
+        entity_label = f"Investigador ({', '.join(aids)})"
     elif orcid:
         clean_orc = orcid.replace("https://orcid.org/", "").strip()
         q_orc = f"SELECT name FROM rag.academics_all WHERE orcid = '{clean_orc}' LIMIT 1"
@@ -2111,7 +2265,7 @@ def openalex_plot_collaborating_countries(
         )
     )
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     table_html = "".join([
         f"<tr><td class='py-2 font-mono text-cyan-400'>{r['iso3']}</td>"
@@ -2187,28 +2341,27 @@ def openalex_plot_collaborating_countries(
 
     _render_png_card("collaboration-countries", {"locations": locations, "z": z_vals}, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "collaborating-countries",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="collaborating-countries",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "total_partner_countries": len(locations),
             "total_collaborations": total_papers_collab,
             "top_partner_country": top_country,
             "top_partner_papers": top_papers
         },
-        "message": f"Mapa mundi coroplético de países colaboradores guardado en {html_path}"
-    }
+        message=f"Mapa mundi coroplético de países colaboradores guardado en {html_path}"
+    )
+
 
 
 # ==============================================================================
 # 14. VOCABULARIO CIENTÍFICO (Nube Interactiva de Palabras y Frecuencias)
 # ==============================================================================
 def openalex_plot_scientific_vocabulary(
-    author_id: Optional[str] = None,
+    author_id: Optional[Union[str, List[str]]] = None,
     orcid: Optional[str] = None,
     academic_name: Optional[str] = None,
     entity_name: Optional[str] = None,
@@ -2255,10 +2408,10 @@ def openalex_plot_scientific_vocabulary(
     # 2. Fallback a ClickHouse si no se obtuvo de DuckDB
     if not keywords_data:
         conds = ["length(keywords) > 0"]
-        if author_id:
-            clean_aid = author_id.replace("https://openalex.org/", "").strip()
-            conds.append(f"arrayExists(x -> x ILIKE '%{clean_aid}%', author_names)")
-            source_label = f"Investigador ({clean_aid})"
+        aids = normalize_author_ids(author_id)
+        if aids:
+            conds.append(build_authors_condition(aids))
+            source_label = f"Investigador ({', '.join(aids)})"
         elif academic_name:
             clean_aname = academic_name.replace("'", "").strip()
             conds.append(f"arrayExists(x -> x ILIKE '%{clean_aname}%', author_names)")
@@ -2323,7 +2476,7 @@ def openalex_plot_scientific_vocabulary(
         xaxis=dict(gridcolor="rgba(255,255,255,0.06)", color=THEME_MUTED),
         yaxis=dict(gridcolor="rgba(0,0,0,0)", color=THEME_TEXT)
     )
-    bar_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    bar_html = _compact_plotly_html(fig)
 
     words_json = json.dumps(keywords_data, ensure_ascii=False)
 
@@ -2469,21 +2622,19 @@ def openalex_plot_scientific_vocabulary(
 
     _render_png_card("scientific-vocabulary", {"keywords": keywords_data[:30]}, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "scientific-vocabulary",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="scientific-vocabulary",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "total_keywords_analyzed": len(keywords_data),
             "total_occurrences": total_occurrences,
             "top_keyword": keywords_data[0]["keyword"] if keywords_data else "",
             "top_keyword_freq": keywords_data[0]["freq"] if keywords_data else 0
         },
-        "message": f"Vocabulario científico interactivo guardado en {html_path}"
-    }
+        message=f"Vocabulario científico interactivo guardado en {html_path}"
+    )
 
 
 # ==============================================================================
@@ -2491,7 +2642,7 @@ def openalex_plot_scientific_vocabulary(
 # ==============================================================================
 def openalex_plot_coauthra_network(
     academic_name: Optional[str] = None,
-    author_id: Optional[str] = None,
+    author_id: Optional[Union[str, List[str]]] = None,
     orcid: Optional[str] = None,
     query: Optional[str] = None,
     title: Optional[str] = None,
@@ -2503,16 +2654,17 @@ def openalex_plot_coauthra_network(
     utilizando CoAuthra (física de fuerzas D3.js, comunidades y filtros por año y citas).
     Úsala siempre que el usuario pida 'red de colaboración de [investigador/autor]',
     'grafo de coautoría de [investigador]', 'colaboradores de [investigador]'.
-    Acepta Nombre del investigador (ej. 'Annie Pardo'), OpenAlex ID o ORCID.
+    Acepta Nombre del investigador (ej. 'Annie Pardo'), OpenAlex ID (único o lista) o ORCID.
     """
     effective_name = academic_name or query or ""
     clean_id = ""
     display_name = effective_name or "Investigador"
     resolved_orcid = orcid or ""
 
-    # 1. Si viene OpenAlex ID directo
-    if author_id:
-        clean_id = author_id.replace("https://openalex.org/", "").strip()
+    # 1. Si viene OpenAlex ID directo (único o lista)
+    aids = normalize_author_ids(author_id)
+    if aids:
+        clean_id = aids[0]  # CoAuthra toma el ID principal para centrar la red
     # 2. Si viene ORCID
     elif orcid:
         clean_id = orcid.replace("https://orcid.org/", "").strip()
@@ -2602,18 +2754,16 @@ def openalex_plot_coauthra_network(
 
     _render_png_card("coauthra-network", {"author": clean_id, "name": display_name}, png_path, title_text)
 
-    return {
-        "status": "success",
-        "chart_type": "coauthra-network",
-        "title": title_text,
-        "html_path": html_path,
-        "html_content": full_html,
-        "png_path": png_path,
-        "summary_kpis": {
+    return _build_viz_result(
+        chart_type="coauthra-network",
+        title=title_text,
+        html_path=html_path,
+        png_path=png_path,
+        summary_kpis={
             "author_id": clean_id,
             "display_name": display_name,
             "orcid": resolved_orcid,
             "coauthra_url": coauthra_url
         },
-        "message": f"Red interactiva CoAuthra lista y guardada en {html_path}"
-    }
+        message=f"Red interactiva CoAuthra lista y guardada en {html_path}"
+    )

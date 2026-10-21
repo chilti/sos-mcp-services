@@ -1,6 +1,6 @@
 ---
 name: openalex-mexico-aggregations
-description: Agregaciones analíticas instantáneas sobre la producción científica de México en ClickHouse (rag.works_academic_all), calculando distribución por vías de acceso abierto (Diamond vs Gold APC), gasto comercial en APC en USD, publicaciones de élite Top 10% mundial, FWCI promedio y series cronológicas.
+description: "Cálculo de métricas agregadas y rankings cienciométricos en ClickHouse (rag.works_academic_all): distribución de las 6 vías de acceso abierto (Diamond vs Gold APC), gasto comercial en APC en USD, series temporales anuales, subcampos temáticos y RANKING de instituciones e investigadoras/es líderes en un tema ('top-entities') con volumen, citas y FWCI."
 metadata:
   python: "/home/ambientesPy/revistaslatam"
   script: "scripts/openalex_mexico_cli.py"
@@ -12,15 +12,18 @@ Motor de agregación columnar para la evaluación cuantitativa de la producción
 
 ## Overview
 
-Calcula métricas e indicadores de impacto, gasto editorial y modelos de publicación agrupados por cualquier dimensión cienciométrica (año, vía OA, subcampo, disciplina o país), respondiendo en milisegundos gracias al motor MergeTree de ClickHouse.
+Calcula métricas e indicadores de impacto, gasto editorial y modelos de publicación agrupados por cualquier dimensión cienciométrica (año, vía OA, subcampo, disciplina o país), respondiendo en milisegundos gracias al motor MergeTree de ClickHouse. Además, mediante el comando `top-entities`, identifica de forma directa las instituciones o personas investigadoras con mayor capacidad en cualquier tema.
 
 ## Dependencies
 
 - **Entorno Python:** `/home/ambientesPy/revistaslatam`
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/scripts/openalex_mexico_cli.py)
+- **Script CLI:** `scripts/openalex_mexico_cli.py`
 - **Tabla ClickHouse:** `rag.works_academic_all`
 
 ## CLI Interface
+
+> [!IMPORTANT]
+> Guarda siempre los archivos de salida dentro del workspace actual en `./data/`, NUNCA en `/tmp/`.
 
 ### 1. Desglose de Vías de Acceso Abierto y Gasto en APC
 Cuantifica la penetración de las 6 vías y calcula el gasto comercial total en USD:
@@ -28,7 +31,7 @@ Cuantifica la penetración de las 6 vías y calcula el gasto comercial total en 
 /home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
   --filter "publication_year >= 2020" \
-  --output /ruta/a/acceso_abierto_mexico.json
+  --output ./data/acceso_abierto_mexico.json
 ```
 
 ### 2. Serie Temporal de Producción, Citas y Calidad de Impacto
@@ -37,7 +40,7 @@ Evolución anual de publicaciones, porcentaje en el Top 10% y FWCI medio:
 /home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
   --group-by "publication_year" \
   --filter "publication_year >= 2015 AND publication_year <= 2025" \
-  --output /ruta/a/tendencia_anual_mexico.json
+  --output ./data/tendencia_anual_mexico.json
 ```
 
 ### 3. Agrupación por Subcampo Disciplinar
@@ -46,7 +49,7 @@ Identifica los subcampos con mayor volumen de publicaciones y concentración de 
 /home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
   --group-by "subfield" \
   --filter "publication_year >= 2020" \
-  --output /ruta/a/subcampos_mexico.json
+  --output ./data/subcampos_mexico.json
 ```
 
 ### 4. Filtrado por Institución Específica
@@ -55,10 +58,25 @@ Aplica filtros por universidad usando los arrays nativos de ClickHouse:
 /home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
   --filter "has(institution_rors, 'https://ror.org/01tmp8f25') AND publication_year >= 2022" \
-  --output /ruta/a/oa_unam_2022_2025.json
+  --output ./data/oa_unam_2022_2025.json
 ```
 
-### 5. Ranking de Entidades Líderes por Tema (`top-entities`)
+### 5. Distribución de Objetivos de Desarrollo Sostenible (ODS / SDGs)
+Agrupa y cuantifica la producción científica según los 17 ODS de la ONU (Agenda 2030):
+```bash
+/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+  --group-by "sdgs" \
+  --filter "publication_year >= 2020" \
+  --output ./data/sdgs_mexico.json
+```
+*Soporta 4 niveles analíticos:*
+- **Nacional:** Sin filtro para evaluar todo el corpus de México (901K publicaciones en ODS).
+- **Institucional:** Filtrando por ROR institucional (ej. `01tmp8f25` para la UNAM) o por nombre en `institution_names`.
+- **Investigador:** Filtrando por ID canónico (`A...`) o nombre en `author_names` (`arrayExists(...)`).
+- **Temático:** Filtrando por título o subcampo (`ilike(title, '%...%')`).
+*Nota técnica ClickHouse:* Desanida tanto `sdgs` como `sdg_ids` mediante `ARRAY JOIN arrayDistinct(arrayConcat(sdgs, sdg_ids))` garantizando cobertura completa de artículos individuales y multitemáticos.
+
+### 6. Ranking de Entidades Líderes por Tema (`top-entities`)
 Identifica con un solo comando qué **autores** o **instituciones** tienen la mayor capacidad científica (volumen, citas, FWCI y porcentaje en el Top 10% mundial) en un tema estratégico (ej. litio, celdas solares, grafeno):
 
 **Para Instituciones líderes:**
@@ -67,7 +85,7 @@ Identifica con un solo comando qué **autores** o **instituciones** tienen la ma
   --query "lithium" \
   --by "institutions" \
   --limit 10 \
-  --output /ruta/a/top_instituciones_litio.json
+  --output ./data/top_instituciones_litio.json
 ```
 
 **Para Investigadores líderes (con resolución de nombres y ORCID):**
@@ -76,7 +94,7 @@ Identifica con un solo comando qué **autores** o **instituciones** tienen la ma
   --query "lithium" \
   --by "authors" \
   --limit 10 \
-  --output /ruta/a/top_investigadores_litio.json
+  --output ./data/top_investigadores_litio.json
 ```
 
 ## Salida Estructurada
@@ -99,7 +117,7 @@ Ejecuta la agregación agrupando por tópicos para descubrir cuáles son las esp
 /home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
   --group-by "topic" \
   --filter "subfield = 'Artificial Intelligence'" \
-  --output /ruta/a/especialidades_ia.json
+  --output ./data/especialidades_ia.json
 ```
 Inspecciona los primeros resultados de salida para identificar los 3 a 5 tópicos dominantes (ej. *Metaheuristic Optimization*, *Neural Networks*, *Natural Language Processing*, *Fuzzy Logic*).
 
@@ -110,7 +128,7 @@ Con los tópicos reales descubiertos en la Fase 1, ejecuta `top-entities` para c
   --query "Natural Language Processing" \
   --by "authors" \
   --limit 5 \
-  --output /ruta/a/top_nlp_autores.json
+  --output ./data/top_nlp_autores.json
 ```
 
 ## References
@@ -121,5 +139,6 @@ Con los tópicos reales descubiertos en la Fase 1, ejecuta `top-entities` para c
 
 - **Regla Anti-JOIN:** No intente concatenar con sentencias JOIN en el parámetro `--filter`. Los filtros deben basarse estrictamente en las columnas y arrays de `rag.works_academic_all`.
 - **Temas Sombrilla:** No busque "Inteligencia Artificial" en un solo paso; descomponga primero con la Fase 1 para no pasar por alto nichos de investigación nacionales.
+- **Rutas de Archivos:** Guarda siempre en `./data/`, nunca en `/tmp/`.
 - **Ventana de Contexto en Modelos Locales:** El CLI siempre genera su salida en disco (`--output`). Lea únicamente los primeros registros para mantener el consumo de tokens por debajo de 500.
 

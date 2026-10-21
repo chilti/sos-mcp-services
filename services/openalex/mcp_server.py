@@ -36,8 +36,29 @@ from services.openalex.tools.viz_tools import (
     openalex_plot_scientific_vocabulary,
     openalex_plot_coauthra_network,
 )
+from starlette.responses import FileResponse, Response
+from starlette.requests import Request
 
 mcp = FastMCP("openalex-clickhouse-gateway")
+
+REPORTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "reports"))
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+@mcp.custom_route("/reports/{filename:path}", methods=["GET"])
+async def serve_report(request: Request) -> Response:
+    filename = request.path_params.get("filename", "")
+    safe_path = os.path.abspath(os.path.join(REPORTS_DIR, filename))
+    if not safe_path.startswith(REPORTS_DIR):
+        return Response("Forbidden", status_code=403)
+    if not os.path.isfile(safe_path):
+        return Response(f"Report '{filename}' not found", status_code=404)
+    return FileResponse(
+        safe_path,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-cache",
+        }
+    )
 
 # Registro de Herramientas Analíticas OpenAlex México
 mcp.tool()(openalex_get_institution)

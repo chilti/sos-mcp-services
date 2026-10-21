@@ -65,6 +65,77 @@ SDG_INFO = {
 }
 
 
+PLOTLY_CDN_URL = "https://cdn.plot.ly/plotly-2.35.2.min.js"
+
+
+def _compact_plotly_html(fig, div_id: str = "plot", default_height: int = 480) -> str:
+    """
+    Serializa una figura Plotly como bloque HTML COMPACTO y autosuficiente.
+
+    Motivo: en LibreChat el LLM re-transcribe el `html_content` dentro de un artefacto.
+    `pio.to_html` incrusta el template completo de Plotly (~10 KB de JSON), un id UUID,
+    el atributo SRI y JSON indentado; el modelo lo trunca/altera y el gráfico no se dibuja.
+    Aquí se elimina el template (aplicando sus colores esenciales de forma explícita),
+    se emite JSON sin espacios y se carga Plotly 2.35.2 con una sola etiqueta <script>.
+    """
+    from plotly.utils import PlotlyJSONEncoder
+
+    f = go.Figure(fig)  # copia: no mutar la figura original
+    f.update_layout(template="none")
+    if f.layout.font.color is None:
+        f.update_layout(font=dict(color="#f2f5fa"))
+    f.update_xaxes(gridcolor="#283442", zerolinecolor="#283442", linecolor="#506784", overwrite=False)
+    f.update_yaxes(gridcolor="#283442", zerolinecolor="#283442", linecolor="#506784", overwrite=False)
+
+    import base64
+    import numpy as np
+
+    def _decode(obj):
+        """Convierte typed arrays base64 {'dtype','bdata'} de Plotly 6 en listas planas."""
+        if isinstance(obj, dict):
+            if "bdata" in obj and "dtype" in obj:
+                arr = np.frombuffer(base64.b64decode(obj["bdata"]), dtype=np.dtype(obj["dtype"]))
+                if obj.get("shape"):
+                    shape = obj["shape"]
+                    if isinstance(shape, str):
+                        shape = [int(x) for x in shape.split(",")]
+                    arr = arr.reshape(shape)
+                if arr.dtype.kind == "f":
+                    arr = np.round(arr, 4)
+                return arr.tolist()
+            return {k: _decode(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_decode(v) for v in obj]
+        return obj
+
+    def _dump(obj) -> str:
+        plain = json.loads(json.dumps(obj, cls=PlotlyJSONEncoder))
+        return json.dumps(
+            _decode(plain), separators=(",", ":"), ensure_ascii=False
+        ).replace("</", "<\\/")
+
+    spec = f.to_plotly_json()
+    for tr in spec.get("data", []):
+        if tr.get("type") in ("sunburst", "treemap", "icicle") and tr.get("ids") is not None \
+                and tr.get("parents") is not None:
+            ids = list(tr["ids"])
+            idmap = {old: str(i) for i, old in enumerate(ids)}
+            tr["ids"] = [str(i) for i in range(len(ids))]
+            tr["parents"] = [idmap.get(p, "") for p in tr["parents"]]
+            tr["hovertemplate"] = "%{label}<br>Publicaciones: %{value}<extra></extra>"
+    layout = spec.get("layout", {}) or {}
+    layout.pop("template", None)
+    height = layout.get("height") or default_height
+    layout.setdefault("autosize", True)
+
+    return (
+        f'<script src="{PLOTLY_CDN_URL}"></script>'
+        f'<div id="{div_id}" style="width:100%;height:{int(height)}px"></div>'
+        f'<script>Plotly.newPlot("{div_id}",{_dump(spec.get("data", []))},{_dump(layout)},'
+        f'{{"responsive":true,"displaylogo":false}});</script>'
+    )
+
+
 def detect_data_type(data: Dict[str, Any]) -> str:
     """Detecta automáticamente la estructura del JSON devuelto por las skills."""
     if "top_entities" in data:
@@ -135,7 +206,7 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     # Tabla resumen de métricas
     table_rows = []
@@ -277,7 +348,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
     fig.update_yaxes(title_text="Artículos Publicados", secondary_y=False)
     fig.update_yaxes(title_text="FWCI Normalizado", secondary_y=True)
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     tot_works = sum(works)
     tot_cites = sum(cites)
@@ -358,7 +429,7 @@ def render_oa_donut_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
     total_apc = sum(apc_totals)
     diamond_works = sum(v for l, v in zip(labels, values) if l.lower() == "diamond")
     gold_works = sum(v for l, v in zip(labels, values) if l.lower() == "gold")
@@ -555,7 +626,7 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
     if 'total_works' not in df.columns:
         df['total_works'] = 1
 
-    df = df.sort_values('total_works', ascending=False).head(150)
+    df = df.sort_values('total_works', ascending=False).head(40)
     title_text = title or "Estructura de Especialización Científica (Taxonomía Jerárquica)"
 
     fig = px.sunburst(
@@ -575,7 +646,7 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = pio.to_html(fig, full_html=False, include_plotlyjs="cdn")
+    plot_html = _compact_plotly_html(fig)
 
     total_works_sum = int(df['total_works'].sum())
     unique_domains = df['domain'].nunique()
@@ -674,24 +745,35 @@ def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
 
     if results:
         for r in results:
-            dim = str(r.get("sdg_num") or r.get("dimension", "")).strip()
-            match = re.search(r'\d+', dim)
-            if match:
-                num = int(match.group())
-                sdg_map[num] = r
+            dim = r.get("sdg_num") or r.get("dimension", "")
+            if isinstance(dim, list):
+                dims = [str(d) for d in dim]
+            else:
+                dims = [str(dim)]
+            for d in dims:
+                match = re.search(r'sdg/(\d+)|\b(\d+)\b', d, re.IGNORECASE)
+                if match:
+                    num = int(match.group(1) or match.group(2))
+                    if 1 <= num <= 17:
+                        if num not in sdg_map:
+                            sdg_map[num] = dict(r)
+                        else:
+                            sdg_map[num]["total_works"] = sdg_map[num].get("total_works", 0) + r.get("total_works", 0)
+                            sdg_map[num]["total_citations"] = sdg_map[num].get("total_citations", 0) + r.get("total_citations", 0)
     elif "works" in data:
         for w in data["works"]:
-            sdg_ids = w.get("sdg_ids", [])
-            for sid in sdg_ids:
-                match = re.search(r'\d+', str(sid))
+            w_sdgs = list(set((w.get("sdgs") or []) + (w.get("sdg_ids") or [])))
+            for sid in w_sdgs:
+                match = re.search(r'sdg/(\d+)|\b(\d+)\b', str(sid), re.IGNORECASE)
                 if match:
-                    num = int(match.group())
-                    if num not in sdg_map:
-                        sdg_map[num] = {"dimension": str(num), "sdg_num": num, "total_works": 0, "total_citations": 0, "fwci_list": []}
-                    sdg_map[num]["total_works"] += 1
-                    sdg_map[num]["total_citations"] += w.get("cited_by_count", 0)
-                    if w.get("fwci") is not None:
-                        sdg_map[num]["fwci_list"].append(float(w["fwci"]))
+                    num = int(match.group(1) or match.group(2))
+                    if 1 <= num <= 17:
+                        if num not in sdg_map:
+                            sdg_map[num] = {"dimension": str(num), "sdg_num": num, "total_works": 0, "total_citations": 0, "fwci_list": []}
+                        sdg_map[num]["total_works"] += 1
+                        sdg_map[num]["total_citations"] += w.get("cited_by_count", 0)
+                        if w.get("fwci") is not None:
+                            sdg_map[num]["fwci_list"].append(float(w["fwci"]))
         for num, v in sdg_map.items():
             flist = v.pop("fwci_list", [])
             v["avg_fwci"] = round(sum(flist) / len(flist), 3) if flist else 1.0
