@@ -86,31 +86,63 @@ def _normalize_entity_key(s: str) -> str:
 
 def generate_hispanic_name_permutations(name: str) -> List[str]:
     """Genera variantes y permutaciones comunes de nombres y apellidos hispanos."""
-    clean_name = name.replace(",", "").strip()
+    clean_name = name.replace(",", " ").strip()
     tokens = clean_name.split()
-    permutations = [name, clean_name]
+    permutations = [name.strip(), clean_name]
 
-    if len(tokens) == 3:
+    if len(tokens) == 2:
+        t1, t2 = tokens[0], tokens[1]
+        permutations.append(f"{t2} {t1}")
+        permutations.append(f"{t1}, {t2}")
+        permutations.append(f"{t2}, {t1}")
+    elif len(tokens) == 3:
         first, p1, p2 = tokens[0], tokens[1], tokens[2]
         permutations.append(f"{first} {p1}-{p2}")
         permutations.append(f"{p1} {p2}, {first}")
         permutations.append(f"{p1}-{p2}, {first}")
         permutations.append(f"{p1}, {first}")
+        permutations.append(f"{p1} {p2} {first}")
     elif len(tokens) == 4:
         n1, n2, p1, p2 = tokens[0], tokens[1], tokens[2], tokens[3]
         permutations.append(f"{n1} {n2} {p1}-{p2}")
         permutations.append(f"{p1} {p2}, {n1} {n2}")
         permutations.append(f"{p1}-{p2}, {n1} {n2}")
         permutations.append(f"{p1}, {n1}")
+        permutations.append(f"{p1} {p2} {n1} {n2}")
 
     seen = set()
     unique = []
     for p in permutations:
-        low = p.lower()
-        if low not in seen:
+        low = p.lower().strip()
+        if low and low not in seen:
             seen.add(low)
-            unique.append(p)
+            unique.append(p.strip())
     return unique
+
+
+def build_name_search_condition(field_name: str, name_str: str) -> str:
+    """
+    Construye una condición SQL segura e insensible al orden para buscar nombres en ClickHouse.
+    Combina permutaciones hispanas comunes con conjunción AND de tokens independientes.
+    """
+    clean_name = name_str.replace("'", "\\'").strip()
+    clean_tokens = [t.strip().replace("'", "\\'") for t in clean_name.replace(",", " ").split() if len(t.strip()) >= 2]
+    sub_conds = []
+    permutations = generate_hispanic_name_permutations(name_str)
+    for p in permutations[:8]:
+        clean_p = p.replace("'", "\\'").strip()
+        if clean_p:
+            sub_conds.append(f"positionCaseInsensitiveUTF8({field_name}, '{clean_p}') > 0")
+    if len(clean_tokens) > 1:
+        token_clauses = [f"positionCaseInsensitiveUTF8({field_name}, '{t}') > 0" for t in clean_tokens]
+        sub_conds.append(f"({' AND '.join(token_clauses)})")
+    elif len(clean_tokens) == 1:
+        sub_conds.append(f"positionCaseInsensitiveUTF8({field_name}, '{clean_tokens[0]}') > 0")
+
+    if not sub_conds:
+        return "1=1"
+    return f"({' OR '.join(sub_conds)})"
+
 
 
 def prioritize_mexican_institutions(inst_str: str) -> str:
@@ -307,8 +339,7 @@ def openalex_search_authors(
     if snii_level or dependency:
         where_clauses = ["1=1"]
         if name_str:
-            sub_conds = [f"positionCaseInsensitiveUTF8(name, '{p}') > 0" for p in permutations[:4]]
-            where_clauses.append(f"({' OR '.join(sub_conds)})")
+            where_clauses.append(build_name_search_condition("name", name_str))
         if snii_level:
             clean_snii = snii_level.strip().replace("'", "\\'")
             where_clauses.append(f"positionCaseInsensitiveUTF8(snii_level, '{clean_snii}') > 0")
@@ -349,8 +380,7 @@ def openalex_search_authors(
     if len(authors) < limit_val:
         where_seed = ["1=1"]
         if name_str:
-            sub_conds = [f"positionCaseInsensitiveUTF8(display_name, '{p}') > 0" for p in permutations[:4]]
-            where_seed.append(f"({' OR '.join(sub_conds)})")
+            where_seed.append(build_name_search_condition("display_name", name_str))
         if institution:
             clean_inst = institution.replace("'", "\\'")
             where_seed.append(f"positionCaseInsensitiveUTF8(raw_data, '{clean_inst}') > 0")
@@ -463,7 +493,8 @@ def openalex_search_works(
         clean_a = author_name.replace("'", "\\'").strip()
         resolved_ids = []
         try:
-            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE positionCaseInsensitiveUTF8(display_name, '{clean_a}') > 0 LIMIT 10")
+            name_cond = build_name_search_condition("display_name", author_name)
+            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE {name_cond} LIMIT 10")
             for r_id in res_ids.result_rows:
                 resolved_ids.append(r_id[0])
         except Exception:
@@ -473,7 +504,12 @@ def openalex_search_works(
             clean_short = aid.replace("https://openalex.org/", "")
             sub_conds.append(f"has(author_names, '{aid}')")
             sub_conds.append(f"has(author_names, '{clean_short}')")
-        sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
+        clean_tokens = [t.strip().replace("'", "\\'") for t in clean_a.replace(",", " ").split() if len(t.strip()) >= 2]
+        if len(clean_tokens) > 1:
+            token_checks = " AND ".join([f"positionCaseInsensitiveUTF8(x, '{t}') > 0" for t in clean_tokens])
+            sub_conds.append(f"arrayExists(x -> ({token_checks}), author_names)")
+        else:
+            sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
         where_clauses.append(f"({' OR '.join(sub_conds)})")
     if institution_name:
         clean_inst = institution_name.replace("'", "\\'")
@@ -606,7 +642,8 @@ def openalex_aggregate_mexico(
         clean_a = author_name.replace("'", "\\'").strip()
         resolved_ids = []
         try:
-            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE positionCaseInsensitiveUTF8(display_name, '{clean_a}') > 0 LIMIT 10")
+            name_cond = build_name_search_condition("display_name", author_name)
+            res_ids = client.query(f"SELECT id FROM rag.authors_seed_mexico WHERE {name_cond} LIMIT 10")
             for r_id in res_ids.result_rows:
                 resolved_ids.append(r_id[0])
         except Exception:
@@ -616,7 +653,12 @@ def openalex_aggregate_mexico(
             clean_short = aid.replace("https://openalex.org/", "")
             sub_conds.append(f"has(author_names, '{aid}')")
             sub_conds.append(f"has(author_names, '{clean_short}')")
-        sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
+        clean_tokens = [t.strip().replace("'", "\\'") for t in clean_a.replace(",", " ").split() if len(t.strip()) >= 2]
+        if len(clean_tokens) > 1:
+            token_checks = " AND ".join([f"positionCaseInsensitiveUTF8(x, '{t}') > 0" for t in clean_tokens])
+            sub_conds.append(f"arrayExists(x -> ({token_checks}), author_names)")
+        else:
+            sub_conds.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_a}') > 0, author_names)")
         where_clauses.append(f"({' OR '.join(sub_conds)})")
 
     COMMON_MX_INSTITUTIONS = {
@@ -673,7 +715,12 @@ def openalex_aggregate_mexico(
             m = re.search(r"author_name\s*=\s*'([^']+)'", fp)
             if m:
                 aname_val = m.group(1).replace("'", "\\'")
-                fp = fp.replace(m.group(0), f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{aname_val}') > 0, author_names)")
+                clean_toks = [t.strip() for t in aname_val.replace(",", " ").split() if len(t.strip()) >= 2]
+                if len(clean_toks) > 1:
+                    t_checks = " AND ".join([f"positionCaseInsensitiveUTF8(x, '{t}') > 0" for t in clean_toks])
+                    fp = fp.replace(m.group(0), f"arrayExists(x -> ({t_checks}), author_names)")
+                else:
+                    fp = fp.replace(m.group(0), f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{aname_val}') > 0, author_names)")
         where_clauses.append(fp)
 
     if not where_clauses:

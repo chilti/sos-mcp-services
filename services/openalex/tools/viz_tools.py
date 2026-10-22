@@ -2168,7 +2168,12 @@ def openalex_plot_collaborating_countries(
             entity_label = f"ORCID: {clean_orc}"
     elif academic_name:
         clean_name = academic_name.replace("'", "").strip()
-        conds.append(f"arrayExists(x -> x ILIKE '%{clean_name}%', author_names)")
+        toks = [t.strip() for t in clean_name.replace(",", " ").split() if len(t.strip()) >= 2]
+        if len(toks) > 1:
+            t_cond = " AND ".join([f"x ILIKE '%{t}%'" for t in toks])
+            conds.append(f"arrayExists(x -> ({t_cond}), author_names)")
+        else:
+            conds.append(f"arrayExists(x -> x ILIKE '%{clean_name}%', author_names)")
         entity_label = f"{clean_name}"
     elif institution_id:
         clean_inst = institution_id.replace("https://ror.org/", "").strip()
@@ -2414,7 +2419,12 @@ def openalex_plot_scientific_vocabulary(
             source_label = f"Investigador ({', '.join(aids)})"
         elif academic_name:
             clean_aname = academic_name.replace("'", "").strip()
-            conds.append(f"arrayExists(x -> x ILIKE '%{clean_aname}%', author_names)")
+            toks = [t.strip() for t in clean_aname.replace(",", " ").split() if len(t.strip()) >= 2]
+            if len(toks) > 1:
+                t_cond = " AND ".join([f"x ILIKE '%{t}%'" for t in toks])
+                conds.append(f"arrayExists(x -> ({t_cond}), author_names)")
+            else:
+                conds.append(f"arrayExists(x -> x ILIKE '%{clean_aname}%', author_names)")
             source_label = f"Investigador: {clean_aname}"
         elif institution_id:
             clean_inst = institution_id.replace("https://ror.org/", "").strip()
