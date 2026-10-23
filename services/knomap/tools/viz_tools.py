@@ -449,11 +449,19 @@ def render_knomap_som_dashboard(
             boundary_stroke_width=0.045,
             svg_id=f"svg-comp-{f_idx}"
         )
+        val_range = max_v - min_v if max_v > min_v else 1.0
+        norm_mean = (mean_v - min_v) / val_range
+        # top_pct: 0% en el tope (Max = Rojo), 100% en la base (Min = Verde)
+        mean_top_pct = max(4.0, min(96.0, (1.0 - norm_mean) * 100.0))
+        gradient_style = f"linear-gradient(to bottom, #e53e3e 0%, #ecc94b {mean_top_pct:.1f}%, #38a169 100%)"
+
         component_cards.append({
             "name": ind_name.upper(),
             "min": min_v,
             "max": max_v,
             "mean": mean_v,
+            "mean_top_pct": mean_top_pct,
+            "gradient": gradient_style,
             "svg": comp_svg
         })
 
@@ -751,33 +759,64 @@ def render_knomap_som_dashboard(
     }}
     .comp-map {{ flex: 1; display: flex; justify-content: center; align-items: center; }}
     .colorbar {{
-      width: 42px;
+      width: 44px;
       display: flex;
       flex-direction: column;
       align-items: center;
       margin-left: 8px;
     }}
-    .color-gradient {{
-      width: 10px;
-      height: 120px;
-      border-radius: 3px;
-      background: linear-gradient(to bottom, #e53e3e, #ecc94b, #38a169);
-      margin: 4px 0;
-      border: 1px solid rgba(255,255,255,0.1);
-    }}
     .cb-val {{
       font-family: 'JetBrains Mono', monospace;
       font-size: 9px;
-      color: #94a3b8;
-      font-weight: 600;
-    }}
-    .cb-mean {{
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 8px;
-      color: #ecc94b;
+      color: #cbd5e1;
       font-weight: 700;
-      text-align: center;
-      line-height: 1.1;
+    }}
+    .color-bar-container {{
+      position: relative;
+      width: 12px;
+      height: 110px;
+      margin: 5px 0;
+      border-radius: 9999px;
+    }}
+    .color-gradient-bar {{
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.15);
+    }}
+    .mean-indicator-line {{
+      position: absolute;
+      width: 20px;
+      height: 2px;
+      left: -4px;
+      background: #ffffff;
+      border-radius: 2px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+      pointer-events: none;
+      z-index: 5;
+    }}
+    .cb-mean-box {{
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px solid #1e293b;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }}
+    .cb-mean-title {{
+      font-size: 7.5px;
+      color: #64748b;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }}
+    .cb-mean-val {{
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5px;
+      color: #ecc94b;
+      font-weight: 800;
     }}
 
     /* Sección Radars (1 por cada cluster) */
@@ -950,11 +989,16 @@ def render_knomap_som_dashboard(
           {c["svg"]}
         </div>
         <div class="colorbar">
-          <span class="cb-val">{c["max"]:.2f}</span>
-          <div class="color-gradient"></div>
-          <span class="cb-mean">MEAN<br>{c["mean"]:.2f}</span>
-          <div class="color-gradient"></div>
-          <span class="cb-val">{c["min"]:.2f}</span>
+          <span class="cb-val" title="Máximo: {c['max']:.2f}">{c["max"]:.2f}</span>
+          <div class="color-bar-container" title="Media: {c['mean']:.2f}">
+            <div class="color-gradient-bar" style="background: {c['gradient']};"></div>
+            <div class="mean-indicator-line" style="top: {c['mean_top_pct']:.1f}%;"></div>
+          </div>
+          <span class="cb-val" title="Mínimo: {c['min']:.2f}">{c["min"]:.2f}</span>
+          <div class="cb-mean-box" title="Promedio global: {c['mean']:.2f}">
+            <span class="cb-mean-title">MEAN</span>
+            <span class="cb-mean-val">{c["mean"]:.2f}</span>
+          </div>
         </div>
       </div>
     </div>
