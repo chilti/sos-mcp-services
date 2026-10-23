@@ -350,10 +350,24 @@ def generate_single_cluster_radar_svg(
         align = "middle"
         if math.cos(a) > 0.3: align = "start"
         elif math.cos(a) < -0.3: align = "end"
-        ind_label = indicators[i][:15]
+        lbl = indicators[i]
+        if "FWCI" in lbl or "Field-Weighted" in lbl:
+            ind_label = "FWCI"
+        elif "Top 10%" in lbl:
+            ind_label = "% Top 10%"
+        elif "Top 1%" in lbl:
+            ind_label = "% Top 1%"
+        elif "Percentile" in lbl:
+            ind_label = "Avg Percentile"
+        elif "Share" in lbl:
+            ind_label = "Share (%)"
+        elif len(lbl) > 16:
+            ind_label = lbl[:14] + "…"
+        else:
+            ind_label = lbl
         svg.append(
             f'  <text x="{lx:.2f}" y="{ly:.2f}" text-anchor="{align}" dominant-baseline="middle" '
-            f'fill="#94a3b8" font-size="9.5" font-weight="600" font-family="system-ui, sans-serif">{ind_label}</text>'
+            f'fill="#cbd5e1" font-size="9.5" font-weight="700" font-family="system-ui, sans-serif">{ind_label}</text>'
         )
     svg.append('</g>')
 
