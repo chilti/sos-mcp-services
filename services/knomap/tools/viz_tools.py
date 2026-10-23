@@ -238,6 +238,7 @@ def generate_hexagonal_som_svg(
             if len(pts) < 2: continue
             color = traj.get("color", ["#38bdf8", "#fbbf24", "#ec4899", "#a855f7", "#34d399"][traj_idx % 5])
             width = traj.get("width", 2)
+            traj_id = traj.get("country", traj.get("id", f"traj-{traj_idx}"))
             d_path = [f"M {pts[0][0]:.3f} {pts[0][1]:.3f}"]
             for i in range(len(pts) - 1):
                 p0 = pts[i-1] if i > 0 else pts[i]
@@ -249,16 +250,31 @@ def generate_hexagonal_som_svg(
                 cp2_x = p2[0] - (p3[0] - p1[0]) / 6.0
                 cp2_y = p2[1] - (p3[1] - p1[1]) / 6.0
                 d_path.append(f"C {cp1_x:.3f} {cp1_y:.3f}, {cp2_x:.3f} {cp2_y:.3f}, {p2[0]:.3f} {p2[1]:.3f}")
+            
+            svg_parts.append(f'  <g class="trajectory-group" data-traj-id="{traj_id}">')
             svg_parts.append(
-                f'  <path d="{" ".join(d_path)}" fill="none" stroke="{color}" '
-                f'stroke-width="{width * 0.045:.3f}" stroke-linecap="round" stroke-linejoin="round" '
-                f'marker-end="url(#arrowhead)" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));" />'
+                f'    <path d="{" ".join(d_path)}" fill="none" stroke="{color}" '
+                f'stroke-width="{width * 0.055:.4f}" stroke-linecap="round" stroke-linejoin="round" '
+                f'marker-end="url(#arrowhead)" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.9));" />'
             )
-            for pt in pts:
+            labels_list = traj.get("labels", [])
+            for pt_idx, pt in enumerate(pts):
+                is_endpoint = (pt_idx == 0 or pt_idx == len(pts) - 1)
+                r_pt = width * (0.08 if is_endpoint else 0.045)
+                stroke_col = "#ffffff" if is_endpoint else "#000000"
+                stroke_w = 0.035 if is_endpoint else 0.015
                 svg_parts.append(
-                    f'  <circle cx="{pt[0]:.3f}" cy="{pt[1]:.3f}" r="{width * 0.055:.3f}" '
-                    f'fill="{color}" stroke="#000000" stroke-width="0.02" />'
+                    f'    <circle cx="{pt[0]:.3f}" cy="{pt[1]:.3f}" r="{r_pt:.3f}" '
+                    f'fill="{color}" stroke="{stroke_col}" stroke-width="{stroke_w:.3f}" />'
                 )
+                if labels_list and pt_idx < len(labels_list) and labels_list[pt_idx]:
+                    y_offset = -0.25 if pt_idx % 2 == 0 else 0.35
+                    svg_parts.append(
+                        f'    <text x="{pt[0]:.3f}" y="{pt[1] + y_offset:.3f}" text-anchor="middle" '
+                        f'fill="#ffffff" stroke="#000000" stroke-width="0.10" paint-order="stroke fill" '
+                        f'font-size="0.34" font-weight="900" font-family="system-ui, sans-serif">{labels_list[pt_idx]}</text>'
+                    )
+            svg_parts.append('  </g>')
         svg_parts.append('</g>')
 
     # 4. Etiquetas de Documentos/Entidades Mapeadas (con tamaño base aumentado y data-base-size para escalado)
@@ -524,7 +540,6 @@ def render_knomap_som_dashboard(
             width=340,
             height=270
         )
-        
         radar_cluster_cards.append({
             "cluster_id": cid,
             "name": c_name,
@@ -535,6 +550,22 @@ def render_knomap_som_dashboard(
             "centroid_metrics": list(zip(indicators, centroid_raw.tolist())),
             "svg": radar_svg
         })
+
+    traj_buttons_html = ""
+    if trajectories:
+        traj_buttons_html = '<div class="traj-controls">'
+        traj_buttons_html += '<span style="font-size: 11px; color: #94a3b8; font-weight: 700; margin-right: 4px;">TRAYECTORIAS:</span>'
+        for t in trajectories:
+            cid = t.get("country", t.get("id", "traj"))
+            c_name = t.get("name", cid)
+            col = t.get("color", "#38bdf8")
+            traj_buttons_html += (
+                f'<button id="btn-traj-{cid}" class="btn-traj" onclick="toggleTrajectory(\'{cid}\')" '
+                f'style="border-color: {col}; color: {col};" title="Mostrar/Ocultar trayectoria de {c_name}">'
+                f'<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{col};"></span> {cid}'
+                f'</button>'
+            )
+        traj_buttons_html += '</div>'
 
     # Template HTML completo estilo KnoMap Dark
     html_content = f"""<!DOCTYPE html>
@@ -648,6 +679,38 @@ def render_knomap_som_dashboard(
       transition: all 0.2s;
     }}
     .btn-ctrl:hover {{ background: #334155; color: #fff; }}
+
+    .traj-controls {{
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-right: 12px;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+    }}
+    .btn-traj {{
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }}
+    .btn-traj:hover {{
+      background: rgba(51, 65, 85, 0.8);
+    }}
+    .btn-traj.inactive {{
+      opacity: 0.30;
+      text-decoration: line-through;
+      filter: grayscale(0.9);
+    }}
 
     .font-size-ctrl {{
       display: flex;
@@ -960,6 +1023,7 @@ def render_knomap_som_dashboard(
         <div class="card-subtitle">Partición de nodos de la malla basada en similitud multidimensional</div>
       </div>
       <div class="controls-group">
+        {traj_buttons_html}
         <button class="btn-ctrl" onclick="toggleLabels()" id="btn-toggle-labels">🏷️ Labels</button>
         <div class="font-size-ctrl">
           <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">Texto:</span>
@@ -1077,6 +1141,18 @@ def render_knomap_som_dashboard(
       const labels = document.querySelectorAll('.cell-labels');
       labels.forEach(l => {{
         l.style.display = (l.style.display === 'none') ? 'block' : 'none';
+      }});
+    }}
+
+    function toggleTrajectory(cid) {{
+      const groups = document.querySelectorAll(`.trajectory-group[data-traj-id="${{cid}}"]`);
+      const btn = document.getElementById(`btn-traj-${{cid}}`);
+      groups.forEach(g => {{
+        const isHidden = (g.style.display === 'none');
+        g.style.display = isHidden ? '' : 'none';
+        if (btn) {{
+          btn.classList.toggle('inactive', !isHidden);
+        }}
       }});
     }}
 
