@@ -5,12 +5,19 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-# Agregar KnoMap Engine al path
-KNOMAP_ENGINE_DIR = Path("/home/labsom/knomap/engine")
-KNOMAP_LIB_DIR = KNOMAP_ENGINE_DIR / "lib"
-for p in [str(KNOMAP_ENGINE_DIR), str(KNOMAP_LIB_DIR)]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# Agregar KnoMap Engine al path tanto en Windows como en entornos Linux
+KNOMAP_ENGINE_CANDIDATES = [
+    Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
+    Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
+    Path("/home/labsom/knomap/engine")
+]
+for engine_dir in KNOMAP_ENGINE_CANDIDATES:
+    if engine_dir.exists():
+        lib_dir = engine_dir / "lib"
+        for p in [str(engine_dir), str(lib_dir)]:
+            if p not in sys.path:
+                sys.path.insert(0, p)
+        break
 
 try:
     import main_engine
@@ -125,14 +132,18 @@ def train_som(
             if res.get("success"):
                 qe_list = res.get("quantization_errors", [])
                 mean_qe = round(float(sum(qe_list) / max(1, len(qe_list))), 4) if qe_list else 0.0
+                raw_device = res.get("device", "")
+                device_str = "CUDA (RTX 4090)" if "cuda" in raw_device.lower() or "cuda" in str(res.get("errors", "")).lower() else "CPU"
                 return {
                     "status": "success",
-                    "device": "CUDA (RTX 4090)" if "cuda" in str(res.get("errors", "")) else "CPU/Accelerated",
+                    "device": device_str,
                     "grid_dimensions": {"rows": rows, "cols": cols, "total_neurons": rows * cols},
                     "training_parameters": {"method": method, "init": init, "iterations": iterations},
                     "mean_quantization_error": mean_qe,
+                    "weights": res.get("weights", []),
                     "u_matrix": res.get("umatrix", []),
                     "bmus": res.get("bmus", []),
+                    "mapped_labels": res.get("mapped_labels", []),
                     "cluster_labels": res.get("clustering", {}).get("labels", []) if isinstance(res.get("clustering"), dict) else res.get("clustering", []),
                     "frequencies": res.get("frequencies", []),
                     "umap_coordinates": res.get("umap", []),
@@ -203,6 +214,7 @@ def recluster_som(
         try:
             res = main_engine.handle_recluster({
                 "weights": weights,
+                "algorithm": algorithm,
                 "clustering_algorithm": algorithm,
                 "n_clusters": n_clusters
             })

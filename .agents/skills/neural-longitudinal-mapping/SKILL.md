@@ -1,190 +1,154 @@
 ---
 name: neural-longitudinal-mapping
 description: >-
-  Experto en Mapeo Longitudinal con redes neuronales de Kohonen (SOM) y encadenamiento Warm-Start intertemporal (Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet, 2024). Modela la evolución temporal de perfiles multidimensionales de desempeño institucional y secuencias de matrices de redes en 3 niveles: Macro (tendencias, tasas de crecimiento Delta % y mapas de componentes), Meso (dinámica de clusters: escisión/diferenciación vs. fusión/homogeneización) y Micro (desplazamientos de entidades y perfiles singulares), cuantificando la tensión de deriva sináptica (\Delta W) y la rotación de cohortes.
+  Experto en Mapeo Longitudinal Neurocomputacional con redes autoorganizadas de Kohonen (SOM) y encadenamiento Warm-Start intertemporal (Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2025; Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet, 2024). Modela la evolución temporal de perfiles multidimensionales de desempeño institucional y secuencias de matrices bibliométricas en 3 niveles: Macro (tendencias, tasas Delta % y componentes), Meso (dinámica de clusters: escisión vs. fusión) y Micro (desplazamientos de entidades, perfiles singulares y maduración comunitaria), cuantificando la tensión de deriva sináptica (\Delta W) y la rotación de cohortes.
 ---
 
 # Neural Longitudinal Mapping (SOM Warm-Start Chaining)
 
-## Overview
+## 1. Fundamentación Epistemológica y Teórica
 
-Esta skill implementa y orquesta la metodología científica de **Mapeo Longitudinal Neurocomputacional con Redes Autoorganizadas de Kohonen (SOM)** publicada en:
+Esta skill implementa y orquesta la metodología científica de **Mapeo Neurolongitudinal con Redes Autoorganizadas de Kohonen (SOM)**, desarrollada y consolidada en las siguientes investigaciones canónicas:
 
-> **Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024).** *Neural longitudinal mapping of multidimensional performance profiles of Latin American universities.* **Iberoamerican Journal of Science Measurement and Communication**, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
+> **Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025).** *Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA*. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (Colección Metría de la Información y del Conocimiento Científico, pp. 293–313). Instituto de Investigaciones Bibliotecológicas y de la Información (IIBI), Universidad Nacional Autónoma de México. ISBN-e: 978-607-642-193-2.
+>
+> **Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024).** *Neural longitudinal mapping of multidimensional performance profiles of Latin American universities*. **Iberoamerican Journal of Science Measurement and Communication**, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
+>
+> **Jiménez-Andrade, J. L. (2023).** *Métodos y aplicaciones de la red neuronal SOM para el análisis temporal de datos multidimensionales* (Tesis doctoral). Universidad Nacional Autónoma de México.
 
-El método supera el problema de la estocasticidad e invarianza rotacional que impedía el uso de mapas autoorganizados en series de tiempo, permitiendo generar secuencias de mapas espacialmente alineadas para rastrear la evolución temporal continua de:
-1. **Perfiles Multidimensionales de Desempeño Institucional:** Indicadores de rankings (THE-LA, QS, Leiden), métricas de producción/impacto de InCites o matrices temporales de TlachIA Metrics.
-2. **Secuencias de Redes Bibliométricas:** Matrices de adyacencia/co-ocurrencia generadas por ventanas temporales desde [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) (`sequence_manifest.json`) y KnoMap (Biblio Networks y SOM & UMAP).
-
----
-
-## Dependencies
-
-Esta skill se apoya y coordina con el ecosistema de skills analíticas de KnoMap:
-- [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md): Ingesta de corpus y construcción de secuencias temporales de matrices de co-ocurrencia en ventanas fijas o deslizantes.
-- [`bibliometrics-som-flow`](file:///home/labsom/knomap/engine/skills/bibliometrics-som-flow/SKILL.md): Ingesta de corpus y estructuración de redes.
-- [`incites-som-pipeline`](file:///home/labsom/knomap/engine/skills/incites-som-pipeline/SKILL.md): Extracción de perfiles cienciométricos multidimensionales normalizados.
-- [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Fundamentos de Kohonen, topología hexagonal y calibración dimensional.
-- [`project-hub-manager`](file:///home/labsom/knomap/engine/skills/project-hub-manager/SKILL.md): Persistencia de modelos longitudinales en SQLite (`knomap_hub.db`) y manifiesto `.knomap`.
-- [`infotlachia-scholar-intelligence`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/infotlachia-scholar-intelligence/SKILL.md): Extracción de indicadores institucionales por ventanas temporales en TlachIA Metrics.
+### Contexto Histórico y Teórico de la Metría de la Información
+* **La Dimensión Histórica de la Bibliometría:** Tal como formula Gorbea Portal (2016), los estudios métricos deben integrar los referentes temporales a sus tres dimensiones cardinales: *descriptiva o clásica*, *evaluativa* e *histórica*. La mayoría de las herramientas existentes solo grafican curvas univariadas o redes de coocurrencia, ignorando la co-evolución acoplada de perfiles multidimensionales.
+* **La Visión de Eugene Garfield (1994):** Garfield postuló que la cartografía longitudinal (*scientography*) es la vía fundamental para rastrear las huellas temporales y las relaciones dinámicas entre frentes de investigación y transformaciones de paradigmas.
+* **Superación de la Invarianza Rotacional y Deriva Estocástica:**
+  El entrenamiento no supervisado clásico de un SOM independiente para cada corte temporal genera discontinuidades arbitrarias (rotaciones, inversiones especulares o traslaciones de cuadrante). El **Mapeo Neurolongitudinal** supera esta barrera garantizando que todos los mapas de la secuencia temporal permanezcan **rígidamente anclados en una misma orientación espacial**, de modo que cualquier desplazamiento observado en la U-Matrix o en la posición de una entidad corresponda a una verdadera mutación en su perfil de desempeño.
 
 ---
 
-## Quick Start
+## 2. Relación y Reutilización de `som-methodological-expert`
 
-Para entrenar y analizar una serie longitudinal a partir de un archivo Parquet, CSV o JSON:
+Esta skill **hereda y reutiliza integralmente** la base matemática y visual provista por [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md):
+1. **Ratio de Aspecto Espectral SVD:** Proporción $\text{cols}/\text{rows} \approx \sigma_1 / \sigma_2$ calculada sobre la matriz agregada de perfiles.
+2. **Dimensionamiento de Malla:** Topología hexagonal y sobremalla empírica ($M \approx 20N\text{--}30N$ o Big SOM $10N$) para desplegar resolución topológica continua.
+3. **Tríada Visual LabSOM:**
+   * U-Matrix con gradiente canónico: **Rojo** (máxima similitud / cúmulos densos) $\leftrightarrow$ **Amarillo** (fronteras / crestas / baja similitud).
+   * Mapas de Componentes con paleta divergente: **Amarillo** (media) $\rightarrow$ **Rojo** (> media) / **Verde** (< media).
+   * Meta-clustering de Vesanto sobre pesos sinápticos validado con Silhouette Score.
+4. **Mapeo Normal de Etiquetas y Regla de Legibilidad para Matrices Grandes:**
+   * En cada corte temporal, las entidades activas se proyectan sobre sus respectivas neuronas ganadoras (BMU) de manera normal como etiquetas de texto dentro de los hexágonos.
+   * **Regla de Legibilidad:** Si la matriz de entrenamiento de la serie temporal es muy grande ($N > 40$ entidades), se debe procurar **dibujar una cantidad razonable y legible de etiquetas** (por ejemplo, priorizando las entidades del núcleo persistente o las más representativas según volumen e impacto, o limitando a 1 o 2 etiquetas por celda). Esto evita la sobrecarga visual y permite rastrear con claridad las migraciones intertemporales sobre la malla hexagonal.
 
-```bash
-# 1. Preparar serie temporal (con soporte de ventanas decenales o quinquenales)
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py prepare \
-  --input /ruta/al/dataset.parquet \
-  --entity-col university \
-  --period-col year \
-  --window 5 \
-  --output ./prepared_series.json
+---
 
-# 2. Entrenar secuencia longitudinal (Warm-Start Chaining)
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py train \
-  --input ./prepared_series.json \
-  --rows 10 --cols 20 \
-  --output ./longitudinal_results.json
+## 3. Protocolo de Encadenamiento Warm-Start (Refinement Chaining)
 
-# 3. Extraer análisis evolutivo de tres niveles y rotación de cohortes
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py analyze \
-  --input ./longitudinal_results.json \
-  --output ./dynamics_analysis.json
+El fundamento descansa en la **hipótesis de inercia o continuidad estructural**: el estado de la ciencia de un año o subperiodo conserva la estructura general del periodo precedente. Por tanto:
 
-# 4. Generar reporte Markdown publicable
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py report \
-  --analysis ./dynamics_analysis.json \
-  --mode external_mcp \
-  --output ./report_longitudinal.md
+```
++-----------------------------------------------------------------------------------+
+|                  PROTOCOLO DE ENCADENAMIENTO TEMPORAL WARM-START                 |
++-----------------------------------------------------------------------------------+
+|  Periodo Base (T_1):                                                              |
+|    - Inicialización global (PCA)                                                  |
+|    - Fase 1 (Ordenamiento Global) + Fase 2 (Refinamiento Fino)                    |
+|    - Épocas base (e.g. 1000 iteraciones) -> Pesos óptimos W_1*                    |
+|                                                                                   |
+|  Periodos Sucesivos (T_2, T_3, ..., T_k):                                         |
+|    - 1. Condición inicial: W_t^(0) = W_{t-1}* (Pesos del periodo anterior)        |
+|    - 2. Desactivar Fase 1 (se omite el ordenamiento global)                       |
+|    - 3. Vecindad inicial pequeña (sigma_0 ≈ 1/8 D_bar) decreciendo a 1.0           |
+|    - 4. Tasa de aprendizaje inicial pequeña (alpha_0 ≈ 0.1) decreciendo a 0.01     |
+|    - 5. Duración: Solo la DÉCIMA PARTE (1/10) de las iteraciones base              |
+|         (T_refine = 1/10 * T_base = 100 a 200 épocas)                             |
++-----------------------------------------------------------------------------------+
 ```
 
----
+### Tabla Canónica de Hiperparámetros
 
-## Protocolo Canónico de Hiperparámetros (Table 1)
-
-Para cualquier malla hexagonal de $R \times C$, el tamaño promedio es $\bar{D} = \frac{R + C}{2}$.
+Para una malla hexagonal de $R \times C$, el tamaño promedio es $\bar{D} = \frac{R + C}{2}$.
 
 | Fase de Entrenamiento | Épocas | Tasa de Aprendizaje ($\alpha$) | Radio de Vecindad ($\sigma$) | Inicialización Sináptica |
 | :--- | :---: | :---: | :---: | :--- |
-| **Periodo 1: Full Training (Base)** | **1000** | $\alpha_0 = \mathbf{0.9}$ | $\sigma_0 = \frac{1}{2} \bar{D}$ <br>*(Para $10 \times 20 \rightarrow \mathbf{7.5}$)* | Global (PCA o Aleatorio) |
-| **Periodos 2+: Refinement Phase (Warm-Start)** | **200** | $\alpha = \mathbf{0.1}$ | $\sigma = \frac{1}{8} \bar{D}$ <br>*(Para $10 \times 20 \rightarrow \mathbf{1.875}$)* | Pesos del periodo previo ($W_{t-1}^*$) |
-
-### Fundamento de Refinamiento:
-Al saltar la fase de ordenamiento global en $t \ge 2$, los vectores de pesos conservan la orientación topológica adquirida en $T_1$, limitando la adaptación al ajuste de frontera y evitando giros especulares o rotaciones estocásticas.
+| **Periodo 1: Full Training (Base $T_1$)** | **1000** | $\alpha_0 = \mathbf{0.9} \rightarrow 0.01$ | $\sigma_0 = \frac{1}{2} \bar{D} \rightarrow 1.0$ | Global (PCA) |
+| **Periodos $2+$: Refinement (Warm-Start $T_t$)** | **100 a 200** *(1/10 de base)* | $\alpha = \mathbf{0.1} \rightarrow 0.01$ | $\sigma = \frac{1}{8} \bar{D} \rightarrow 1.0$ | Pesos convergidos $W_{t-1}^*$ |
 
 ---
 
-## Marco Analítico Integral
+## 4. Marco Analítico Integral e Interpretación Cienciométrica
 
-Al interpretar la evolución de los mapas longitudinales, el agente estructura sus respuestas y reportes en los siguientes ejes metodológicos:
+Al interpretar y reportar la secuencia temporal, el agente estructura su diagnóstico en los siguientes ejes canónicos:
 
 ### 1. Nivel Macro: Evolución Sistémica y Componentes
-- Examinar la secuencia de mapas de dimensiones (Teaching, Research, Citations, etc.).
-- **Tasas de Crecimiento Intertemporal ($\Delta\%$ de la media):** Cuantifica la variación porcentual de cada dimensión entre periodos contiguos.
-- Identificar el **desplazamiento de gradientes cromáticos** (expansión de zonas de alta intensidad vs. zonas de rezago).
-- Evaluar correlaciones visuales entre dimensiones (covarianza estructural en el sistema analizado).
+* **Tasas de Crecimiento Intertemporal ($\Delta\%$ de la media):** Variación porcentual de la media nacional/institucional en cada indicador entre cortes.
+* **Deriva de Gradientes Cromáticos:** Rastreo de la expansión o contracción de zonas rojas (alto desempeño) frente a zonas verdes en los mapas de componentes.
+* **Preservación o Ruptura de Cuadrantes de Impacto:** Verificar si el polo de excelencia permanece estable en un cuadrante o experimenta giros provocados por reestructuraciones disciplinarias.
 
-### 2. Dinámica de Cohortes y Retención de Entidades
-- **Tasa de Retención intertemporal:** Porcentaje de entidades del periodo $T_{t-1}$ que continúan activas en $T_t$.
-- **Nuevos Ingresos (Entrantes):** Entidades emergentes que aparecen por primera vez.
-- **Salidas (Deserciones):** Entidades que pierden presencia en el periodo subsiguiente.
-- **Núcleo Persistente:** Entidades presentes ininterrumpidamente en el 100% de la serie histórica.
+### 2. Dinámica de Cohortes y Retención
+* **Tasa de Retención Intertemporal:** Porcentaje de entidades activas en $T_{t-1}$ que se mantienen en $T_t$.
+* **Entrantes vs. Deserciones:** Detección de disciplinas o instituciones emergentes vs. aquellas que pierden masa crítica de publicación.
+* **Núcleo Persistente:** Conjunto de actores que habitan la red ininterrumpidamente a lo largo de toda la serie histórica.
 
 ### 3. Nivel Meso: Dinámica de Clusters (Vesanto)
-- Evaluar las agrupaciones jerárquicas en la malla hexagonal.
-- **Cluster Splitting (Escisión):** Entidades unidas en $T_{t-1}$ que divergen en clusters separados en $T_t$. Diagnóstico: *Diferenciación de perfiles*.
-- **Cluster Merging (Fusión):** Entidades de clusters distintos en $T_{t-1}$ que se unifican en $T_t$. Diagnóstico: *Homogeneización de perfiles*.
+* **Cluster Splitting (Escisión):** Entidades agrupadas en $T_{t-1}$ que se dividen en clusters separados en $T_t$. Diagnóstico: *Diferenciación y especialización de perfiles*.
+* **Cluster Merging (Fusión):** Entidades de clusters distintos que convergen en el mismo grupo. Diagnóstico: *Homogeneización o estandarización de prácticas de investigación*.
 
-### 4. Nivel Micro: Dinámica Individual y Perfiles Singulares
-- Calcular el desplazamiento Euclidiano $(\Delta x, \Delta y)$ de cada entidad a través de los hexágonos entre cortes temporales.
-- Identificar **Perfiles Singulares:** Entidades aisladas que constituyen el único miembro de su cluster ($|C_k| = 1$). El análisis longitudinal demuestra su naturaleza típicamente *transitoria* (convergen o se integran a otros clusters en periodos adyacentes).
+### 4. Nivel Micro: Desplazamientos, Perfiles Singulares y Diagnóstico de Maduración
+* **Desplazamiento Euclidiano en la Retícula:** $\Delta d_i = \| \text{BMU}_i^{(t)} - \text{BMU}_i^{(t-1)} \|_2$.
+* **Perfiles Singulares / Atípicos ($|C_k| = 1$):** Entidades que se aíslan completamente en un cluster individual debido a volúmenes masivos o citación desproporcionada (ejemplo: *Clinical Medicine* en México). **Recomendación metodológica:** Tratar como perfil atípico y analizarlo en detalle mediante la técnica de **Mapeo de Trayectorias** ([`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)).
+* **Resolución de Paradojas Métricas (Métricas No Acotadas vs. Acotadas):**
+  * *La Paradoja CNCI vs. Average Percentile:* Si una entidad exhibe un CNCI muy alto (e.g. $> 1.8$, duplicando la media mundial) pero un *Average Percentile* modesto (e.g. $36$ frente a la media mundial de $50$), el diagnóstico cienciométrico indica que **el impacto está inflado por un número reducido de artículos atípicos hipercitados (*Black Swans* o colaboraciones masivas en salud)**, mientras que el grueso de la producción tiene citación baja.
+* **Indicador de Maduración Comunitaria:**
+  * Ocurre cuando el **% Documents in Top 10%** cruza consistentemente la media mundial ($> 10\%$). Esto demuestra que la disciplina ha dejado de depender de unos pocos investigadores de élite aislados (% Top 1%) y ha alcanzado una **masa crítica comunitaria** con producción de alta calidad sostenida.
 
-### 5. Cuantificación de Deriva Sináptica ($\Delta W$)
-Calcular la tensión adaptativa por neurona entre cortes contiguos:
+### 5. Tensión Adaptativa y Deriva Sináptica ($\Delta W$)
+Cuantificación de la deriva sináptica por neurona entre cortes contiguos:
 $$\Delta W_j = \| W_j^{(t)} - W_j^{(t-1)} \|_2$$
-Identifica cuadrantes semánticos con mayor dinamismo frente a zonas rígidas o anclas.
+Identifica qué cuadrantes del mapa concentran las mayores transformaciones estructurales del conocimiento o desempeño frente a regiones inertes.
 
 ---
 
-## Utility Scripts: `neural_longitudinal_cli.py`
+## 5. Scripts de Utilidad: `neural_longitudinal_cli.py`
 
-Ubicación: [`scripts/neural_longitudinal_cli.py`](file:///home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py)
+Ubicación del script CLI de ejecución: [`scripts/neural_longitudinal_cli.py`](file:///home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py)
 
-### 1. `prepare`
-Transforma tablas Parquet, CSV o JSON en la estructura estandarizada de KnoMap.
-- `--input`: Ruta al archivo `.parquet`, `.csv` o `.json`.
-- `--entity-col`: Nombre de la columna de entidad/universidad/investigador.
-- `--period-col`: Nombre de la columna de periodo/año de publicación.
-- `--indicator-cols`: Lista separada por comas de columnas de indicadores numéricos.
-- `--window <N>`: (Opcional) Tamaño de ventana en años (ej. 5 o 10). Agrupa y promedia automáticamente las observaciones anuales.
-- `--step <S>`: (Opcional) Paso de desplazamiento (disjunto o deslizante).
-- `--periods <P1,P2,...>`: (Opcional) Lista explícita de periodos (ej. `2010-2014,2015-2019`).
-- `--agg mean|sum|last`: Método de agregación de indicadores en la ventana (default: `mean`).
-- `--output`: Archivo JSON de salida (`prepared_series.json`).
+```bash
+# 1. Preparación de serie temporal por ventanas
+python neural_longitudinal_cli.py prepare \
+  --input dataset.parquet \
+  --entity-col university \
+  --period-col year \
+  --window 5 --step 5 \
+  --output prepared_series.json
 
-### 2. `train`
-Ejecuta el entrenamiento secuencial con encadenamiento Warm-Start.
-- `--input`: Archivo `prepared_series.json` o `sequence_manifest.json` de redes bibliométricas.
-- `--rows` y `--cols`: Dimensiones de la malla (por defecto: 10 y 20).
-- `--base-epochs`: Épocas para Periodo 1 (por defecto: 1000).
-- `--refine-epochs`: Épocas de refinamiento (por defecto: 200).
-- `--base-lr` y `--refine-lr`: Tasas de aprendizaje (0.9 y 0.1).
-- `--api-url`: (Opcional) URL del backend de KnoMap (e.g. `http://localhost:5015`). Si no se especifica, ejecuta directamente el motor PyTorch local con aceleración GPU.
-- `--output`: Archivo JSON de resultados (`longitudinal_results.json`).
+# 2. Entrenamiento Warm-Start Chaining
+python neural_longitudinal_cli.py train \
+  --input prepared_series.json \
+  --rows 10 --cols 20 \
+  --base-epochs 1000 --refine-epochs 200 \
+  --output longitudinal_results.json
 
-### 3. `analyze`
-Computa las métricas de Macro ($\Delta\%$), Meso, Micro, Dinámica de Cohortes y Deriva Sináptica ($\Delta W$).
-- `--input`: Archivo `longitudinal_results.json`.
-- `--output`: Archivo JSON de análisis (`dynamics_analysis.json`).
+# 3. Análisis evolutivo en 3 niveles y cohortes
+python neural_longitudinal_cli.py analyze \
+  --input longitudinal_results.json \
+  --output dynamics_analysis.json
 
-### 4. `report`
-Genera el reporte Markdown consolidado y listo para publicación.
-- `--analysis`: Archivo `dynamics_analysis.json`.
-- `--mode`: `knomap_internal` (emite directivas de navegación visual) o `external_mcp` (artefacto markdown completo para clientes externos).
-- `--output`: Archivo Markdown de salida (`report.md`).
+# 4. Generación de reporte Markdown estructurado
+python neural_longitudinal_cli.py report \
+  --analysis dynamics_analysis.json \
+  --mode external_mcp \
+  --output report_longitudinal.md
 
----
-
-## Integración en KnoMap y Clientes MCP
-
-### Si el Agente vive dentro de KnoMap:
-1. Una vez ejecutado el entrenamiento, emite la directiva:
-   `NavigateToTab: longitudinal`
-2. El frontend cargará automáticamente los resultados en [`LongitudinalSomViewer.tsx`](file:///home/labsom/knomap/frontend/src/components/LongitudinalSomViewer.tsx), permitiendo al usuario utilizar:
-   - **Timeline Player:** Reproducción animada continua del paso de los años.
-   - **Side-by-Side:** Inspección comparativa lado a lado de todos los años analizados.
-   - **Knowledge Drift (ΔW):** Mapa de calor con la tensión sináptica de cada neurona.
-   - **Thematic Migration:** Gráfico de flujo aluvial de entidades entre clusters.
-
-### Si el Agente es externo (Vía MCP o Línea de Comandos):
-1. Ejecuta el pipeline completo mediante `neural_longitudinal_cli.py`.
-2. Genera el artefacto Markdown con `--mode external_mcp`.
-3. Presenta al usuario el resumen estructurado en Macro, Meso, Micro y Cohortes con tablas comparativas.
-
----
-
-## Referencias y Cómo Citar
-
-Si utilizas este método, la herramienta CLI o los reportes generados por esta skill en investigaciones o publicaciones académicas, incluye la siguiente atribución formal:
-
-### Formato APA:
-> Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024). Neural longitudinal mapping of multidimensional performance profiles of Latin American universities. *Iberoamerican Journal of Science Measurement and Communication*, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
-
-### Formato BibTeX:
-```bibtex
-@article{jimenez2024neural,
-  title={Neural longitudinal mapping of multidimensional performance profiles of Latin American universities},
-  author={Jim{\'e}nez-Andrade, Jos{\'e} Luis and Mart{\'i}-Lahera, Yohannis and Carrillo-Calvet, Humberto},
-  journal={Iberoamerican Journal of Science Measurement and Communication},
-  volume={4},
-  number={1},
-  pages={1--16},
-  year={2024},
-  publisher={IJSMC},
-  doi={10.47909/ijsmc.92},
-  url={https://doi.org/10.47909/ijsmc.92}
-}
+# 5. Generación de Dashboards Hexagonales KnoMap por periodo
+# Invocar knomap_render_som_dashboard desde viz_tools.py para cada corte temporal:
+# render_knomap_som_dashboard(som_state_t, output_path=f"dashboard_som_{period}.html", max_labels_per_neuron=2)
 ```
+
+---
+
+## 6. Referencias Bibliográficas
+
+1. **Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025).** Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 293–313). UNAM, Instituto de Investigaciones Bibliotecológicas y de la Información. ISBN-e: 978-607-642-193-2.
+2. **Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024).** Neural longitudinal mapping of multidimensional performance profiles of Latin American universities. *Iberoamerican Journal of Science Measurement and Communication*, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
+3. **Jiménez-Andrade, J. L. (2023).** *Métodos y aplicaciones de la red neuronal SOM para el análisis temporal de datos multidimensionales* (Tesis doctoral). Universidad Nacional Autónoma de México.
+4. **Gorbea-Portal, S. (2016).** Una nueva perspectiva teórica de la bibliometría basada en su dimensión histórica y sus referentes temporales. *Investigación Bibliotecológica: archivonomía, bibliotecología e información*, 30(70), 11–16. https://doi.org/10.1016/j.ibbai.2016.10.001
+5. **Garfield, E. (1994).** Scientography: Mapping the tracks of science. *Current Contents: Social & Behavioural Sciences*, 7(45), 5–10.
+6. **Villaseñor-García, E. A., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2017).** Multiparametric characterization of scientometric performance profiles assisted by neural networks: A study of Mexican higher education institutions. *Scientometrics*, 110(1), 77–104. https://doi.org/10.1007/s11192-016-2166-0

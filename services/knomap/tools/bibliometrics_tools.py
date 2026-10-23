@@ -5,10 +5,15 @@ from typing import Dict, Any, List, Optional
 import networkx as nx
 from networkx.algorithms.community import louvain_communities, modularity
 
-# Asegurar KnoMap Engine en sys.path
-KNOMAP_ENGINE_DIR = Path("/home/labsom/knomap/engine")
-if str(KNOMAP_ENGINE_DIR) not in sys.path:
-    sys.path.insert(0, str(KNOMAP_ENGINE_DIR))
+# Asegurar KnoMap Engine en sys.path (Windows y Linux)
+KNOMAP_ENGINE_CANDIDATES = [
+    Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
+    Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
+    Path("/home/labsom/knomap/engine")
+]
+for p in KNOMAP_ENGINE_CANDIDATES:
+    if p.exists() and str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 try:
     from bibliometrics_parser import read_and_generate_bibliometrics

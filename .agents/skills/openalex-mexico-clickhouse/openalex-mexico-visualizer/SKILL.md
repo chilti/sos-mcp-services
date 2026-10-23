@@ -106,12 +106,11 @@ Tipos disponibles (`--type`):
    - **Vía Secundaria (Visualizaciones Libres Ad-Hoc):** Si el usuario solicita un tipo de gráfico especializado no soportado por el CLI (ej. diagramas de dispersión bivariados, gráficos de radar/araña, diagramas de violín o boxplots), estás plenamente autorizado para escribir y ejecutar un script de Python usando `/home/ambientesPy/revistaslatam/bin/python` con `plotly` o `matplotlib`.
    - *Condición estricta para scripts libres:* Guarda siempre el `.html` interactivo y la tarjeta `.png` dentro de `./reports/` y utiliza plantilla de tema oscuro (`template="plotly_dark"` o fondo `#0B0F19`) para preservar la armonía visual de TlachIA-Hands.
 
-3. **Flujo en Dos Fases:**
-   - **Fase 1 (Cómputo):** Obtén los datos crudos ejecutando la skill de datos idónea (`aggregations`, `works-search`, etc.) y guarda el resultado en `./data/datos.json`.
-   - **Fase 2 (Visualización):** Invoca `openalex-mexico-visualizer` (o ejecuta el script Python libre) pasando dicho JSON para generar el HTML y el PNG en `./reports/`.
-
-4. **Presentación de la Respuesta al Usuario:**
-   - Proporciona tu resumen analítico cuantitativo en texto sobrio.
-   - Incrusta la tarjeta estática PNG generada: `![Gráfica](reports/tarjeta.png)`.
-   - Ofrece el enlace clickable relativo al artefacto interactivo: `[Abrir Dashboard Interactivo](reports/artefacto.html)`.
+3. **Flujo de Ejecución (La Tríada de Artefactos):**
+   - **Fase 1 (Cómputo Cuantitativo):** Obtén los datos estructurados ejecutando la skill analítica idónea (`aggregations`, `works-search`, `pubmed-harvester`, etc.) y guarda el resultado en `./data/datos.json` o `.parquet`.
+   - **Fase 2 (Generación de Artefactos):** Invoca `openalex_visualizer_cli.py` con `--png` (y opcionalmente `--triad`) para producir el dashboard HTML interactivo autónomo, la tarjeta estática PNG y las métricas estructuradas `summary_kpis`.
+   - **Fase 3 (Presentación al Usuario conforme a la Tríada):**
+     1. **Nivel 1 (KPIs & Razonamiento):** Redacta el resumen analítico cuantitativo en lenguaje natural a partir del bloque `summary_kpis`.
+     2. **Nivel 2 (Tarjeta PNG en Chat):** Incrusta la tarjeta estática PNG directamente en el chat para vista previa inmediata: `![Gráfica](reports/tarjeta.png)`.
+     3. **Nivel 3 (Dashboard Interactivo Autónomo):** Ofrece el enlace clickable al HTML autónomo `[Abrir Dashboard Interactivo](reports/artefacto.html)` o la etiqueta nativa `<agent-embed src="file:///reports/artefacto.html"></agent-embed>`. Los artefactos deben ser completamente portables, sin dependencias forzadas de iframes hacia servidores remotos.
 

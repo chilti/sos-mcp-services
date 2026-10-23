@@ -189,7 +189,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `infotlachia-scholar-intelligence` | `TlachIA`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Completa en sos-mcp (76 líns), resumen en TlachIA (66 líns). |
 | `journal-editorial-intelligence` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo MCP. Conforme. |
 | `knomap-unified-orchestrator` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo agéntico. Conforme. |
-| `neural-longitudinal-mapping` | `knomap`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Altamente completa (190 líns, papers de referencia). |
+| `neural-longitudinal-mapping` | `knomap`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Altamente completa (195 líns, actualización UNAM-IIBI 2025, Warm-Start 1/10 épocas, paradojas métricas). |
 | `open-access-monitor` | `sos-mcp`, `gemini-config` | Sí | — | **Anomalía:** `SKILL.md` faltaba en `sos-mcp-services` (el script CLI sí existía). |
 | `openalex-harvester` | `sos-mcp`, `gemini-config` | Sí | 2 docs | Conforme a estándar. |
 | `openalex-search-engineer` | `TlachIA`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Completa en sos-mcp (63 líns), resumen en TlachIA (26 líns). |
@@ -204,9 +204,11 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `semantic-manifold-mle` | `knomap` | No | — | Metodológica pura. Conforme. |
 | `semantic-scholar-harvester` | `sos-mcp`, `gemini-config` | Sí | 2 docs | Conforme a estándar. |
 | `snii-identity-resolver` | `sos-mcp`, `gemini-config` | Sí | 2 docs | Conforme a estándar. |
-| `som-methodological-expert` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Metodológica pura. Conforme. |
+| `som-methodological-expert` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Altamente enriquecida (199 líns, Carrillo-Calvet et al. 2025, sobremalla 20N-30N, Tríada LabSOM). |
+| `som-trajectory-mapping` | `sos-mcp` | No | — | **Nueva:** Mapeo de trayectorias en $\mathbb{R}^n$, medias centradas, splines cúbicos y multientidad (máx. 5). |
 | `tlachia-master-index` | `TlachIA` | No | — | Índice maestro frontend. Conforme. |
 | `tlachia-metrics-engine` | `sos-mcp`, `gemini-config` | Sí | 3 docs | Conforme a estándar (96 líns, 3 referencias analíticas). |
+| `tlachia-metrics-handler` | `sos-mcp` | No | — | **Nueva:** Gestor de paquetes ZIP de TlachIA, extracción de matrices y metadatos de documentos para redes. |
 | `topics-research-fronts-intelligence` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo MCP. Conforme. |
 | `workflow-skill-creator` | `sos-mcp`, `knomap`, `gemini-config` | No | 1 doc | **Anomalía:** Carpeta con guión bajo `workflow_skill_creator` en knomap y gemini-config vs guión medio en sos-mcp. |
 

@@ -1040,13 +1040,76 @@ def get_embedded_styles() -> str:
     """
 
 
+def extract_summary_kpis(target_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extrae métricas cuantitativas clave del dataset para la Tríada de Artefactos."""
+    kpis = {}
+    if target_type == "oa-donut":
+        results = data.get("results", [])
+        tot = sum(r.get("total_works", 0) for r in results)
+        apc = sum(r.get("total_apc_usd", 0.0) or r.get("total_apc_paid_usd", 0.0) for r in results)
+        dia = sum(r.get("total_works", 0) for r in results if r.get("oa_status") == "diamond")
+        gold = sum(r.get("total_works", 0) for r in results if r.get("oa_status") == "gold")
+        kpis = {
+            "total_works": tot,
+            "diamond_works": dia,
+            "diamond_percentage": round(dia * 100.0 / tot, 2) if tot else 0.0,
+            "gold_apc_works": gold,
+            "total_apc_paid_usd": round(apc, 2)
+        }
+    elif target_type == "timeseries":
+        results = data.get("results", [])
+        if results:
+            years = [r.get("year") or r.get("publication_year") for r in results if r.get("year") or r.get("publication_year")]
+            tot_w = sum(r.get("total_works", 0) for r in results)
+            tot_c = sum(r.get("total_citations", 0) for r in results)
+            fwcis = [r.get("avg_fwci") for r in results if r.get("avg_fwci") is not None]
+            kpis = {
+                "period": f"{min(years)}-{max(years)}" if years else "N/A",
+                "total_works": tot_w,
+                "total_citations": tot_c,
+                "avg_fwci": round(sum(fwcis) / len(fwcis), 2) if fwcis else 1.0,
+                "total_apc_usd": round(sum(r.get("total_apc_paid_usd", 0.0) for r in results), 2)
+            }
+    elif target_type in ("top-ranking", "authors-ranking"):
+        entities = data.get("top_entities", []) or data.get("results", [])
+        if entities:
+            kpis = {
+                "total_entities": len(entities),
+                "top_entity": entities[0].get("display_name") or entities[0].get("entity_name") or entities[0].get("name"),
+                "max_works": entities[0].get("total_works", 0),
+                "max_citations": entities[0].get("total_citations", 0)
+            }
+    elif target_type == "dossier-works":
+        works = data.get("works", []) or data.get("results", [])
+        if works:
+            cits = sum(w.get("cited_by_count", 0) for w in works)
+            fwcis = [w.get("fwci") for w in works if w.get("fwci") is not None]
+            top10 = sum(1 for w in works if w.get("is_top_10"))
+            kpis = {
+                "total_works": len(works),
+                "total_citations": cits,
+                "avg_fwci": round(sum(fwcis) / len(fwcis), 2) if fwcis else 1.0,
+                "top_10_works": top10,
+                "pct_top_10": round(top10 * 100.0 / len(works), 2)
+            }
+    elif target_type == "network":
+        nodes = data.get("nodes", [])
+        edges = data.get("edges", [])
+        kpis = {
+            "nodes_count": len(nodes),
+            "edges_count": len(edges)
+        }
+    return kpis
+
+
 def main():
-    parser = argparse.ArgumentParser(description="CLI de Visualización y Generación de Artefactos de OpenAlex México")
+    parser = argparse.ArgumentParser(description="CLI de Visualización y Generación de Artefactos de OpenAlex México (Tríada de Artefactos)")
     parser.add_argument("--input", required=True, help="Ruta al archivo JSON con los datos de entrada")
     parser.add_argument("--type", choices=["auto", "top-ranking", "timeseries", "oa-donut", "dossier-works", "network", "sunburst", "sdg-grid"], default="auto", help="Tipo de visualización a forzar (default: auto)")
     parser.add_argument("--title", default="", help="Título personalizado para el artefacto")
-    parser.add_argument("--output", required=True, help="Ruta de guardado para el archivo HTML interactivo")
+    parser.add_argument("--output", required=True, help="Ruta de guardado para el archivo HTML interactivo autónomo")
     parser.add_argument("--png", help="Ruta opcional para generar también una tarjeta estática en PNG")
+    parser.add_argument("--triad", action="store_true", help="Imprime el payload estructurado de la Tríada de Artefactos en formato JSON")
 
     args = parser.parse_args()
 
@@ -1060,7 +1123,8 @@ def main():
     target_type = args.type
     if target_type == "auto":
         target_type = detect_data_type(data)
-        print(f"Tipo de datos detectado automáticamente: '{target_type}'")
+        if not args.triad:
+            print(f"Tipo de datos detectado automáticamente: '{target_type}'")
 
     if target_type == "top-ranking" or target_type == "authors-ranking":
         html_out = render_top_ranking_html(data, args.title)
@@ -1083,10 +1147,36 @@ def main():
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html_out)
 
-    print(f"Artefacto visual interactivo ({target_type}) generado con éxito en: {args.output}")
-
     if args.png:
         render_png_card(data, args.png, args.title)
+
+    abs_output = os.path.abspath(args.output).replace("\\", "/")
+    abs_png = os.path.abspath(args.png).replace("\\", "/") if args.png else ""
+    file_uri = f"file:///{abs_output}"
+    embed_snippet = f'<agent-embed src="{file_uri}" title="{args.title or target_type}"></agent-embed>'
+    kpis = extract_summary_kpis(target_type, data)
+
+    triad_payload = {
+        "status": "success",
+        "chart_type": target_type,
+        "title": args.title or target_type,
+        "summary_kpis": kpis,
+        "artifacts": {
+            "html_path": abs_output,
+            "png_path": abs_png,
+            "file_uri": file_uri,
+            "embed_snippet": embed_snippet
+        }
+    }
+
+    if args.triad:
+        print(json.dumps(triad_payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"Artefacto visual interactivo ({target_type}) generado con éxito en: {args.output}")
+        if args.png:
+            print(f"Tarjeta estática PNG generada en: {args.png}")
+        print(f"[TRÍADA - KPIs] {json.dumps(kpis, ensure_ascii=False)}")
+        print(f"[TRÍADA - Embed] {embed_snippet}")
 
     sys.exit(0)
 

@@ -170,13 +170,22 @@ def _resolve_output_paths(output_dir: str, prefix: str) -> tuple[str, str]:
 
 
 REPORTS_BASE_URL = os.getenv("REPORTS_BASE_URL", "https://dinamica1.fciencias.unam.mx/reports").rstrip("/")
+LIBRECHAT_IFRAME_MODE = os.getenv("LIBRECHAT_IFRAME_MODE", "false").lower() in ("true", "1", "yes")
+
+
+def _read_file_safe(path: str) -> str:
+    """Lee el contenido completo de un archivo con manejo seguro de excepciones."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
 
 
 def _build_artifact_iframe_html(report_url: str, title: str) -> str:
     """
-    Genera un contenedor ultraligero (~350 bytes) con iframe para el artefacto de LibreChat.
-    Permite que LibreChat cargue el reporte completo vía HTTP sin que el LLM deba
-    transcribir código HTML/JS pesado (evitando truncamiento o errores de renderizado).
+    Genera un contenedor ultraligero con iframe para clientes restringidos (ej. LibreChat con modelos pequeños).
+    Se activa únicamente si LIBRECHAT_IFRAME_MODE=true en .env.
     """
     return f"""<!DOCTYPE html>
 <html lang="es">
@@ -210,21 +219,55 @@ def _build_viz_result(
     summary_kpis: Dict[str, Any],
     message: str = ""
 ) -> Dict[str, Any]:
-    """Empaqueta la respuesta estandarizada para LibreChat con report_url y artefacto iframe ultraligero."""
-    report_url = f"{REPORTS_BASE_URL}/{os.path.basename(html_path)}"
-    artifact_html = _build_artifact_iframe_html(report_url, title)
+    """
+    Empaqueta la respuesta cienciométrica estandarizada conforme a la Tríada de Artefactos:
+    1. summary_kpis: Métricas cuantitativas estructuradas para el razonamiento e interpretación del LLM.
+    2. artifacts: Rutas absolutas locales al HTML autónomo interactivo y la tarjeta PNG estática.
+    3. html_content: Código HTML autónomo y portable (sin depender de servidores web remotos ni iframes).
+    4. public_share_url / report_url: Enlace web opcional para compartir externamente si hay servidor activo.
+    """
+    abs_html = os.path.abspath(html_path).replace("\\", "/")
+    abs_png = os.path.abspath(png_path).replace("\\", "/") if png_path else ""
+    filename = os.path.basename(html_path)
+    file_uri = f"file:///{abs_html}"
+
+    report_url = f"{REPORTS_BASE_URL}/{filename}" if REPORTS_BASE_URL else None
+    standalone_html = _read_file_safe(html_path)
+
+    if LIBRECHAT_IFRAME_MODE and report_url:
+        delivered_html = _build_artifact_iframe_html(report_url, title)
+    else:
+        delivered_html = standalone_html
+
+    embed_snippet = f'<agent-embed src="{file_uri}" title="{title}"></agent-embed>'
     msg = message or f"{title} generado en {html_path}"
-    if report_url not in msg:
-        msg = f"{msg}. Disponible en {report_url}"
+    if report_url and report_url not in msg:
+        msg = f"{msg}. Enlace de compartición: {report_url}"
+
     return {
         "status": "success",
         "chart_type": chart_type,
         "title": title,
-        "report_url": report_url,
-        "html_path": html_path,
-        "html_content": artifact_html,
-        "png_path": png_path,
+
+        # NIVEL 1: METADATOS Y KPIS (Para el LLM)
         "summary_kpis": summary_kpis,
+
+        # NIVEL 2: ARTEFACTOS LOCALES AUTÓNOMOS (La Tríada)
+        "artifacts": {
+            "html_path": abs_html,
+            "png_path": abs_png,
+            "file_uri": file_uri,
+            "embed_snippet": embed_snippet
+        },
+
+        # NIVEL 3: CONTENIDO VISUAL AUTÓNOMO Y PORTABLE
+        "html_path": abs_html,
+        "png_path": abs_png,
+        "html_content": delivered_html,
+
+        # CANAL SECUNDARIO: Compartición Web Remota (Opcional)
+        "public_share_url": report_url,
+        "report_url": report_url,
         "message": msg
     }
 
