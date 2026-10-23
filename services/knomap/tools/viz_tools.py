@@ -180,11 +180,9 @@ def generate_hexagonal_som_svg(
             cluster_centroids[cid] = coords[best_idx]
 
     # Control de densidad de etiquetas (Regla de Legibilidad)
-    # Si hay demasiadas etiquetas, priorizamos las más representativas para no saturar el mapa
     labels_to_render: List[Tuple[int, float, float, List[str]]] = []
     if mapped_labels:
         total_found = sum(len(docs) for docs in mapped_labels if docs)
-        # Ordenamos las neuronas con más etiquetas primero si excede el máximo permitido
         neuron_indices = list(range(len(coords)))
         if total_found > max_total_labels:
             neuron_indices.sort(key=lambda idx: len(mapped_labels[idx]) if idx < len(mapped_labels) else 0, reverse=True)
@@ -263,17 +261,19 @@ def generate_hexagonal_som_svg(
                 )
         svg_parts.append('</g>')
 
-    # 4. Etiquetas de Documentos/Entidades Mapeadas (Legibilidad garantizada)
+    # 4. Etiquetas de Documentos/Entidades Mapeadas (con tamaño base aumentado y data-base-size para escalado)
     if labels_to_render:
         svg_parts.append('<g class="cell-labels" pointer-events="none">')
+        base_label_size = 0.48
         for idx, xc, yc, docs in labels_to_render:
             for l_idx, doc in enumerate(docs):
-                offset_y = (l_idx - (len(docs) - 1) / 2.0) * 0.42
+                offset_y = (l_idx - (len(docs) - 1) / 2.0) * 0.50
                 clean_name = str(doc)[:16] + ("..." if len(str(doc)) > 16 else "")
                 svg_parts.append(
                     f'  <text x="{xc:.3f}" y="{yc + offset_y:.3f}" text-anchor="middle" dominant-baseline="middle" '
-                    f'fill="#ffffff" stroke="#050508" stroke-width="0.10" paint-order="stroke fill" '
-                    f'font-size="0.36" font-weight="900" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto">{clean_name}</text>'
+                    f'fill="#ffffff" stroke="#050508" stroke-width="0.12" paint-order="stroke fill" '
+                    f'font-size="{base_label_size:.2f}" font-weight="900" font-family="system-ui, -apple-system, sans-serif" '
+                    f'data-base-size="{base_label_size:.2f}">{clean_name}</text>'
                 )
         svg_parts.append('</g>')
 
@@ -285,7 +285,7 @@ def generate_hexagonal_som_svg(
             svg_parts.append(
                 f'  <text x="{cx:.3f}" y="{cy:.3f}" text-anchor="middle" dominant-baseline="middle" '
                 f'fill="#ffffff" stroke="#000000" stroke-width="0.22" paint-order="stroke fill" '
-                f'font-size="0.65" font-weight="900" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto" '
+                f'font-size="0.68" font-weight="900" font-family="system-ui, -apple-system, sans-serif" '
                 f'letter-spacing="0.06em">{name}</text>'
             )
         svg_parts.append('</g>')
@@ -294,36 +294,43 @@ def generate_hexagonal_som_svg(
     return "\n".join(svg_parts)
 
 
-def generate_radar_chart_svg(
+def generate_single_cluster_radar_svg(
+    cluster_id: int,
+    cluster_name: str,
+    cluster_color: str,
     indicators: List[str],
-    cluster_profiles: List[Dict[str, Any]],
-    selected_units: Optional[List[Dict[str, Any]]] = None,
-    width: int = 460,
-    height: int = 340
+    centroid_norm: List[float],
+    centroid_raw: List[float],
+    baseline_norm: Optional[List[float]] = None,
+    width: int = 340,
+    height: int = 280
 ) -> str:
-    """Genera el gráfico radar SVG idéntico al CLUSTER PROFILE RADAR de KnoMap."""
+    """
+    Genera un gráfico radar SVG dedicado individualmente para un cluster específico,
+    mostrando su perfil multidimensional frente a la media global de referencia.
+    """
     cx = width / 2.0
-    cy = height / 2.0 - 10
-    radius = min(width, height) * 0.36
+    cy = height / 2.0 - 5
+    radius = min(width, height) * 0.35
     num_axes = len(indicators)
     if num_axes < 3:
-        return f'<svg width="{width}" height="{height}"><text x="{cx}" y="{cy}" fill="#fff">Mínimo 3 indicadores</text></svg>'
+        return f'<svg width="{width}" height="{height}"><text x="{cx}" y="{cy}" fill="#fff">Min 3 axes</text></svg>'
+
+    angles = [i * 2.0 * math.pi / num_axes - math.pi / 2.0 for i in range(num_axes)]
+    levels = [0.2, 0.4, 0.6, 0.8, 1.0]
 
     svg = [
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-        'xmlns="http://www.w3.org/2000/svg" class="knomap-radar-svg select-none">'
+        'xmlns="http://www.w3.org/2000/svg" class="cluster-single-radar select-none">'
     ]
     svg.append('<defs>')
-    svg.append('  <radialGradient id="radar-bg" cx="50%" cy="50%" r="50%">')
-    svg.append('    <stop offset="0%" stop-color="#1e293b" stop-opacity="0.3"/>')
-    svg.append('    <stop offset="100%" stop-color="#0f172a" stop-opacity="0.8"/>')
+    svg.append(f'  <radialGradient id="grad-cluster-{cluster_id}" cx="50%" cy="50%" r="50%">')
+    svg.append(f'    <stop offset="0%" stop-color="{cluster_color}" stop-opacity="0.45"/>')
+    svg.append(f'    <stop offset="100%" stop-color="{cluster_color}" stop-opacity="0.08"/>')
     svg.append('  </radialGradient>')
     svg.append('</defs>')
 
     # Telaraña concéntrica
-    angles = [i * 2.0 * math.pi / num_axes - math.pi / 2.0 for i in range(num_axes)]
-    levels = [0.2, 0.4, 0.6, 0.8, 1.0]
-    
     svg.append('<g class="radar-grid">')
     for lvl in levels:
         pts = [
@@ -332,58 +339,47 @@ def generate_radar_chart_svg(
         ]
         svg.append(f'  <polygon points="{" ".join(pts)}" fill="none" stroke="#334155" stroke-width="0.8" opacity="0.6" />')
     
-    # Ejes radiales
+    # Ejes radiales y etiquetas de indicadores
     for i, a in enumerate(angles):
         x2 = cx + radius * math.cos(a)
         y2 = cy + radius * math.sin(a)
         svg.append(f'  <line x1="{cx:.2f}" y1="{cy:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="#334155" stroke-width="0.8" opacity="0.7"/>')
-        # Etiquetas de ejes
-        label_dist = radius + 22
+        label_dist = radius + 18
         lx = cx + label_dist * math.cos(a)
         ly = cy + label_dist * math.sin(a)
         align = "middle"
         if math.cos(a) > 0.3: align = "start"
         elif math.cos(a) < -0.3: align = "end"
-        ind_label = indicators[i][:18]
+        ind_label = indicators[i][:15]
         svg.append(
             f'  <text x="{lx:.2f}" y="{ly:.2f}" text-anchor="{align}" dominant-baseline="middle" '
-            f'fill="#94a3b8" font-size="10" font-weight="600" font-family="system-ui, sans-serif">{ind_label}</text>'
+            f'fill="#94a3b8" font-size="9.5" font-weight="600" font-family="system-ui, sans-serif">{ind_label}</text>'
         )
     svg.append('</g>')
 
-    # Polígonos de Clusters
-    svg.append('<g class="radar-polygons">')
-    for profile in cluster_profiles:
-        cid = profile.get("cluster_id", 0)
-        c_color = get_cluster_color(cid)
-        values = profile.get("normalized_values", [0.5] * num_axes)
-        pts = []
-        for i, val in enumerate(values):
-            norm_val = max(0.05, min(1.0, float(val)))
-            r_val = radius * norm_val
-            a = angles[i]
-            pts.append(f"{cx + r_val * math.cos(a):.2f},{cy + r_val * math.sin(a):.2f}")
-        svg.append(
-            f'  <polygon points="{" ".join(pts)}" fill="{c_color}" fill-opacity="0.30" '
-            f'stroke="{c_color}" stroke-width="2.2" />'
-        )
-    
-    # Trazas de unidades seleccionadas
-    if selected_units:
-        for unit_idx, unit in enumerate(selected_units[:3]):
-            u_color = ["#38bdf8", "#fbbf24", "#a855f7"][unit_idx % 3]
-            values = unit.get("normalized_values", [0.5] * num_axes)
-            pts = []
-            for i, val in enumerate(values):
-                norm_val = max(0.05, min(1.0, float(val)))
-                r_val = radius * norm_val
-                a = angles[i]
-                pts.append(f"{cx + r_val * math.cos(a):.2f},{cy + r_val * math.sin(a):.2f}")
-            svg.append(
-                f'  <polygon points="{" ".join(pts)}" fill="none" '
-                f'stroke="{u_color}" stroke-width="1.8" stroke-dasharray="3,3" />'
-            )
-    svg.append('</g>')
+    # Línea de Referencia Base (Media Global)
+    if baseline_norm:
+        pts_base = [
+            f"{cx + radius * max(0.05, min(1.0, float(v))) * math.cos(a):.2f},{cy + radius * max(0.05, min(1.0, float(v))) * math.sin(a):.2f}"
+            for v, a in zip(baseline_norm, angles)
+        ]
+        svg.append(f'  <polygon points="{" ".join(pts_base)}" fill="none" stroke="#64748b" stroke-width="1.3" stroke-dasharray="3,3" opacity="0.85" />')
+
+    # Polígono del Centroide del Cluster
+    pts_c = []
+    for val, a in zip(centroid_norm, angles):
+        norm_val = max(0.05, min(1.0, float(val)))
+        r_val = radius * norm_val
+        pts_c.append((cx + r_val * math.cos(a), cy + r_val * math.sin(a)))
+
+    pts_c_str = " ".join(f"{x:.2f},{y:.2f}" for x, y in pts_c)
+    svg.append(
+        f'  <polygon points="{pts_c_str}" fill="url(#grad-cluster-{cluster_id})" '
+        f'stroke="{cluster_color}" stroke-width="2.5" />'
+    )
+    for x, y in pts_c:
+        svg.append(f'  <circle cx="{x:.2f}" cy="{y:.2f}" r="3.5" fill="{cluster_color}" stroke="#0f172a" stroke-width="1.5" />')
+
     svg.append('</svg>')
     return "\n".join(svg)
 
@@ -397,7 +393,10 @@ def render_knomap_som_dashboard(
 ) -> Dict[str, Any]:
     """
     Genera el Dashboard HTML completo con la interfaz oscura, controles y componentes
-    exactamente como se ven en la aplicación oficial de KnoMap.
+    exactamente como se ven en la aplicación oficial de KnoMap:
+    1. Sección Superior: AGGLOMERATIVE CLUSTERS (ancho completo, controles A-/A+, leyenda)
+    2. Sección Intermedia: INDIVIDUAL VARIABLE COMPONENT MAPS (MALLA HEXAGONAL)
+    3. Sección Inferior: CLUSTER PROFILE RADARS (un gráfico radar dedicado por cada cluster)
     """
     rows = som_state.get("rows", som_state.get("config", {}).get("rows", 10))
     cols = som_state.get("cols", som_state.get("config", {}).get("cols", 12))
@@ -410,12 +409,6 @@ def render_knomap_som_dashboard(
     mapped_labels = som_state.get("mapped_labels", [])
     indicators = som_state.get("indicators", [f"Var {i+1}" for i in range(len(weights[0]) if weights else 5)])
     trajectories = selected_trajectories or som_state.get("trajectories", [])
-
-    # Asegurar arrays numéricos
-    if isinstance(umatrix, list) and len(umatrix) > 0 and isinstance(umatrix[0], list):
-        flat_u = [float(val) for row in umatrix for val in row]
-    else:
-        flat_u = [float(v) for v in umatrix] if umatrix else [0.5] * total_neurons
 
     # 1. Colores de la Malla de Clusters
     cluster_colors = [get_cluster_color(cid) for cid in clustering] if clustering else ["#4a5568"] * total_neurons
@@ -433,50 +426,7 @@ def render_knomap_som_dashboard(
         svg_id="svg-cluster-map"
     )
 
-    # 2. Generar Radar de Perfiles de Clusters
-    cluster_profiles = []
-    unique_clusters = sorted(list(set(c for c in clustering if c is not None and c != -1))) if clustering else [0]
-    weights_np = np.array(weights) if weights else np.zeros((total_neurons, len(indicators)))
-    
-    # Normalización min-max por indicador para el radar [0.1, 0.95]
-    ind_mins = weights_np.min(axis=0) if len(weights_np) > 0 else np.zeros(len(indicators))
-    ind_maxs = weights_np.max(axis=0) if len(weights_np) > 0 else np.ones(len(indicators))
-    ranges = ind_maxs - ind_mins
-    ranges[ranges == 0] = 1.0
-
-    for cid in unique_clusters:
-        c_idxs = [i for i, c in enumerate(clustering) if c == cid]
-        if c_idxs:
-            centroid_raw = weights_np[c_idxs].mean(axis=0)
-            norm_vals = 0.15 + 0.80 * (centroid_raw - ind_mins) / ranges
-            cluster_profiles.append({
-                "cluster_id": cid,
-                "normalized_values": norm_vals.tolist(),
-                "raw_values": centroid_raw.tolist()
-            })
-
-    # Unidades representativas para el radar
-    sample_units = []
-    all_mapped = []
-    for idx, doc_list in enumerate(mapped_labels):
-        for doc in doc_list:
-            all_mapped.append((doc, idx))
-    for doc, idx in all_mapped[:3]:
-        raw_w = weights_np[idx] if idx < len(weights_np) else ind_mins
-        sample_units.append({
-            "name": doc,
-            "normalized_values": (0.15 + 0.80 * (raw_w - ind_mins) / ranges).tolist()
-        })
-
-    svg_radar = generate_radar_chart_svg(
-        indicators=indicators,
-        cluster_profiles=cluster_profiles,
-        selected_units=sample_units,
-        width=480,
-        height=320
-    )
-
-    # 3. Generar la Rejilla de Component Maps (2x3)
+    # 2. Generar la Rejilla de Component Maps (Intermedia)
     component_cards = []
     for f_idx, ind_name in enumerate(indicators[:6]):
         comp_values = [weights[i][f_idx] for i in range(min(total_neurons, len(weights)))] if weights else [0.5]*total_neurons
@@ -505,6 +455,63 @@ def render_knomap_som_dashboard(
             "max": max_v,
             "mean": mean_v,
             "svg": comp_svg
+        })
+
+    # 3. Generar un Radar Individual por Cada Cluster (Sección Inferior)
+    unique_clusters = sorted(list(set(c for c in clustering if c is not None and c != -1))) if clustering else [0]
+    weights_np = np.array(weights) if weights else np.zeros((total_neurons, len(indicators)))
+    
+    ind_mins = weights_np.min(axis=0) if len(weights_np) > 0 else np.zeros(len(indicators))
+    ind_maxs = weights_np.max(axis=0) if len(weights_np) > 0 else np.ones(len(indicators))
+    ranges = ind_maxs - ind_mins
+    ranges[ranges == 0] = 1.0
+
+    # Media global para la línea de referencia base
+    global_mean_raw = weights_np.mean(axis=0) if len(weights_np) > 0 else np.zeros(len(indicators))
+    baseline_norm = (0.15 + 0.80 * (global_mean_raw - ind_mins) / ranges).tolist()
+
+    radar_cluster_cards = []
+    cluster_names_map = som_state.get("cluster_names", {})
+
+    for cid in unique_clusters:
+        c_idxs = [i for i, c in enumerate(clustering) if c == cid]
+        if not c_idxs: continue
+        
+        c_color = get_cluster_color(cid)
+        c_name = cluster_names_map.get(cid, f"CLUSTER {cid}")
+        
+        # Centroide del cluster
+        centroid_raw = weights_np[c_idxs].mean(axis=0)
+        centroid_norm = (0.15 + 0.80 * (centroid_raw - ind_mins) / ranges).tolist()
+        
+        # Entidades mapeadas en este cluster
+        cluster_entities = []
+        for idx in c_idxs:
+            if idx < len(mapped_labels) and mapped_labels[idx]:
+                cluster_entities.extend(mapped_labels[idx])
+        
+        # SVG radar dedicado
+        radar_svg = generate_single_cluster_radar_svg(
+            cluster_id=cid,
+            cluster_name=c_name,
+            cluster_color=c_color,
+            indicators=indicators,
+            centroid_norm=centroid_norm,
+            centroid_raw=centroid_raw.tolist(),
+            baseline_norm=baseline_norm,
+            width=340,
+            height=270
+        )
+        
+        radar_cluster_cards.append({
+            "cluster_id": cid,
+            "name": c_name,
+            "color": c_color,
+            "neuron_count": len(c_idxs),
+            "entity_count": len(cluster_entities),
+            "entities_sample": cluster_entities[:12],
+            "centroid_metrics": list(zip(indicators, centroid_raw.tolist())),
+            "svg": radar_svg
         })
 
     # Template HTML completo estilo KnoMap Dark
@@ -568,13 +575,7 @@ def render_knomap_som_dashboard(
     }}
     .stat-badge span {{ color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; }}
 
-    /* Layout Superior: Split 2 Columnas */
-    .top-split {{
-      display: grid;
-      grid-template-columns: 1.25fr 1fr;
-      gap: 20px;
-      margin-bottom: 24px;
-    }}
+    /* Cards */
     .card {{
       background: var(--bg-card);
       border: 1px solid var(--border-card);
@@ -583,6 +584,7 @@ def render_knomap_som_dashboard(
       display: flex;
       flex-direction: column;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      margin-bottom: 28px;
     }}
     .card-header {{
       padding: 14px 20px;
@@ -590,7 +592,7 @@ def render_knomap_som_dashboard(
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(13, 17, 29, 0.8);
+      background: rgba(13, 17, 29, 0.85);
     }}
     .card-title {{
       font-size: 13px;
@@ -606,33 +608,90 @@ def render_knomap_som_dashboard(
     }}
     .controls-group {{
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }}
     .btn-ctrl {{
       background: #1e293b;
       border: 1px solid #334155;
       color: #cbd5e1;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       transition: all 0.2s;
     }}
     .btn-ctrl:hover {{ background: #334155; color: #fff; }}
 
-    .map-container {{
-      padding: 20px;
-      flex: 1;
+    .font-size-ctrl {{
+      display: flex;
+      align-items: center;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 2px 8px;
+      gap: 6px;
+    }}
+    .btn-ctrl-sub {{
+      background: none;
+      border: none;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: all 0.15s;
+    }}
+    .btn-ctrl-sub:hover {{ color: #38bdf8; background: rgba(56, 189, 248, 0.15); }}
+    .font-scale-badge {{
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      min-width: 40px;
+      text-align: center;
+    }}
+
+    .map-container-full {{
+      padding: 24px;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 380px;
+      min-height: 480px;
       background: radial-gradient(circle at center, #0f172a 0%, #07090e 100%);
+    }}
+    .clusters-legend-bar {{
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: rgba(10, 14, 23, 0.7);
+    }}
+    .legend-item {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }}
+    .legend-color-dot {{
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }}
+    .legend-stat {{
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
     }}
 
     /* Component Maps 2x3 Grid */
@@ -653,9 +712,9 @@ def render_knomap_som_dashboard(
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 20px;
+      margin-bottom: 28px;
     }}
     @media (max-width: 1200px) {{
-      .top-split {{ grid-template-columns: 1fr; }}
       .component-grid {{ grid-template-columns: repeat(2, 1fr); }}
     }}
     @media (max-width: 768px) {{
@@ -721,6 +780,95 @@ def render_knomap_som_dashboard(
       line-height: 1.1;
     }}
 
+    /* Sección Radars (1 por cada cluster) */
+    .radars-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 28px;
+    }}
+    .radar-card {{
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }}
+    .radar-header {{
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(13, 17, 29, 0.9);
+    }}
+    .radar-title-group {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
+    .radar-color-pill {{
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }}
+    .radar-title {{
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #fff;
+    }}
+    .radar-body {{
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: radial-gradient(circle at center, #0f172a 0%, #07090e 100%);
+    }}
+    .radar-entities-box {{
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-card);
+      background: rgba(10, 14, 23, 0.6);
+      width: 100%;
+    }}
+    .entities-title {{
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }}
+    .entity-tag-list {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .entity-tag {{
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #cbd5e1;
+    }}
+    .radar-legend-ref {{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }}
+    .ref-line {{
+      width: 18px;
+      height: 2px;
+      border-top: 2px dashed #64748b;
+    }}
+
     /* Tooltip */
     #som-tooltip {{
       position: fixed;
@@ -742,7 +890,7 @@ def render_knomap_som_dashboard(
   <div class="dashboard-header">
     <div class="header-title">
       <h1>{title}</h1>
-      <p>Representación geométrica vectorial oficial de KnoMap (Malla Hexagonal flat-topped, fronteras y paleta LabSOM)</p>
+      <p>Representación geométrica vectorial oficial de KnoMap (Malla Hexagonal flat-topped, fronteras LabSOM y radares por cluster)</p>
     </div>
     <div class="badge-bar">
       <div class="stat-badge">MALLA: <span>{rows}x{cols} ({total_neurons} neuronas)</span></div>
@@ -751,40 +899,39 @@ def render_knomap_som_dashboard(
     </div>
   </div>
 
-  <!-- SECCIÓN SUPERIOR: CLUSTERING + RADAR -->
-  <div class="top-split">
-    <!-- Card Clusters -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">AGGLOMERATIVE CLUSTERS</div>
-          <div class="card-subtitle">Partición de nodos de la malla basada en similitud multidimensional</div>
-        </div>
-        <div class="controls-group">
-          <button class="btn-ctrl" onclick="toggleLabels()">🏷️ Labels</button>
-          <button class="btn-ctrl" onclick="downloadSvg('svg-cluster-map', 'knomap_clusters.svg')">⬇ SVG</button>
-        </div>
+  <!-- SECCIÓN 1: AGGLOMERATIVE CLUSTERS (ANCHO COMPLETO) -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">AGGLOMERATIVE CLUSTERS</div>
+        <div class="card-subtitle">Partición de nodos de la malla basada en similitud multidimensional</div>
       </div>
-      <div class="map-container">
-        {svg_clusters}
+      <div class="controls-group">
+        <button class="btn-ctrl" onclick="toggleLabels()" id="btn-toggle-labels">🏷️ Labels</button>
+        <div class="font-size-ctrl">
+          <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">Texto:</span>
+          <button class="btn-ctrl-sub" onclick="changeFontSize(-0.15)" title="Disminuir tamaño de etiquetas">A-</button>
+          <span id="font-scale-indicator" class="font-scale-badge">100%</span>
+          <button class="btn-ctrl-sub" onclick="changeFontSize(0.15)" title="Aumentar tamaño de etiquetas">A+</button>
+        </div>
+        <button class="btn-ctrl" onclick="downloadSvg('svg-cluster-map', 'knomap_clusters.svg')">⬇ SVG</button>
       </div>
     </div>
-
-    <!-- Card Radar -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">CLUSTER PROFILE RADAR</div>
-          <div class="card-subtitle">Comparación de centroides de clusters vs. unidades representativas</div>
-        </div>
+    <div class="map-container-full">
+      {svg_clusters}
+    </div>
+    <div class="clusters-legend-bar">
+      {''.join(f'''
+      <div class="legend-item">
+        <div class="legend-color-dot" style="background-color: {rc["color"]};"></div>
+        <span>{rc["name"]}</span>
+        <span class="legend-stat">({rc["neuron_count"]} celdas, {rc["entity_count"]} entidades)</span>
       </div>
-      <div class="map-container" style="padding: 10px;">
-        {svg_radar}
-      </div>
+      ''' for rc in radar_cluster_cards)}
     </div>
   </div>
 
-  <!-- SECCIÓN INFERIOR: COMPONENT MAPS GRID -->
+  <!-- SECCIÓN 2: INDIVIDUAL VARIABLE COMPONENT MAPS -->
   <div class="grid-section-header">
     <div class="grid-title">INDIVIDUAL VARIABLE COMPONENT MAPS (MALLA HEXAGONAL)</div>
     <div class="controls-group">
@@ -814,9 +961,60 @@ def render_knomap_som_dashboard(
     ''' for c in component_cards)}
   </div>
 
+  <!-- SECCIÓN 3: CLUSTER PROFILE RADARS (UNO POR CADA CLUSTER) -->
+  <div class="grid-section-header">
+    <div class="grid-title">CLUSTER PROFILE RADARS (PERFILES MULTIDIMENSIONALES POR CLUSTER)</div>
+    <div class="controls-group">
+      <div class="radar-legend-ref">
+        <div class="ref-line"></div>
+        <span>Media Global de Referencia</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="radars-grid">
+    {''.join(f'''
+    <div class="radar-card">
+      <div class="radar-header">
+        <div class="radar-title-group">
+          <div class="radar-color-pill" style="background-color: {rc["color"]};"></div>
+          <div class="radar-title">{rc["name"]} PROFILE</div>
+        </div>
+        <span class="legend-stat">{rc["entity_count"]} entidades</span>
+      </div>
+      <div class="radar-body">
+        {rc["svg"]}
+      </div>
+      <div class="radar-entities-box">
+        <div class="entities-title">Unidades Representativas del Cluster:</div>
+        <div class="entity-tag-list">
+          {''.join(f'<span class="entity-tag">{ent}</span>' for ent in rc["entities_sample"])}
+        </div>
+      </div>
+    </div>
+    ''' for rc in radar_cluster_cards)}
+  </div>
+
   <div id="som-tooltip"></div>
 
   <script>
+    let currentFontScale = 1.0;
+
+    function changeFontSize(delta) {{
+      currentFontScale = Math.max(0.4, Math.min(3.0, currentFontScale + delta));
+      const pct = Math.round(currentFontScale * 100);
+      document.getElementById('font-scale-indicator').textContent = pct + '%';
+      
+      const texts = document.querySelectorAll('.cell-labels text');
+      texts.forEach(t => {{
+        const base = parseFloat(t.getAttribute('data-base-size') || '0.48');
+        const newSize = (base * currentFontScale).toFixed(3);
+        t.setAttribute('font-size', newSize);
+        const newStroke = (0.12 * currentFontScale).toFixed(3);
+        t.setAttribute('stroke-width', newStroke);
+      }});
+    }}
+
     function toggleLabels() {{
       const labels = document.querySelectorAll('.cell-labels');
       labels.forEach(l => {{
@@ -855,8 +1053,9 @@ def render_knomap_som_dashboard(
         "visual_artifact_path": output_path,
         "grid": f"{rows}x{cols}",
         "components_rendered": len(component_cards),
+        "cluster_radars_rendered": len(radar_cluster_cards),
         "trajectories_rendered": len(trajectories),
-        "summary": f"Dashboard SOM KnoMap con malla hexagonal ({rows}x{cols}), radar de clusters y {len(component_cards)} planos de componentes generado en {output_path}."
+        "summary": f"Dashboard SOM KnoMap con malla hexagonal ({rows}x{cols}), {len(radar_cluster_cards)} radares por cluster y {len(component_cards)} planos de componentes generado en {output_path}."
     }
 
 
