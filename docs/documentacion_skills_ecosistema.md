@@ -68,7 +68,7 @@ El ecosistema se estructura en **6 dominios analíticos**:
 │ • bibliometric-eda-profiler   │ • geopolitical-collab-analyst │ • knomap-unified-orchestrator           │
 │ • bibliometric-network-analyst│ • geopolitical-science-map    │ • project-hub-manager                   │
 │ • classical-bibliometrics-laws│ • open-access-monitor         │ • tlachia-master-index                  │
-│ • tlachia-metrics-engine      │ • openalex-mexico-clickhouse  │ • workflow-skill-creator                │
+│ • tlachia-metrics-engine      │ • openalex-mexico-clickhouse  │                                         │
 │ • scientometrics-incites      │ • revistaslatam-indicators    │                                         │
 │                               │ • revistaslatam-editorial     │                                         │
 │                               │ • topics-research-fronts      │                                         │
@@ -168,7 +168,6 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `knomap-unified-orchestrator` | Metodológica | — | N/A | Coordinación de flujos multi-fase desde extracción de datos masivos hasta modelado topológico. |
 | `project-hub-manager` | CLI Autónoma | `knomap_project_cli.py` | SQLite / ZIP | Persistencia y gestión relacional de proyectos en `knomap_hub.db`, manifiestos v2 y paquetes portables `.knomap`. |
 | `tlachia-master-index` | Índice Maestro | — | N/A | Índice de arranque *always-active* en TlachIA-Hands con el mapa de herramientas MCP y slash commands. |
-| `workflow-skill-creator` | Meta-Habilidad | `cli_script_template.py` | Skill Folder | Generador e ingeniería de nuevas habilidades agénticas a partir de flujos de trabajo completados. |
 
 ---
 
@@ -212,17 +211,14 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `tlachia-metrics-engine` | `sos-mcp`, `gemini-config` | Sí | 3 docs | Conforme a estándar (96 líns, 3 referencias analíticas). |
 | `tlachia-metrics-handler` | `sos-mcp` | No | — | **Nueva:** Gestor de paquetes ZIP de TlachIA, extracción de matrices y metadatos de documentos para redes. |
 | `topics-research-fronts-intelligence` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo MCP. Conforme. |
-| `workflow-skill-creator` | `sos-mcp`, `knomap`, `gemini-config` | No | 1 doc | **Anomalía:** Carpeta con guión bajo `workflow_skill_creator` en knomap y gemini-config vs guión medio en sos-mcp. |
 
 ---
 
 ## 5. Hallazgos y Plan de Estandarización Propuesto
 
 1. **Sincronización de `open-access-monitor`:**
-   Copiar el `SKILL.md` canónico desde `~/.gemini/config/skills/open-access-monitor/` hacia `/mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/`.
+   Copiar el `SKILL.md` canónico desde `~/.gemini/config/skills/open-access-monitor/` hacia `.agents/skills/open-access-monitor/`.
 2. **Definición de `sdg-impact-intelligence`:**
    Completar el `SKILL.md` (actualmente un borrador trunco de 9 líneas) documentando formalmente el mapeo hacia los 17 ODS de la ONU y su integración con los servicios `topics-research-fronts-engine`.
-3. **Normalización del nombre de `workflow-skill-creator`:**
-   Renombrar la carpeta de `workflow_skill_creator` a `workflow-skill-creator` en `knomap` y `~/.gemini/config/skills/` para cumplir la especificación canónica.
-4. **Armonización TlachIA-Hands vs sos-mcp-services:**
-   Las versiones en `TlachIA-Hands` para `bibliometric-network-analyst` y `classical-bibliometrics-laws` son resúmenes breves que sólo apuntan a herramientas MCP. Se recomienda actualizar `TlachIA-Hands` con la versión rica de `sos-mcp-services`. La antigua skill `openalex-search-engineer` fue retirada por quedar completamente subsumida en `openalex-mexico-clickhouse` y `openalex-harvester`.
+3. **Armonización TlachIA-Hands vs sos-mcp-services:**
+   Las versiones en `TlachIA-Hands` para `bibliometric-network-analyst` y `classical-bibliometrics-laws` son resúmenes breves que sólo apuntan a herramientas MCP. Se recomienda actualizar `TlachIA-Hands` con la versión rica de `sos-mcp-services`. Las skills redundantes o externas (`openalex-search-engineer` y `workflow-skill-creator`) fueron retiradas de `.agents/skills`.
