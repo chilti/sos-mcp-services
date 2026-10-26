@@ -3,7 +3,7 @@ name: openalex-mexico-clickhouse
 description: >-
   Motor maestro y orquestador analítico sobre la producción científica de México en ClickHouse (1.65M trabajos en rag.works_academic_all, 2.57M autores en rag.authors_seed_mexico, 456K instituciones en rag.institutions_seed_mexico). Orquesta agregaciones de acceso abierto (Diamond vs Gold APC), gasto en USD, búsqueda y desambiguación de autores con padrón SNII, catálogo institucional ROR, búsqueda semántica vectorial nomic (768d) y visualización interactiva, bajo la regla estricta de CERO JOINs y principio File-Output First.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "shared_scripts/openalex_mexico_cli.py"
 ---
 
@@ -23,7 +23,7 @@ La base de datos `rag` aloja el universo completo de investigación de México e
 
 ## 2. Dependencies y Cadena de Valor
 
-* **Entorno de Ejecución:** `/home/ambientesPy/revistaslatam/bin/python` con librería `clickhouse-connect`.
+* **Entorno de Ejecución:** `python` con librería `clickhouse-connect`.
 * **Script CLI Canónico:** `shared_scripts/openalex_mexico_cli.py` (motor multi-comando de 1,300 líneas con validación de seguridad integrada).
 * **Parámetros de Conexión:** Servidor ClickHouse configurado en variables de entorno (`CLICKHOUSE_HOST=10.90.0.87`, `CLICKHOUSE_PORT=8124`, `CLICKHOUSE_DATABASE=rag`).
 * **Habilidades Especializadas de la Suite:**
@@ -57,7 +57,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 1. Agregaciones Cienciométricas (`aggregate`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py aggregate \
+python shared_scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
   --filter "publication_year >= 2020" \
   --output ./data/acceso_abierto_mexico.json
@@ -65,7 +65,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 2. Búsqueda de Publicaciones Científicas (`search-works`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py search-works \
+python shared_scripts/openalex_mexico_cli.py search-works \
   --query "artificial intelligence in education" \
   --year-from 2020 --year-to 2025 \
   --only-top-10 \
@@ -75,7 +75,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 3. Búsqueda y Desambiguación de Investigadores (`search-authors`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py search-authors \
+python shared_scripts/openalex_mexico_cli.py search-authors \
   --name "Gorbea Portal" \
   --institution "UNAM" \
   --limit 10 \
@@ -84,7 +84,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 4. Ranking de Entidades Líderes en un Tema (`top-entities`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py top-entities \
+python shared_scripts/openalex_mexico_cli.py top-entities \
   --topic "Vaccines" \
   --entity-type "institutions" \
   --limit 20 \
@@ -93,7 +93,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 5. Búsqueda Semántica Vectorial (`semantic-search`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py semantic-search \
+python shared_scripts/openalex_mexico_cli.py semantic-search \
   --query "soberanía alimentaria y maíces nativos" \
   --threshold 0.75 \
   --limit 50 \
@@ -102,7 +102,7 @@ Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria 
 
 ### 6. Validación de Consultas SQL (`validate-query`)
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py validate-query \
+python shared_scripts/openalex_mexico_cli.py validate-query \
   --query "SELECT title, publication_year FROM rag.works_academic_all WHERE has(institution_rors, 'https://ror.org/01tmp8f25') LIMIT 10" \
   --output ./data/reporte_validacion.json
 ```

@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/ambientesPy/revistaslatam/bin/python
+#!/usr/bin/env python3
 """
 arXiv Data Harvester CLI
 ------------------------

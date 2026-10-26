@@ -4,7 +4,7 @@ CLI Helper: OpenAlex México Visualizer & Artifact Engine
 Transforma los datos JSON producidos por las skills analíticas de OpenAlex México
 en artefactos visuales interactivos (Dashboards HTML con Plotly.js, Redes PyVis y Tarjetas PNG).
 
-Entorno Python: /home/ambientesPy/revistaslatam
+Requisitos: Python >= 3.10, plotly, matplotlib
 """
 
 import sys
@@ -18,7 +18,7 @@ try:
     import plotly.express as px
     import plotly.io as pio
 except ImportError:
-    print("Error: plotly no instalado. Use /home/ambientesPy/revistaslatam", file=sys.stderr)
+    print("Error: plotly no instalado. Instálelo con: pip install plotly matplotlib", file=sys.stderr)
     sys.exit(1)
 
 try:

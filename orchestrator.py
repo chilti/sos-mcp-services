@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 BASE_DIR = Path(__file__).resolve().parent
-PYTHON_BIN = Path("/home/ambientesPy/revistaslatam/bin/python")
+PYTHON_BIN = Path(os.getenv("PYTHON_BIN", sys.executable if sys.executable else "/home/ambientesPy/revistaslatam/bin/python"))
 LOGS_DIR = BASE_DIR / "logs"
 PID_FILE = BASE_DIR / ".pids.json"
 

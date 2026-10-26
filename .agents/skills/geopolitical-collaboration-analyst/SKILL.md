@@ -2,7 +2,7 @@
 name: geopolitical-collaboration-analyst
 description: Análisis de cartografía geopolítica de la ciencia, matrices de coautoría internacional (ISO-3166-1 alpha-3), similitud bilateral de Salton, análisis por bloques regionales (Iberoamérica, Sur Global, OCDE, BRICS) y tasa de liderazgo científico.
 dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
+  - python: ">=3.10"
   - script: "scripts/geopolitical_collab_cli.py"
 ---
 
@@ -14,15 +14,15 @@ Módulo cuantitativo de cartografía geopolítica de la ciencia y diplomacia cie
 Desacoplado de los análisis de Acceso Abierto y ODS, este módulo se enfoca con precisión en los flujos internacionales de coautoría, aplicando normalización de países con ISO-3166-1 alpha-3, Coseno de Salton bilateral y cálculo de soberanía investigativa mediante el porcentaje de primeros autores nacionales.
 
 ## Dependencies
-- Entorno Python: `/home/ambientesPy/revistaslatam`
-- Script ejecutable: [`scripts/geopolitical_collab_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/geopolitical-collaboration-analyst/scripts/geopolitical_collab_cli.py)
+- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
+- Script ejecutable: [`scripts/geopolitical_collab_cli.py`](file://scripts/geopolitical_collab_cli.py)
 
 ## Scripts & CLI Tools
 
 ### Matriz País-País (`country-matrix`)
 Genera la red de colaboración internacional y similitud de Salton respecto a un país ancla:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/geopolitical_collab_cli.py country-matrix \
+python scripts/geopolitical_collab_cli.py country-matrix \
   --input /ruta/al/corpus.parquet \
   --anchor-country MEX \
   --top-n 25 \
@@ -32,7 +32,7 @@ Genera la red de colaboración internacional y similitud de Salton respecto a un
 ### Benchmarking Regional (`regional-benchmark`)
 Calcula la cuota de colaboración capturada por bloques geopolíticos clave:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/geopolitical_collab_cli.py regional-benchmark \
+python scripts/geopolitical_collab_cli.py regional-benchmark \
   --matrix-file /ruta/a/matriz_paises_mexico.json \
   --region Iberoamerica \
   --anchor-country MEX \
@@ -43,7 +43,7 @@ Opciones de región: `Iberoamerica`, `GlobalSouth`, `OECD`, `BRICS`.
 ### Tasa de Liderazgo Científico (`scientific-leadership`)
 Mide la soberanía evaluando si el primer autor pertenece a la institución nacional:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/geopolitical_collab_cli.py scientific-leadership \
+python scripts/geopolitical_collab_cli.py scientific-leadership \
   --input /ruta/al/corpus.parquet \
   --country MEX \
   --output /ruta/a/liderazgo_mexico.json

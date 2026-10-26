@@ -2,7 +2,7 @@
 name: openalex-mexico-author-search
 description: Búsqueda y desambiguación de investigadoras e investigadores de México en ClickHouse local sobre las tablas materializadas rag.authors_seed_mexico (2.57M autores) y rag.academics_all, con filtros por nivel SNII, dependencia institucional y variantes de nombres hispanos.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
 
@@ -16,8 +16,8 @@ Permite buscar perfiles académicos sobre el catálogo de más de 2.57 millones 
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-author-search/scripts/openalex_mexico_cli.py)
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
+- **Script CLI:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
 - **Base de datos:** ClickHouse local (base `rag`, tabla `authors_seed_mexico` y `academics_all`)
 
 ## CLI Interface
@@ -25,7 +25,7 @@ Permite buscar perfiles académicos sobre el catálogo de más de 2.57 millones 
 ### 1. Búsqueda por Nombre o Apellidos
 Genera automáticamente variantes con y sin guion y busca de forma insensible a mayúsculas:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-authors \
+python scripts/openalex_mexico_cli.py search-authors \
   --name "Rafael Torres Córdoba" \
   --limit 20 \
   --output /ruta/a/autores_encontrados.json
@@ -34,7 +34,7 @@ Genera automáticamente variantes con y sin guion y busca de forma insensible a 
 ### 2. Filtrado por Institución y Dependencia
 Filtra por universidad (ej. `UNAM`, `Cinvestav`, `UAM`) o entidad académica:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-authors \
+python scripts/openalex_mexico_cli.py search-authors \
   --name "Jiménez Andrade" \
   --institution "Universidad Nacional Autónoma de México" \
   --limit 10 \
@@ -44,7 +44,7 @@ Filtra por universidad (ej. `UNAM`, `Cinvestav`, `UAM`) o entidad académica:
 ### 3. Filtrado por Nivel SNII
 Para consultas de personal académico adscrito al Padrón SNII:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-authors \
+python scripts/openalex_mexico_cli.py search-authors \
   --snii-level "III" \
   --institution "UNAM" \
   --limit 50 \

@@ -2,7 +2,7 @@
 name: openalex-mexico-institutions
 description: Consulta y mapeo del catálogo nacional de instituciones, universidades y centros de investigación de México sobre rag.institutions_seed_mexico, resolviendo identificadores ROR, acrónimos institucionales (UNAM, IPN, UAM, Cinvestav), estados y dependencias.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
 
@@ -16,8 +16,8 @@ Facilita la identificación de universidades públicas y privadas, centros públ
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-institutions/scripts/openalex_mexico_cli.py)
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
+- **Script CLI:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
 - **Tabla ClickHouse:** `rag.institutions_seed_mexico`
 
 ## CLI Interface
@@ -25,7 +25,7 @@ Facilita la identificación de universidades públicas y privadas, centros públ
 ### 1. Búsqueda por Acrónimo
 Localiza la institución y extrae su ROR canónico:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py get-institution \
+python scripts/openalex_mexico_cli.py get-institution \
   --acronym "UNAM" \
   --limit 5 \
   --output /ruta/a/unam_institucion.json
@@ -33,7 +33,7 @@ Localiza la institución y extrae su ROR canónico:
 
 ### 2. Búsqueda por Nombre o Texto Libre
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py get-institution \
+python scripts/openalex_mexico_cli.py get-institution \
   --query "Instituto Politécnico Nacional" \
   --output /ruta/a/ipn_institucion.json
 ```
@@ -41,7 +41,7 @@ Localiza la institución y extrae su ROR canónico:
 ### 3. Filtrado por Entidad Federativa (Estado)
 Recupera los centros de investigación de un estado determinado:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py get-institution \
+python scripts/openalex_mexico_cli.py get-institution \
   --state "Jalisco" \
   --limit 20 \
   --output /ruta/a/instituciones_jalisco.json
@@ -49,7 +49,7 @@ Recupera los centros de investigación de un estado determinado:
 
 ### 4. Consulta Directa por Identificador ROR
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py get-institution \
+python scripts/openalex_mexico_cli.py get-institution \
   --ror "01tmp8f25" \
   --output /ruta/a/institucion_detalle.json
 ```

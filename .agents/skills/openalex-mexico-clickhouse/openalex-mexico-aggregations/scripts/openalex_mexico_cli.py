@@ -9,7 +9,7 @@ Tablas materializadas consultadas:
 - rag.institutions_seed_mexico (456K instituciones con ROR y acrónimos)
 
 Regla de oro: PROHIBICIÓN ESTRICTA DE JOINs EN CLICKHOUSE.
-Entorno Python: /home/ambientesPy/revistaslatam
+Requisitos: Python >= 3.10, clickhouse-connect
 """
 
 import sys
@@ -23,7 +23,7 @@ from typing import Dict, List, Any, Optional
 try:
     import clickhouse_connect
 except ImportError:
-    print("Error: clickhouse-connect no instalado en el entorno. Use /home/ambientesPy/revistaslatam", file=sys.stderr)
+    print("Error: clickhouse-connect no instalado en el entorno. Instálelo con: pip install clickhouse-connect", file=sys.stderr)
     sys.exit(1)
 
 

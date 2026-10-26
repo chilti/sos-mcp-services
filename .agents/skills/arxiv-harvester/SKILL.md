@@ -22,12 +22,12 @@ Herramienta autónoma e independiente para la recolección de literatura cientí
 
 Entorno de ejecución:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/arxiv-harvester/scripts/arxiv_harvest_cli.py [subcomando] [opciones]
+python scripts/arxiv_harvest_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Búsqueda temática por categoría y palabras clave
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/arxiv-harvester/scripts/arxiv_harvest_cli.py search \
+python scripts/arxiv_harvest_cli.py search \
   --category "cs.AI" \
   --query "large language models" \
   --limit 50 \
@@ -36,7 +36,7 @@ Entorno de ejecución:
 
 ### 2. Recuperación por lista de identificadores
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/arxiv-harvester/scripts/arxiv_harvest_cli.py fetch-by-ids \
+python scripts/arxiv_harvest_cli.py fetch-by-ids \
   --id-list "2301.07041,2303.08774,2401.12345" \
   --output ./arxiv_selected.parquet
 ```
@@ -44,5 +44,5 @@ Entorno de ejecución:
 ---
 
 ## Referencias Técnicas
-- [Taxonomía de Categorías de arXiv](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/arxiv-harvester/references/arxiv_categories_taxonomy.md)
-- [Sintaxis de Consultas y Reglas de la API](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/arxiv-harvester/references/arxiv_query_syntax.md)
+- [Taxonomía de Categorías de arXiv](references/arxiv_categories_taxonomy.md)
+- [Sintaxis de Consultas y Reglas de la API](references/arxiv_query_syntax.md)

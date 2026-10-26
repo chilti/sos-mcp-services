@@ -25,7 +25,7 @@ Toda Skill en el ecosistema debe satisfacer los siguientes principios canónicos
 2. **YAML Frontmatter Obligatorio:**
    - `name`: Identificador único en minúsculas y separado por guiones (`^[a-z0-9]+(-[a-z0-9]+)*$`), $\le 64$ caracteres.
    - `description`: Redactada en tercera persona, explicando con precisión **qué hace** y **cuándo debe activarse** ($\le 1024$ caracteres).
-   - `dependencies`: Declaración explícita del entorno Python (`/home/ambientesPy/revistaslatam`) y scripts CLI asociados.
+   - `dependencies`: Declaración explícita de versión de Python (`>=3.10`), librerías requeridas y scripts CLI asociados (evitando rutas absolutas a entornos de host).
 3. **Patrón CLI Orientado a Archivos:**
    - Las operaciones de extracción, cálculo o transformación deben generar archivos en disco (`--output <ruta>`), nunca volcar payloads masivos a `stdout`.
    - Control estricto de tasas de petición (*rate limiting*) en scrapers y APIs externas.

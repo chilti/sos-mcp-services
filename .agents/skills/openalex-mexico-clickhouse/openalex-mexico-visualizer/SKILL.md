@@ -2,7 +2,7 @@
 name: openalex-mexico-visualizer
 description: "Generador de artefactos visuales interactivos (HTML con Plotly.js) y tarjetas ejecutivas PNG (200 DPI). Renderiza gráficas de barras para rankings institucionales/autores ('top-ranking'), series temporales duales ('timeseries'), donas de acceso abierto y APC ('oa-donut'), sunburst taxonómico multinivel ('sunburst'), cuadrícula de los 17 ODS ('sdg-grid') y catálogos de publicaciones ('dossier-works'). Guarda siempre en './reports/'."
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_visualizer_cli.py"
 ---
 
@@ -23,7 +23,7 @@ Transforma los resultados analíticos en formato JSON generados por las skills d
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
 - **Script CLI:** `scripts/openalex_visualizer_cli.py`
 - **Librerías principales:** `plotly`, `matplotlib`, `pyvis`
 
@@ -50,7 +50,7 @@ Transforma los resultados analíticos en formato JSON generados por las skills d
 ### 1. Generación Automática (Detección Inteligente)
 El visualizador detecta la estructura interna del JSON (`top_entities`, `grouped_by`, `works`, etc.) y renderiza el artefacto correspondiente:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_visualizer_cli.py \
+python scripts/openalex_visualizer_cli.py \
   --input ./data/datos.json \
   --title "Análisis Cienciométrico de Litio en México" \
   --output ./reports/artefacto_interactivo.html \
@@ -76,7 +76,7 @@ Tipos disponibles (`--type`):
 
 **Ejemplo para Gráfica de Barras de Instituciones o Autores:**
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_visualizer_cli.py \
+python scripts/openalex_visualizer_cli.py \
   --input ./data/top_instituciones_litio.json \
   --type top-ranking \
   --title "Instituciones Líderes en Litio en México" \
@@ -86,7 +86,7 @@ Tipos disponibles (`--type`):
 
 **Ejemplo para Sunburst de líneas de investigación:**
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_visualizer_cli.py \
+python scripts/openalex_visualizer_cli.py \
   --input ./data/litio.json \
   --type sunburst \
   --title "Taxonomía de Investigación en Litio y Almacenamiento de Energía en México" \
@@ -103,7 +103,7 @@ Tipos disponibles (`--type`):
 
 2. **Uso Preferente del CLI Oficial vs. Scripting Ad-Hoc:**
    - **Vía Primaria (Catálogo Estándar):** Utiliza siempre `openalex_visualizer_cli.py` para las gráficas estándar del catálogo (barras horizontales, series temporales, donas OA, sunburst, ODS). Ya implementa el tema visual oscuro oficial, tipografías ejecutivas, CDN optimizado y exportación simultánea de la tarjeta PNG.
-   - **Vía Secundaria (Visualizaciones Libres Ad-Hoc):** Si el usuario solicita un tipo de gráfico especializado no soportado por el CLI (ej. diagramas de dispersión bivariados, gráficos de radar/araña, diagramas de violín o boxplots), estás plenamente autorizado para escribir y ejecutar un script de Python usando `/home/ambientesPy/revistaslatam/bin/python` con `plotly` o `matplotlib`.
+   - **Vía Secundaria (Visualizaciones Libres Ad-Hoc):** Si el usuario solicita un tipo de gráfico especializado no soportado por el CLI (ej. diagramas de dispersión bivariados, gráficos de radar/araña, diagramas de violín o boxplots), estás plenamente autorizado para escribir y ejecutar un script de Python usando `python` con `plotly` o `matplotlib`.
    - *Condición estricta para scripts libres:* Guarda siempre el `.html` interactivo y la tarjeta `.png` dentro de `./reports/` y utiliza plantilla de tema oscuro (`template="plotly_dark"` o fondo `#0B0F19`) para preservar la armonía visual de TlachIA-Hands.
 
 3. **Flujo de Ejecución (La Tríada de Artefactos):**

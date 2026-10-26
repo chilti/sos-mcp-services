@@ -2,10 +2,9 @@
 name: openalex-mexico-works-search
 description: Recuperación y extracción de publicaciones científicas de México sobre la tabla materializada rag.works_academic_all (1.65M de trabajos), filtrando por institución ROR, autor, rango de años, vía de acceso abierto (Diamond, Gold, Hybrid) y percentiles de impacto Top 10% y Top 1%.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
-
 # OpenAlex México Works Search
 
 Recuperación granular de artículos, actas y capítulos de la producción científica vinculada a México almacenados en la tabla materializada `rag.works_academic_all`.
@@ -16,16 +15,18 @@ Permite consultar los 1,652,927 trabajos de México con indicadores cienciométr
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/scripts/openalex_mexico_cli.py)
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
+- **Script CLI:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
 - **Tabla ClickHouse:** `rag.works_academic_all`
 
 ## CLI Interface
 
 ### 1. Búsqueda por Institución (ROR) y Rango Temporal
+
 Recupera la producción de una institución (ej. UNAM: `01tmp8f25`, Cinvestav: `04yeehy64`) en un periodo definido:
+
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-works \
+python scripts/openalex_mexico_cli.py search-works \
   --institution-ror "01tmp8f25" \
   --year-min 2023 \
   --year-max 2025 \
@@ -34,9 +35,11 @@ Recupera la producción de una institución (ej. UNAM: `01tmp8f25`, Cinvestav: `
 ```
 
 ### 2. Búsqueda de Publicaciones de Élite (Top 10% / Top 1%)
+
 Filtra artículos en el decil superior de impacto mundial:
+
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-works \
+python scripts/openalex_mexico_cli.py search-works \
   --is-top-10 true \
   --year-min 2020 \
   --limit 100 \
@@ -44,9 +47,11 @@ Filtra artículos en el decil superior de impacto mundial:
 ```
 
 ### 3. Filtrado por Acceso Abierto Diamante vs Doradas
+
 Para análisis de soberanía editorial y vías no comerciales:
+
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-works \
+python scripts/openalex_mexico_cli.py search-works \
   --oa-status "diamond" \
   --year-min 2024 \
   --limit 100 \
@@ -54,8 +59,9 @@ Para análisis de soberanía editorial y vías no comerciales:
 ```
 
 ### 4. Búsqueda por Tópico o Término
+
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py search-works \
+python scripts/openalex_mexico_cli.py search-works \
   --query "quantum dots" \
   --topic "Nanotechnology" \
   --limit 50 \
@@ -76,15 +82,9 @@ Para análisis de soberanía editorial y vías no comerciales:
 
 ## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- ❌ **Anti-patrón 1: Búsqueda exhaustiva sin acotar por año o ROR**  
-  Lanzar búsquedas de texto abierto sobre 1.65M de registros sin delimitar ventana temporal.  
-  **Solución:** Especificar `--year-min` y `--year-max`, o filtrar por `--institution-ror`.
-- ❌ **Anti-patrón 2: Confusión en el formato del código ROR**  
-  Asumir que sólo se acepta el ID numérico corto o sólo la URI completa.  
-  **Solución:** El CLI acepta indistintamente formato corto (`01tmp8f25`) o URI (`https://ror.org/01tmp8f25`), resolviendo ambos de manera transparente.
-- ❌ **Anti-patrón 3: Descargas masivas sin paginación ni límite prudente**  
-  Intentar descargar 50,000 registros en un solo comando sin verificar el impacto en memoria local.  
-  **Solución:** Aumentar el `--limit` de forma escalonada (ej. 500 $\rightarrow$ 1,000 $\rightarrow$ 2,500).
-- ❌ **Anti-patrón 4: Violación de File-Output First**  
-  No pasar el flag `--output`, provocando que el CLI intente volcar miles de artículos con abstracts y metadatos a la terminal.  
+- ❌ **Anti-patrón 1: Búsqueda exhaustiva sin acotar por año o ROR**Lanzar búsquedas de texto abierto sobre 1.65M de registros sin delimitar ventana temporal.**Solución:** Especificar `--year-min` y `--year-max`, o filtrar por `--institution-ror`.
+- ❌ **Anti-patrón 2: Confusión en el formato del código ROR**Asumir que sólo se acepta el ID numérico corto o sólo la URI completa.**Solución:** El CLI acepta indistintamente formato corto (`01tmp8f25`) o URI (`https://ror.org/01tmp8f25`), resolviendo ambos de manera transparente.
+- ❌ **Anti-patrón 3: Descargas masivas sin paginación ni límite prudente**Intentar descargar 50,000 registros en un solo comando sin verificar el impacto en memoria local.**Solución:** Aumentar el `--limit` de forma escalonada (ej. 500 $\rightarrow$ 1,000 $\rightarrow$ 2,500).
+- ❌ **Anti-patrón 4: Violación de File-Output First**
+  No pasar el flag `--output`, provocando que el CLI intente volcar miles de artículos con abstracts y metadatos a la terminal.
   **Solución:** Especificar siempre `--output ./data/publicaciones.json`.

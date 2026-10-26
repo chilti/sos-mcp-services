@@ -22,12 +22,12 @@ Herramienta autónoma e independiente para la recolección de publicaciones inde
 
 Entorno de ejecución:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/scripts/scopus_harvest_cli.py [subcomando] [opciones]
+python scripts/scopus_harvest_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Búsqueda temática
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/scripts/scopus_harvest_cli.py search \
+python scripts/scopus_harvest_cli.py search \
   --query 'TITLE-ABS-KEY("deep learning" AND "medical imaging")' \
   --year-from 2021 \
   --year-to 2024 \
@@ -37,7 +37,7 @@ Entorno de ejecución:
 
 ### 2. Publicaciones de un autor por AU-ID
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/scripts/scopus_harvest_cli.py author-profile \
+python scripts/scopus_harvest_cli.py author-profile \
   --author-id "57200234567" \
   --limit 100 \
   --output ./author_scopus.parquet
@@ -45,7 +45,7 @@ Entorno de ejecución:
 
 ### 3. Publicaciones institucionales por AF-ID
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/scripts/scopus_harvest_cli.py affil-works \
+python scripts/scopus_harvest_cli.py affil-works \
   --af-id "60028190" \
   --year-from 2023 \
   --year-to 2024 \
@@ -56,5 +56,5 @@ Entorno de ejecución:
 ---
 
 ## Referencias Técnicas
-- [Sintaxis de Búsqueda Avanzada de Scopus](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/references/scopus_search_syntax.md)
-- [Políticas de Cuota y Respuestas HTTP 429](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scopus-harvester/references/elsevier_quota_policies.md)
+- [Sintaxis de Búsqueda Avanzada de Scopus](references/scopus_search_syntax.md)
+- [Políticas de Cuota y Respuestas HTTP 429](references/elsevier_quota_policies.md)

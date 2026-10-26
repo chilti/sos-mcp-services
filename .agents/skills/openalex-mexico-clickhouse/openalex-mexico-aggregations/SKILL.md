@@ -2,7 +2,7 @@
 name: openalex-mexico-aggregations
 description: "Cálculo de métricas agregadas y rankings cienciométricos en ClickHouse (rag.works_academic_all): distribución de las 6 vías de acceso abierto (Diamond vs Gold APC), gasto comercial en APC en USD, series temporales anuales, subcampos temáticos y RANKING de instituciones e investigadoras/es líderes en un tema ('top-entities') con volumen, citas y FWCI."
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
 
@@ -16,7 +16,7 @@ Calcula métricas e indicadores de impacto, gasto editorial y modelos de publica
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
 - **Script CLI:** `scripts/openalex_mexico_cli.py`
 - **Tabla ClickHouse:** `rag.works_academic_all`
 
@@ -28,7 +28,7 @@ Calcula métricas e indicadores de impacto, gasto editorial y modelos de publica
 ### 1. Desglose de Vías de Acceso Abierto y Gasto en APC
 Cuantifica la penetración de las 6 vías y calcula el gasto comercial total en USD:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
   --filter "publication_year >= 2020" \
   --output ./data/acceso_abierto_mexico.json
@@ -37,7 +37,7 @@ Cuantifica la penetración de las 6 vías y calcula el gasto comercial total en 
 ### 2. Serie Temporal de Producción, Citas y Calidad de Impacto
 Evolución anual de publicaciones, porcentaje en el Top 10% y FWCI medio:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "publication_year" \
   --filter "publication_year >= 2015 AND publication_year <= 2025" \
   --output ./data/tendencia_anual_mexico.json
@@ -46,7 +46,7 @@ Evolución anual de publicaciones, porcentaje en el Top 10% y FWCI medio:
 ### 3. Agrupación por Subcampo Disciplinar
 Identifica los subcampos con mayor volumen de publicaciones y concentración de citas:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "subfield" \
   --filter "publication_year >= 2020" \
   --output ./data/subcampos_mexico.json
@@ -55,7 +55,7 @@ Identifica los subcampos con mayor volumen de publicaciones y concentración de 
 ### 4. Filtrado por Institución Específica
 Aplica filtros por universidad usando los arrays nativos de ClickHouse:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
   --filter "has(institution_rors, 'https://ror.org/01tmp8f25') AND publication_year >= 2022" \
   --output ./data/oa_unam_2022_2025.json
@@ -64,7 +64,7 @@ Aplica filtros por universidad usando los arrays nativos de ClickHouse:
 ### 5. Distribución de Objetivos de Desarrollo Sostenible (ODS / SDGs)
 Agrupa y cuantifica la producción científica según los 17 ODS de la ONU (Agenda 2030):
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "sdgs" \
   --filter "publication_year >= 2020" \
   --output ./data/sdgs_mexico.json
@@ -81,7 +81,7 @@ Identifica con un solo comando qué **autores** o **instituciones** tienen la ma
 
 **Para Instituciones líderes:**
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py top-entities \
+python scripts/openalex_mexico_cli.py top-entities \
   --query "lithium" \
   --by "institutions" \
   --limit 10 \
@@ -90,7 +90,7 @@ Identifica con un solo comando qué **autores** o **instituciones** tienen la ma
 
 **Para Investigadores líderes (con resolución de nombres y ORCID):**
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py top-entities \
+python scripts/openalex_mexico_cli.py top-entities \
   --query "lithium" \
   --by "authors" \
   --limit 10 \
@@ -114,7 +114,7 @@ Cuando la consulta del usuario se refiera a un área sombrilla o disciplina ampl
 ### Fase 1: Descubrimiento Taxonómico en ClickHouse (Data-Driven Taxonomy)
 Ejecuta la agregación agrupando por tópicos para descubrir cuáles son las especialidades reales con producción científica en México:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py aggregate \
+python scripts/openalex_mexico_cli.py aggregate \
   --group-by "topic" \
   --filter "subfield = 'Artificial Intelligence'" \
   --output ./data/especialidades_ia.json
@@ -124,7 +124,7 @@ Inspecciona los primeros resultados de salida para identificar los 3 a 5 tópico
 ### Fase 2: Evaluación de Capacidad por Especialidad Específica
 Con los tópicos reales descubiertos en la Fase 1, ejecuta `top-entities` para cada especialidad concreta:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py top-entities \
+python scripts/openalex_mexico_cli.py top-entities \
   --query "Natural Language Processing" \
   --by "authors" \
   --limit 5 \

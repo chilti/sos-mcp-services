@@ -2,7 +2,7 @@
 name: openalex-mexico-query-architect
 description: Asesor técnico y validador de consultas ClickHouse sobre el corpus científico de México, asegurando la regla estricta de CERO JOINs, uso de funciones de arrays nativos (has, arrayExists) y optimización columnar sobre rag.works_academic_all.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "shared_scripts/openalex_mexico_cli.py"
 ---
 
@@ -16,7 +16,7 @@ ClickHouse aloja más de 1.65 millones de registros detallados para México en `
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
 - **Script CLI:** `shared_scripts/openalex_mexico_cli.py`
 - **Tablas ClickHouse:** `rag.works_academic_all`, `rag.authors_seed_mexico`
 
@@ -67,7 +67,7 @@ GROUP BY oa_status
 ## Validación Previa de Consultas
 Para comprobar si una sentencia SQL cumple con las directivas de seguridad antes de ejecutarla:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python shared_scripts/openalex_mexico_cli.py validate-query \
+python shared_scripts/openalex_mexico_cli.py validate-query \
   --query "SELECT * FROM rag.works_academic_all WHERE publication_year = 2024" \
   --output /ruta/a/reporte_validacion.json
 ```

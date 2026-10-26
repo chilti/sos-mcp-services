@@ -22,12 +22,12 @@ Motor analítico autónomo e independiente para diagnosticar la salud editorial,
 
 Entorno de ejecución:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/scripts/revistaslatam_indicators_cli.py [subcomando] [opciones]
+python scripts/revistaslatam_indicators_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Perfil cienciométrico de una revista
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/scripts/revistaslatam_indicators_cli.py journal-profile \
+python scripts/revistaslatam_indicators_cli.py journal-profile \
   --corpus ./articulos_revista.parquet \
   --journal-name "Revista Mexicana de Sociología" \
   --output ./perfil_revista.md
@@ -35,7 +35,7 @@ Entorno de ejecución:
 
 ### 2. Medición de endogamia editorial institucional
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/scripts/revistaslatam_indicators_cli.py editorial-endogamy \
+python scripts/revistaslatam_indicators_cli.py editorial-endogamy \
   --corpus ./articulos_revista.parquet \
   --host-institution "Universidad Nacional Autónoma de México" \
   --host-country "MX" \
@@ -44,14 +44,14 @@ Entorno de ejecución:
 
 ### 3. Distribución lingüística de artículos
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/scripts/revistaslatam_indicators_cli.py multilingual-balance \
+python scripts/revistaslatam_indicators_cli.py multilingual-balance \
   --corpus ./articulos_revista.parquet \
   --output ./balance_idiomas.json
 ```
 
 ### 4. Auditoría de criterios de Latindex Catálogo 2.0
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/scripts/revistaslatam_indicators_cli.py latindex-audit \
+python scripts/revistaslatam_indicators_cli.py latindex-audit \
   --metadata ./revista_metadata.json \
   --output ./auditoria_latindex.json
 ```
@@ -59,5 +59,5 @@ Entorno de ejecución:
 ---
 
 ## Referencias Técnicas
-- [Estándares Internacionales de Endogamia Editorial](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/references/editorial_endogamy_standards.md)
-- [Manual de Auditoría del Catálogo 2.0 de Latindex](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/references/latindex_catalogo_2_audit_manual.md)
+- [Estándares Internacionales de Endogamia Editorial](references/editorial_endogamy_standards.md)
+- [Manual de Auditoría del Catálogo 2.0 de Latindex](references/latindex_catalogo_2_audit_manual.md)

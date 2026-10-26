@@ -2,7 +2,7 @@
 name: bibliometric-network-analyst
 description: Construcción y análisis de redes bibliométricas (coautoría, co-ocurrencia, co-citación, acoplamiento bibliográfico y citación directa), filtrado temporal por periodos, secuencias longitudinales para SOM Warm-Start, normalización con Association Strength, partición modular con Leiden/Louvain y cálculo de centralidades.
 dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
+  - python: ">=3.10"
   - script: "scripts/biblio_network_cli.py"
 ---
 
@@ -19,9 +19,9 @@ Las redes bibliométricas permiten mapear la estructura social, conceptual e int
 - **Dimensión Temporal:** Filtrado de red por periodo individual (`--period`, `--last-years`) y descomposición en redes secuenciales longitudinales (`sequential-networks`) en ventanas decenales, quinquenales o deslizantes, generando el manifiesto `sequence_manifest.json` directamente compatible con el entrenamiento neuronal Warm-Start de [`neural-longitudinal-mapping`](file:///home/labsom/knomap/.agents/skills/neural-longitudinal-mapping/SKILL.md).
 
 ## Dependencies
-- Entorno Python: `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
 - Paquetes clave: `networkx`, `igraph`, `leidenalg`, `scipy`, `pandas`
-- Script ejecutable: [`scripts/biblio_network_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/scripts/biblio_network_cli.py)
+- Script ejecutable: [`scripts/biblio_network_cli.py`](file://scripts/biblio_network_cli.py)
 
 ---
 
@@ -30,7 +30,7 @@ Las redes bibliométricas permiten mapear la estructura social, conceptual e int
 ### 1. Construcción de Red Estática o por Periodo (`build-network`)
 Extrae la red a partir de un corpus (.parquet, .csv o .json), con soporte de filtrado temporal:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py build-network \
+python scripts/biblio_network_cli.py build-network \
   --input /ruta/al/corpus.parquet \
   --network-type cooccurrence \
   --unit keywords \
@@ -48,7 +48,7 @@ Extrae la red a partir de un corpus (.parquet, .csv o .json), con soporte de fil
 
 Ejemplo filtrando el último quinquenio:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py build-network \
+python scripts/biblio_network_cli.py build-network \
   --input /ruta/al/corpus.parquet \
   --period 2020-2024 \
   --max-terms 50 \
@@ -61,7 +61,7 @@ Ejemplo filtrando el último quinquenio:
 Descompone el corpus en periodos consecutivos o ventanas deslizantes, construye la red de cada periodo con comunidades Leiden y centralidades, y produce el manifiesto unificado para mapas autoorganizados (SOM):
 
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py sequential-networks \
+python scripts/biblio_network_cli.py sequential-networks \
   --input /ruta/al/corpus.json \
   --output-dir ./longitudinal_networks \
   --network-type cooccurrence \
@@ -90,18 +90,18 @@ El archivo `sequence_manifest.json` emitido por `sequential-networks` es **100% 
 
 ```bash
 # 1. Entrenar secuencia longitudinal (Warm-Start Chaining)
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py train \
+python scripts/neural_longitudinal_cli.py train \
   --input ./longitudinal_networks/sequence_manifest.json \
   --rows 8 --cols 12 \
   --output ./longitudinal_results.json
 
 # 2. Computar dinámicas Macro, Meso y Micro
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py analyze \
+python scripts/neural_longitudinal_cli.py analyze \
   --input ./longitudinal_results.json \
   --output ./dynamics_analysis.json
 
 # 3. Generar reporte Markdown de publicación
-/home/ambientesPy/revistaslatam/bin/python /home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py report \
+python scripts/neural_longitudinal_cli.py report \
   --analysis ./dynamics_analysis.json \
   --output ./report_longitudinal.md
 ```
@@ -111,7 +111,7 @@ El archivo `sequence_manifest.json` emitido por `sequential-networks` es **100% 
 ### 4. Detección de Comunidades Individual (`detect-communities`)
 Ejecuta la partición modular sobre una red existente:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py detect-communities \
+python scripts/biblio_network_cli.py detect-communities \
   --input /ruta/a/red_keywords.json \
   --algorithm leiden \
   --resolution 1.0 \
@@ -123,7 +123,7 @@ Ejecuta la partición modular sobre una red existente:
 ### 5. Cálculo de Centralidades (`calculate-centralities`)
 Calcula el grado ponderado, intermediación (*betweenness*) y PageRank:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py calculate-centralities \
+python scripts/biblio_network_cli.py calculate-centralities \
   --input /ruta/a/red_con_comunidades.json \
   --output /ruta/a/centralidades.json
 ```
@@ -133,7 +133,7 @@ Calcula el grado ponderado, intermediación (*betweenness*) y PageRank:
 ### 6. Exportación a Formatos Externos (`export-graph`)
 Exporta el grafo para Gephi, Pajek o VOSviewer:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/biblio_network_cli.py export-graph \
+python scripts/biblio_network_cli.py export-graph \
   --input /ruta/a/red_con_comunidades.json \
   --format gexf \
   --output /ruta/al/mapa.gexf

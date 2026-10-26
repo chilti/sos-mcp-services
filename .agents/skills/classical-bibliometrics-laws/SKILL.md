@@ -2,7 +2,7 @@
 name: classical-bibliometrics-laws
 description: Modelado matemático y validación empírica de leyes bibliométricas clásicas (Ley de Lotka con conteo full/frac y prueba KS, Ley de Bradford con formulación continua de Egghe, Índice de Price de obsolescencia y ajuste de curvas de crecimiento exponencial vs logístico).
 dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
+  - python: ">=3.10"
   - script: "scripts/bibliometric_laws_cli.py"
 ---
 
@@ -14,16 +14,16 @@ Módulo cuantitativo especializado en modelar distribuciones bibliométricas cl�
 Las leyes clásicas de la cienciometría permiten determinar si una disciplina se comporta como una ciencia consolidada, detectar el núcleo de revistas esenciales (*Core Journals*), cuantificar la vida media de citas y predecir la saturación de un campo de investigación.
 
 ## Dependencies
-- Entorno Python: `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
 - Paquetes clave: `numpy`, `scipy`, `matplotlib`
-- Script ejecutable: [`scripts/bibliometric_laws_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/classical-bibliometrics-laws/scripts/bibliometric_laws_cli.py)
+- Script ejecutable: [`scripts/bibliometric_laws_cli.py`](file://scripts/bibliometric_laws_cli.py)
 
 ## Scripts & CLI Tools
 
 ### Ley de Lotka (`lotka`)
 Ajusta la distribución de productividad de autores y evalúa la bondad de ajuste con Kolmogorov-Smirnov:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/bibliometric_laws_cli.py lotka \
+python scripts/bibliometric_laws_cli.py lotka \
   --input /ruta/al/corpus.parquet \
   --counting full \
   --plot-output /ruta/al/grafico_lotka.png \
@@ -36,7 +36,7 @@ Opciones:
 ### Ley de Bradford (`bradford`)
 Divide las fuentes en 3 zonas de igual producción aplicando la formulación continua de Egghe:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/bibliometric_laws_cli.py bradford \
+python scripts/bibliometric_laws_cli.py bradford \
   --input /ruta/al/corpus.parquet \
   --output /ruta/a/zonas_bradford.json
 ```
@@ -44,7 +44,7 @@ Divide las fuentes en 3 zonas de igual producción aplicando la formulación con
 ### Índice de Price y Obsolescencia (`price-index`)
 Calcula el porcentaje de referencias con $\le 5$ años de antigüedad y la vida media de citación:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/bibliometric_laws_cli.py price-index \
+python scripts/bibliometric_laws_cli.py price-index \
   --input /ruta/al/corpus.parquet \
   --output /ruta/a/indice_price.json
 ```
@@ -52,7 +52,7 @@ Calcula el porcentaje de referencias con $\le 5$ años de antigüedad y la vida 
 ### Fases de Crecimiento de la Ciencia (`growth-phase`)
 Compara el ajuste Exponencial vs Logístico para diagnosticar la fase de madurez:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/bibliometric_laws_cli.py growth-phase \
+python scripts/bibliometric_laws_cli.py growth-phase \
   --input /ruta/al/corpus.parquet \
   --plot-output /ruta/al/grafico_crecimiento.png \
   --output /ruta/a/diagnostico_fase.json

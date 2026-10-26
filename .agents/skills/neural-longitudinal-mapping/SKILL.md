@@ -112,7 +112,7 @@ Identifica qué cuadrantes del mapa concentran las mayores transformaciones estr
 
 ## 5. Scripts de Utilidad: `neural_longitudinal_cli.py`
 
-Ubicación del script CLI de ejecución: [`scripts/neural_longitudinal_cli.py`](file:///home/labsom/knomap/engine/skills/neural-longitudinal-mapping/scripts/neural_longitudinal_cli.py)
+Ubicación del script CLI de ejecución: [`scripts/neural_longitudinal_cli.py`](file://scripts/neural_longitudinal_cli.py)
 
 ```bash
 # 1. Preparación de serie temporal por ventanas

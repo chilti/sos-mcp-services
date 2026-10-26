@@ -3,7 +3,7 @@ OpenAlex México Visualization Tools & Artifact Engine
 Módulo de generación de artefactos visuales interactivos (HTML con Plotly.js, Redes PyVis y Tarjetas PNG)
 para el servicio MCP sos_openalex.
 
-Entorno Python: /home/ambientesPy/revistaslatam
+Requisitos: Python >= 3.10, plotly, matplotlib.
 Regla estricta: CERO JOINs en consultas ClickHouse.
 """
 

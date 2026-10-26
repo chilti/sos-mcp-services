@@ -25,18 +25,18 @@ Motor analítico independiente para calcular la batería integral de indicadores
 
 Entorno de ejecución:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py [subcomando] [opciones]
+python scripts/tlachia_metrics_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Resumen cienciométrico (con filtros temporales opcionales)
 ```bash
 # Resumen global
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py calculate-summary \
+python scripts/tlachia_metrics_cli.py calculate-summary \
   --corpus ./corpus.parquet \
   --output ./resumen_tlachia.md
 
 # Resumen del último lustro (últimos 5 años)
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py calculate-summary \
+python scripts/tlachia_metrics_cli.py calculate-summary \
   --corpus ./corpus.parquet \
   --last-years 5 \
   --output ./resumen_ultimo_lustro.md
@@ -44,7 +44,7 @@ Entorno de ejecución:
 
 ### 2. Serie temporal anual año por año
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py annual-series \
+python scripts/tlachia_metrics_cli.py annual-series \
   --corpus ./corpus.parquet \
   --year-from 2018 \
   --year-to 2024 \
@@ -54,19 +54,19 @@ Entorno de ejecución:
 ### 3. Análisis longitudinal por periodos consecutivos o ventanas
 ```bash
 # Periodos consecutivos de 5 años
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py period-series \
+python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --window 5 \
   --output ./periodos_5anios.md
 
 # Lista explícita de periodos para análisis decenal
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py period-series \
+python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --periods "2000-2009,2010-2019,2020-2024" \
   --output ./periodos_decenales.parquet
 
 # Matriz longitudinal de investigadores por periodo (para mapeo SOM)
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py period-series \
+python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --window 5 \
   --level researcher \
@@ -75,7 +75,7 @@ Entorno de ejecución:
 
 ### 4. Agregación transversal a nivel de investigadores
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py aggregate-by \
+python scripts/tlachia_metrics_cli.py aggregate-by \
   --corpus ./corpus.parquet \
   --level researcher \
   --output ./autores_indicadores.parquet
@@ -83,7 +83,7 @@ Entorno de ejecución:
 
 ### 5. Coeficiente de concentración de Gini temático
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py gini-diversity \
+python scripts/tlachia_metrics_cli.py gini-diversity \
   --corpus ./corpus.parquet \
   --column keywords_plus
 ```
@@ -91,6 +91,6 @@ Entorno de ejecución:
 ---
 
 ## Referencias Técnicas
-- [Guía de Análisis Temporal y Longitudinal por Periodos](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/references/longitudinal_periods_guide.md)
-- [Manual Matemático de Indicadores Cienciométricos TlachIA](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/references/tlachia_indicators_mathematical_handbook.md)
-- [Modelo Económico de APC y Ahorro Diamante](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/references/apc_economic_model.md)
+- [Guía de Análisis Temporal y Longitudinal por Periodos](references/longitudinal_periods_guide.md)
+- [Manual Matemático de Indicadores Cienciométricos TlachIA](references/tlachia_indicators_mathematical_handbook.md)
+- [Modelo Económico de APC y Ahorro Diamante](references/apc_economic_model.md)

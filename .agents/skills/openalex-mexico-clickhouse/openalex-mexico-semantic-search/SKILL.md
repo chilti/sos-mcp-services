@@ -2,7 +2,7 @@
 name: openalex-mexico-semantic-search
 description: Búsqueda semántica y conceptual de publicaciones científicas e investigadoras/es en México usando embeddings vectoriales nomic de 768 dimensiones en ClickHouse (rag.works_academic_all y rag.academics_all), con desambiguación automática de autores nacionales frente a colaboradores internacionales.
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
 
@@ -20,8 +20,8 @@ A diferencia de las búsquedas léxicas por coincidencia exacta de texto, esta s
 
 ## Dependencies
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-semantic-search/scripts/openalex_mexico_cli.py)
+- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
+- **Script CLI:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
 - **Servidor de Embeddings:** LM Studio local (`http://127.0.0.1:1234/v1` en host / `http://172.17.0.1:1234/v1` en contenedor Docker)
 - **Tablas ClickHouse:** `rag.works_academic_all` (1.37M publicaciones con `embedding_nomic`), `rag.academics_all` (9.1K perfiles con `embedding_nomic`), `rag.authors_seed_mexico` (2.57M autores).
 
@@ -30,7 +30,7 @@ A diferencia de las búsquedas léxicas por coincidencia exacta de texto, esta s
 ### 1. Búsqueda Semántica de Publicaciones
 Recupera artículos conceptualmente afines a una temática en lenguaje natural (español o inglés):
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py semantic-search \
+python scripts/openalex_mexico_cli.py semantic-search \
   --query "materiales catódicos para baterías de litio" \
   --target works \
   --limit 20 \
@@ -46,7 +46,7 @@ Filtros opcionales combinables:
 ### 2. Búsqueda Semántica de Investigadores Especialistas
 Descubre investigadores de México cuyo perfil temático coincide vectorialmente con una disciplina o problema:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_mexico_cli.py semantic-search \
+python scripts/openalex_mexico_cli.py semantic-search \
   --query "procesamiento de lenguaje natural y modelos de lenguaje" \
   --target authors \
   --limit 15 \

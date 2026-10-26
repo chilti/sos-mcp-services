@@ -2,7 +2,7 @@
 name: openalex-harvester
 description: Extracción, paginación por cursor y normalización de literatura científica desde OpenAlex hacia tablas canónicas (Parquet, JSON, CSV).
 metadata:
-  python: "/home/ambientesPy/revistaslatam"
+  python: ">=3.10"
   script: "scripts/openalex_harvest_cli.py"
 ---
 # OpenAlex Data Harvester
@@ -22,7 +22,7 @@ Herramienta autónoma e independiente para la recolección masiva de registros c
 
 ## Dependencies y Cadena de Valor
 
-- **Entorno Python:** `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
 - **Script CLI:** `scripts/openalex_harvest_cli.py`
 - **Habilidades Downstream:**
   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Procesa el archivo Parquet canónico para calcular más de 30 indicadores cienciométricos.
@@ -39,13 +39,13 @@ Herramienta autónoma e independiente para la recolección masiva de registros c
 Entorno de ejecución:
 
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_harvest_cli.py [subcomando] [opciones]
+python scripts/openalex_harvest_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Búsqueda temática o de revista
 
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_harvest_cli.py fetch-works \
+python scripts/openalex_harvest_cli.py fetch-works \
   --query "quantum computing" \
   --year-from 2020 \
   --year-to 2024 \
@@ -56,7 +56,7 @@ Entorno de ejecución:
 ### 2. Producción de un autor por ORCID o ID
 
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_harvest_cli.py fetch-author-works \
+python scripts/openalex_harvest_cli.py fetch-author-works \
   --author-id "0000-0002-1825-0097" \
   --limit 200 \
   --output ./data/author_works.parquet
@@ -65,7 +65,7 @@ Entorno de ejecución:
 ### 3. Producción institucional por ROR
 
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/openalex_harvest_cli.py fetch-institution-works \
+python scripts/openalex_harvest_cli.py fetch-institution-works \
   --ror "012gw1n35" \
   --year-from 2023 \
   --year-to 2024 \

@@ -35,7 +35,7 @@ Este documento condensa las mejores prácticas identificadas en la skill de refe
 En el archivo `SKILL.md`, incluir obligatoriamente la sección `## Dependencies` indicando:
 * **Habilidades Previas:** Qué skill proporciona los datos de entrada limpios (ej. `scientometrics-incites-expert` o `tlachia-metrics-handler`).
 * **Habilidades Complementarias:** Qué herramientas orquestan el cálculo de fondo (ej. `som-methodological-expert` para la calibración espectral SVD).
-* **Entorno y Recursos:** Entorno Python requerido (`/home/ambientesPy/revistaslatam`) y herramientas MCP invocables.
+* **Entorno y Recursos:** Requisitos de entorno (ej. Python `>=3.10` y paquetes requeridos) y herramientas MCP invocables. **Queda terminantemente prohibido hardcodear rutas absolutas de servidores o entornos de usuario** (ej. `/home/ambientesPy/...` o `/mnt/expansion/...`), pues impiden la ejecución en entornos locales (Windows, macOS), contenedores Docker o CI/CD. Los comandos deben invocar siempre `python scripts/...` y las dependencias declararse en `## Dependencies`.
 
 ---
 
@@ -98,7 +98,7 @@ description: >-
   {Descripción concisa en tercera persona (máximo 1024 caracteres).
    Explica con precisión QUÉ HACE la skill y CUÁNDO debe activarse.}
 metadata:
-  python: "/home/ambientesPy/revistaslatam" # o ruta de entorno
+  python: ">=3.10" # Especificación de versión, nunca rutas absolutas a entornos del host
   tools: ["servicio_mcp_asociado"]
 ---
 

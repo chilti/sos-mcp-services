@@ -21,12 +21,12 @@ Herramienta autónoma e independiente para consultar la base de conocimiento de 
 
 Entorno de ejecución:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/scripts/s2_harvest_cli.py [subcomando] [opciones]
+python scripts/s2_harvest_cli.py [subcomando] [opciones]
 ```
 
 ### 1. Búsqueda temática
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/scripts/s2_harvest_cli.py search-papers \
+python scripts/s2_harvest_cli.py search-papers \
   --query "knowledge graphs science" \
   --year-from 2022 \
   --year-to 2024 \
@@ -36,14 +36,14 @@ Entorno de ejecución:
 
 ### 2. Extracción de grafo de citaciones de un paper
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/scripts/s2_harvest_cli.py citation-graph \
+python scripts/s2_harvest_cli.py citation-graph \
   --paper-id "10.1038/s41586-020-2649-2" \
   --output ./paper_citation_subgraph.parquet
 ```
 
 ### 3. Publicaciones de un autor por S2 Author ID
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/scripts/s2_harvest_cli.py author-papers \
+python scripts/s2_harvest_cli.py author-papers \
   --author-id "1741101" \
   --limit 50 \
   --output ./author_papers.parquet
@@ -52,5 +52,5 @@ Entorno de ejecución:
 ---
 
 ## Referencias Técnicas
-- [Campos y Estructura de Semantic Scholar Graph API](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/references/s2_graph_api_fields.md)
-- [Concepto de Citas Influyentes](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/semantic-scholar-harvester/references/influential_citations_concept.md)
+- [Campos y Estructura de Semantic Scholar Graph API](references/s2_graph_api_fields.md)
+- [Concepto de Citas Influyentes](references/influential_citations_concept.md)

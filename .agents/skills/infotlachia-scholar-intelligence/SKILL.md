@@ -2,7 +2,7 @@
 name: infotlachia-scholar-intelligence
 description: Acceso analítico de alta velocidad a la base DuckDB (analytics_cache.duckdb, 5.9 GB, 14 tablas) para consultar métricas precalculadas de investigadores SNII, dependencias académicas, universidades mexicanas y panorama nacional (FWCI, citas, APC USD, Gini).
 dependencies:
-  - python: "/home/ambientesPy/revistaslatam"
+  - python: ">=3.10"
   - script: "scripts/infotlachia_cli.py"
 ---
 
@@ -14,16 +14,16 @@ Módulo analítico de inteligencia cienciométrica sobre investigadores acredita
 Contiene métricas consolidadas sobre más de 90,000 investigadores y 3,000 instituciones. A través de DuckDB en modo solo lectura (`read_only=True`), permite consultas analíticas de latencia inferior a 10 ms sobre series temporales, gasto estimado en APC, índice de Gini temático y colocación en el percentil de excelencia (Top 10%).
 
 ## Dependencies
-- Entorno Python: `/home/ambientesPy/revistaslatam`
+- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
 - Base de datos DuckDB: `/home/sinapsisai/data/analytics_cache.duckdb`
-- Script ejecutable: [`scripts/infotlachia_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/infotlachia-scholar-intelligence/scripts/infotlachia_cli.py)
+- Script ejecutable: [`scripts/infotlachia_cli.py`](file://scripts/infotlachia_cli.py)
 
 ## Scripts & CLI Tools
 
 ### Perfil de Investigador (`query-researcher`)
 Consulta el impacto consolidado de un científico mexicano:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/infotlachia_cli.py query-researcher \
+python scripts/infotlachia_cli.py query-researcher \
   --name "Torres, Rafael" \
   --format markdown \
   --output /ruta/a/perfil_torres.md
@@ -32,7 +32,7 @@ Consulta el impacto consolidado de un científico mexicano:
 ### Métricas de Facultad o Dependencia (`query-entity`)
 Analiza la producción y gasto de una dependencia universitaria:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/infotlachia_cli.py query-entity \
+python scripts/infotlachia_cli.py query-entity \
   --entity "Facultad de Ciencias" \
   --format json \
   --output /ruta/a/facultad_ciencias.json
@@ -41,7 +41,7 @@ Analiza la producción y gasto de una dependencia universitaria:
 ### Panorama Institucional (`query-institution`)
 Benchmarking general de una universidad completa:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/infotlachia_cli.py query-institution \
+python scripts/infotlachia_cli.py query-institution \
   --institution "UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO" \
   --format markdown \
   --output /ruta/a/reporte_unam.md
@@ -50,14 +50,14 @@ Benchmarking general de una universidad completa:
 ### Panorama Nacional (`national-overview`)
 Estadísticas consolidadas del sistema científico mexicano:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/infotlachia_cli.py national-overview \
+python scripts/infotlachia_cli.py national-overview \
   --format markdown
 ```
 
 ### Consultas SQL Seguras (`sql-safe`)
 Ejecución de sentencias SELECT directas de solo lectura sobre las 14 tablas:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python scripts/infotlachia_cli.py sql-safe \
+python scripts/infotlachia_cli.py sql-safe \
   --query "SELECT top_domain, count(*) FROM investigador_total GROUP BY top_domain ORDER BY count(*) DESC LIMIT 10" \
   --format markdown
 ```

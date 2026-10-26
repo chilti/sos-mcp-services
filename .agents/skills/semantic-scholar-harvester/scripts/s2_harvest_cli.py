@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/ambientesPy/revistaslatam/bin/python
+#!/usr/bin/env python3
 """
 Semantic Scholar Data Harvester CLI
 -----------------------------------
@@ -30,8 +30,8 @@ def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
         return os.environ.get(key)
     env_paths = [
         Path.cwd() / ".env",
-        Path("/mnt/expansion/desplegados/sos-mcp-services/.env"),
-        Path("/mnt/expansion/desplegados/TlachIA-Metrics/.env")
+        Path(__file__).resolve().parents[3] / ".env",
+        Path.cwd() / ".env"
     ]
     for p in env_paths:
         if p.exists():
