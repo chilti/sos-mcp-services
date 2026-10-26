@@ -172,7 +172,7 @@ Catálogo de 14 Skills Disponibles:
 - infotlachia-scholar-intelligence
 - journal-editorial-intelligence
 - knomap-unified-orchestrator
-- openalex-search-engineer
+- openalex-mexico-clickhouse
 - research-fronts-detection-expert
 - revistaslatam-editorial-intelligence
 - scientometrics-incites-expert

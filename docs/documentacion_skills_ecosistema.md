@@ -68,7 +68,7 @@ El ecosistema se estructura en **6 dominios analíticos**:
 │ • bibliometric-eda-profiler   │ • geopolitical-collab-analyst │ • knomap-unified-orchestrator           │
 │ • bibliometric-network-analyst│ • geopolitical-science-map    │ • project-hub-manager                   │
 │ • classical-bibliometrics-laws│ • open-access-monitor         │ • tlachia-master-index                  │
-│ • tlachia-metrics-engine      │ • openalex-search-engineer    │ • workflow-skill-creator                │
+│ • tlachia-metrics-engine      │ • openalex-mexico-clickhouse  │ • workflow-skill-creator                │
 │ • scientometrics-incites      │ • revistaslatam-indicators    │                                         │
 │                               │ • revistaslatam-editorial     │                                         │
 │                               │ • topics-research-fronts      │                                         │
@@ -152,7 +152,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `infotlachia-scholar-intelligence` | CLI / Protocolo | `infotlachia_cli.py` | JSON | Inteligencia profunda sobre el Padrón SNII 2025, caché DuckDB de 14 tablas, APC y UMAP 2D/3D. |
 | `journal-editorial-intelligence` | Protocolo MCP | — | N/A | Evaluación cienciométrica de revistas, Acceso Abierto Diamante, indización SciELO/DOAJ/Redalyc. |
 | `open-access-monitor` | CLI Autónoma | `open_access_monitor_cli.py` | JSON | Auditoría de las 6 vías canónicas de OA (Diamante, Gold, Híbrido, Verde, Bronce, Cerrado), estimación de gasto en APC y transición anual. |
-| `openalex-search-engineer` | CLI / Protocolo | `openalex_search_cli.py` | JSON | Optimización de consultas sobre la instancia ClickHouse local (569M trabajos), tokenización y diacríticos. |
+| `openalex-mexico-clickhouse` | CLI / Protocolo | `openalex_mexico_cli.py` | JSON | Motor analítico maestro sobre la producción científica de México en ClickHouse (1.65M trabajos, 2.57M autores, SNII, APC, embeddings nomic 768d y CERO JOINs). |
 | `research-fronts-detection-expert` | Protocolo MCP | — | N/A | Detección multimodal de frentes (v5.0), evolución longitudinal con AMI y análisis aluvial de linajes temáticos. |
 | `revistaslatam-editorial-intelligence` | Protocolo MCP | — | N/A | Catálogo de revistas iberoamericanas, evaluación editorial integral y checklist de indización. |
 | `revistaslatam-indicators-engine` | CLI Autónoma | `revistaslatam_indicators_cli.py` | JSON | Cálculo de endogamia editorial institucional, balance de multilingüismo y auditoría de los 38 criterios de Latindex Catálogo 2.0. |
@@ -194,7 +194,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `neural-longitudinal-mapping` | `knomap`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Altamente completa (195 líns, actualización UNAM-IIBI 2025, Warm-Start 1/10 épocas, paradojas métricas). |
 | `open-access-monitor` | `sos-mcp`, `gemini-config` | Sí | — | **Anomalía:** `SKILL.md` faltaba en `sos-mcp-services` (el script CLI sí existía). |
 | `openalex-harvester` | `sos-mcp`, `gemini-config` | Sí | 2 docs | Conforme a estándar. |
-| `openalex-search-engineer` | `TlachIA`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Completa en sos-mcp (63 líns), resumen en TlachIA (26 líns). |
+| `openalex-mexico-clickhouse` | `sos-mcp`, `TlachIA` | Sí | 7 sub-skills | Motor maestro analítico y suite de 7 módulos especializados en ClickHouse (1.65M trabajos México). |
 | `project-hub-manager` | `knomap` | Sí | 2 docs | Conforme a estándar. |
 | `research-fronts-detection-expert` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo MCP. Conforme. |
 | `revistaslatam-editorial-intelligence` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Protocolo MCP. Conforme. |
@@ -225,4 +225,4 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 3. **Normalización del nombre de `workflow-skill-creator`:**
    Renombrar la carpeta de `workflow_skill_creator` a `workflow-skill-creator` en `knomap` y `~/.gemini/config/skills/` para cumplir la especificación canónica.
 4. **Armonización TlachIA-Hands vs sos-mcp-services:**
-   Las versiones en `TlachIA-Hands` para `bibliometric-network-analyst`, `classical-bibliometrics-laws` y `openalex-search-engineer` son resúmenes breves que sólo apuntan a herramientas MCP. Se recomienda actualizar `TlachIA-Hands` con la versión rica de `sos-mcp-services` para que el agente tenga acceso tanto a las invocaciones CLI locales como al contexto teórico completo.
+   Las versiones en `TlachIA-Hands` para `bibliometric-network-analyst` y `classical-bibliometrics-laws` son resúmenes breves que sólo apuntan a herramientas MCP. Se recomienda actualizar `TlachIA-Hands` con la versión rica de `sos-mcp-services`. La antigua skill `openalex-search-engineer` fue retirada por quedar completamente subsumida en `openalex-mexico-clickhouse` y `openalex-harvester`.
