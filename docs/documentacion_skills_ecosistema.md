@@ -31,6 +31,8 @@ Toda Skill en el ecosistema debe satisfacer los siguientes principios canónicos
    - Control estricto de tasas de petición (*rate limiting*) en scrapers y APIs externas.
 4. **Divulgación Progresiva (*Progressive Disclosure*):**
    - El archivo `SKILL.md` debe mantenerse conciso y accionable. Tablas extensas, manuales matemáticos y esquemas de base de datos se desacoplan en `references/*.md`.
+5. **Secciones Obligatorias (`Dependencies` y `Common Mistakes`):**
+   - Para conocer en detalle la especificación completa y la plantilla estándar, consultar: [Estándar Canónico de Diseño y Calidad para Skills Científicas](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/docs/estandar_diseno_skills_cientificas.md).
 
 ---
 

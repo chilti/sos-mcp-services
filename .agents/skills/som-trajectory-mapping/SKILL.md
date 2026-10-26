@@ -22,7 +22,21 @@ La metodología está fundamentada y validada en:
 
 ---
 
-## 2. Reutilización de `som-methodological-expert`
+## 2. Dependencies y Cadena de Valor
+
+Esta skill orquesta la evolución temporal en el espacio latente y depende de la siguiente arquitectura:
+
+* **Habilidades Upstream (Extracción y Soporte Matemático):**
+  * [`scientometrics-incites-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/scientometrics-incites-expert/SKILL.md): Extrae matrices de series anuales de InCites con suavizado ECMA (`get_incites_temporal_evolution`).
+  * [`tlachia-metrics-handler`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Extrae series de tiempo multivariadas anuales desde paquetes TlachIA Metrics.
+  * [`som-methodological-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Provee la calibración espectral SVD, el dimensionamiento continuo ($20N\text{--}30N$) y las reglas cromáticas LabSOM.
+* **Herramientas de Software Asociadas:**
+  * [`services/knomap/tools/viz_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/viz_tools.py): `knomap_render_som_dashboard` (renderizado SVG de splines Catmull-Rom sobre malla hexagonal).
+  * [`services/knomap/tools/som_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/som_tools.py): Entrenamiento de la red y proyección de coordenadas BMU.
+
+---
+
+## 3. Reutilización de `som-methodological-expert`
 
 El Mapeo de Trayectorias **reutiliza directamente** los pilares metodológicos de [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md):
 1. **Espacio de Estados Multidimensional:** Cada observación temporal de una entidad es un vector $x_t \in \mathbb{R}^n$ definido por los mismos $n$ indicadores normalizados (CNCI/FWCI, Top 1%, Top 10%, Q1, Average Percentile, colaboraciones).
@@ -172,7 +186,27 @@ Para orquestar un estudio de trayectoria desde el entorno analítico:
 
 ---
 
-## 7. Referencias Canónicas
+## 7. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+
+- ❌ **Anti-patrón 1: Trazar más de 5 entidades simultáneamente en la visualización**  
+  Proyectar trayectorias para 10, 20 o más instituciones o países al mismo tiempo. Esto crea un "efecto espagueti" donde las curvas se cruzan caóticamente, ocultando puntos de inflexión y arruinando la legibilidad.  
+  **Solución:** Aunque el SOM puede entrenarse con 100 entidades para que la malla sea representativa, **en el dashboard se deben visualizar máximo 5 entidades** (grupos de pares comparables o competidores directos).
+- ❌ **Anti-patrón 2: Trazar trayectorias con datos crudos sin suavizado temporal**  
+  Utilizar los valores anuales puros sin filtrar. Las series temporales bibliométricas presentan ruido estocástico anual (e.g. un año con un congreso especial genera picos artificiales) que produce quiebres bruscos y trayectorias en zigzag sin significado estructural.  
+  **Solución:** Aplicar siempre Centered Moving Average (CMA) de 3 o 5 periodos o suavizado exponencial ECMA-3 / ECMA-5 antes de calcular los splines.
+- ❌ **Anti-patrón 3: Conectar puntos anuales con segmentos rectos rígidos**  
+  Unir las neuronas ganadoras (BMUs) anuales con polilíneas ortogonales o líneas rectas. El espacio latente del SOM es una variedad continua; las líneas rectas rompen la topología del movimiento.  
+  **Solución:** Utilizar siempre splines cúbicos paramétricos continuos (Catmull-Rom) con waypoints circulares y marcadores direccionales SVG.
+- ❌ **Anti-patrón 4: Imprimir todas las etiquetas anuales sobre la curva**  
+  Intentar rotular cada año (e.g. 1990, 1991, 1992... 2025) a lo largo de la spline, empastando la retícula hexagonal.  
+  **Solución:** Rotular únicamente los puntos extremos (inicio y fin) y puntos de inflexión temporal mayores, dejando que los waypoints circulares representen los pasos intermedios.
+- ❌ **Anti-patrón 5: Violación de File-Output First**  
+  Imprimir en el chat las coordenadas completas de los splines y waypoints en formato JSON gigante.  
+  **Solución:** Generar el dashboard autónomo en `scratch/som_trajectories_dashboard.html` y retornar un resumen ejecutivo con el enlace al artefacto.
+
+---
+
+## 8. Referencias Canónicas
 
 1. **Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025).** Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 293–313). UNAM, Instituto de Investigaciones Bibliotecológicas y de la Información. ISBN-e: 978-607-642-193-2.
 2. **Jiménez-Andrade, J. L. (2023).** *Métodos y aplicaciones de la red neuronal SOM para el análisis temporal de datos multidimensionales* (Tesis doctoral). Universidad Nacional Autónoma de México.

@@ -24,18 +24,22 @@ Esta skill implementa y orquesta la metodología científica de **Mapeo Neurolon
 
 ---
 
-## 2. Relación y Reutilización de `som-methodological-expert`
+## 2. Dependencies y Cadena de Valor
 
-Esta skill **hereda y reutiliza integralmente** la base matemática y visual provista por [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md):
-1. **Ratio de Aspecto Espectral SVD:** Proporción $\text{cols}/\text{rows} \approx \sigma_1 / \sigma_2$ calculada sobre la matriz agregada de perfiles.
-2. **Dimensionamiento de Malla:** Topología hexagonal y sobremalla empírica ($M \approx 20N\text{--}30N$ o Big SOM $10N$) para desplegar resolución topológica continua.
-3. **Tríada Visual LabSOM:**
-   * U-Matrix con gradiente canónico: **Rojo** (máxima similitud / cúmulos densos) $\leftrightarrow$ **Amarillo** (fronteras / crestas / baja similitud).
-   * Mapas de Componentes con paleta divergente: **Amarillo** (media) $\rightarrow$ **Rojo** (> media) / **Verde** (< media).
-   * Meta-clustering de Vesanto sobre pesos sinápticos validado con Silhouette Score.
-4. **Mapeo Normal de Etiquetas y Regla de Legibilidad para Matrices Grandes:**
-   * En cada corte temporal, las entidades activas se proyectan sobre sus respectivas neuronas ganadoras (BMU) de manera normal como etiquetas de texto dentro de los hexágonos.
-   * **Regla de Legibilidad:** Si la matriz de entrenamiento de la serie temporal es muy grande ($N > 40$ entidades), se debe procurar **dibujar una cantidad razonable y legible de etiquetas** (por ejemplo, priorizando las entidades del núcleo persistente o las más representativas según volumen e impacto, o limitando a 1 o 2 etiquetas por celda). Esto evita la sobrecarga visual y permite rastrear con claridad las migraciones intertemporales sobre la malla hexagonal.
+Esta skill implementa el encadenamiento intertemporal neurocomputacional y se articula con la siguiente arquitectura:
+
+* **Habilidades Upstream (Extracción y Soporte Metodológico):**
+  * [`tlachia-metrics-handler`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Extrae secuencias de matrices por periodos consecutivos (`02_Periodos`) desde paquetes TlachIA Metrics.
+  * [`scientometrics-incites-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/scientometrics-incites-expert/SKILL.md): Extrae matrices históricas y por ventanas quinquenales desde reportes Clarivate InCites.
+  * [`som-methodological-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): **Hereda y reutiliza integralmente** la base matemática y visual:
+    1. **Ratio de Aspecto Espectral SVD:** Proporción $\text{cols}/\text{rows} \approx \sigma_1 / \sigma_2$ calculada sobre la matriz agregada de perfiles.
+    2. **Dimensionamiento de Malla:** Topología hexagonal y sobremalla empírica ($M \approx 20N\text{--}30N$ o Big SOM $10N$) para desplegar resolución topológica continua.
+    3. **Tríada Visual LabSOM:** U-Matrix roja/amarilla, Mapas de Componentes divergentes amarillo-rojo/verde y Meta-clustering de Vesanto.
+* **Habilidades Complementarias y Downstream:**
+  * [`som-trajectory-mapping`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Técnica complementaria para trayectorias continuas anuales de pocas entidades clave mediante splines.
+  * [`services/knomap/tools/viz_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/viz_tools.py): `knomap_render_som_dashboard` para generar el artefacto HTML por cada corte temporal.
+* **Regla de Legibilidad para Matrices Grandes:**
+  * Si la matriz de entrenamiento de la serie temporal es grande ($N > 40$ entidades), se debe procurar **dibujar una cantidad razonable y legible de etiquetas** (priorizando el núcleo persistente o limitando a 1 o 2 etiquetas por celda).
 
 ---
 
@@ -144,7 +148,27 @@ python neural_longitudinal_cli.py report \
 
 ---
 
-## 6. Referencias Bibliográficas
+## 6. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+
+- ❌ **Anti-patrón 1: Reentrenamiento independiente con PCA en cortes sucesivos ($T_2, T_3, \dots$)**  
+  Inicializar cada periodo temporal desde cero con PCA o pesos aleatorios. Esto provoca rotaciones arbitrarias, traslaciones o inversiones especulares del espacio latente, haciendo imposible la comparación longitudinal de trayectorias.  
+  **Solución:** Aplicar estrictamente el protocolo Warm-Start: inicializar $T_t$ con los pesos convergidos del periodo previo: $W_t^{(0)} = W_{t-1}^*$.
+- ❌ **Anti-patrón 2: Ejecutar el número completo de épocas base (1000 iteraciones) en periodos de refinamiento**  
+  Entrenar $T_t$ durante cientos de épocas con tasa de aprendizaje grande ($\alpha_0 > 0.1$), borrando la memoria estructural de la secuencia anterior.  
+  **Solución:** La duración del refinamiento Warm-Start debe ser estrictamente de 1/10 de las épocas base (100 a 200 épocas) con $\alpha_0 = 0.1 \rightarrow 0.01$ y radio $\sigma_0 = \frac{1}{8}\bar{D}$.
+- ❌ **Anti-patrón 3: No cuantificar la tensión de deriva sináptica ($\Delta W$)**  
+  Reportar desplazamientos de entidades o migraciones de clusters sin auditar la deriva sináptica global $\Delta W = \|W_t - W_{t-1}\|_F$.  
+  **Solución:** Calcular siempre $\Delta W$ para verificar si la red experimentó una acomodación suave o una mutación estructural violenta en el sistema de indicadores.
+- ❌ **Anti-patrón 4: Tratar de etiquetar todas las entidades en secuencias masivas**  
+  En series temporales de 50 o 100 universidades, rotular cada una en todos los cortes temporales satura los hexágonos e impide rastrear las migraciones.  
+  **Solución:** Identificar el *núcleo persistente* y las entidades singulares, limitando a 1 o 2 etiquetas por neurona mediante `max_labels_per_neuron`.
+- ❌ **Anti-patrón 5: Violación de File-Output First**  
+  Volcar en la consola del LLM las matrices de pesos de los 5 periodos concatenados.  
+  **Solución:** Escribir los resultados en archivos estructurados (`longitudinal_results.json` y `report_longitudinal.md`) y generar dashboards HTML por cada periodo.
+
+---
+
+## 7. Referencias Bibliográficas
 
 1. **Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025).** Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 293–313). UNAM, Instituto de Investigaciones Bibliotecológicas y de la Información. ISBN-e: 978-607-642-193-2.
 2. **Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024).** Neural longitudinal mapping of multidimensional performance profiles of Latin American universities. *Iberoamerican Journal of Science Measurement and Communication*, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
