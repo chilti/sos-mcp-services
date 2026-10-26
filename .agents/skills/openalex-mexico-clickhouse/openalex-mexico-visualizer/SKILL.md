@@ -114,3 +114,17 @@ Tipos disponibles (`--type`):
      2. **Nivel 2 (Tarjeta PNG en Chat):** Incrusta la tarjeta estática PNG directamente en el chat para vista previa inmediata: `![Gráfica](reports/tarjeta.png)`.
      3. **Nivel 3 (Dashboard Interactivo Autónomo):** Ofrece el enlace clickable al HTML autónomo `[Abrir Dashboard Interactivo](reports/artefacto.html)` o la etiqueta nativa `<agent-embed src="file:///reports/artefacto.html"></agent-embed>`. Los artefactos deben ser completamente portables, sin dependencias forzadas de iframes hacia servidores remotos.
 
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+
+- ❌ **Anti-patrón 1: Reciclar archivos de sesiones previas en carpetas ajenas (`../<hash>/`)**  
+  Intentar enlazar un `.html` o `.png` generado en una sesión anterior o en un directorio padre. Provoca pantallas negras y errores 404 en el visor Canvas.  
+  **Solución:** Seguir estrictamente el flujo de dos fases generando los datos frescos en `./data/` y el renderizado en `./reports/`.
+- ❌ **Anti-patrón 2: Guardar artefactos en `/tmp/` fuera del workspace**  
+  El visor Canvas de la plataforma solo puede servir archivos dentro del árbol de trabajo actual.  
+  **Solución:** Guardar siempre en `./reports/` o `./data/`.
+- ❌ **Anti-patrón 3: Omitir la generación de la tarjeta estática PNG (`--png`)**  
+  Generar únicamente el `.html` sin la tarjeta PNG para la vista previa rápida en el chat.  
+  **Solución:** Pasar siempre `--png ./reports/tarjeta.png` para cumplir con la Tríada Visual.
+- ❌ **Anti-patrón 4: Usar fondos blancos en scripts de visualización ad-hoc**  
+  Generar gráficos de matplotlib o plotly con fondo blanco predeterminado rompiendo la armonía estética del sistema.  
+  **Solución:** Usar `template="plotly_dark"` o paleta con fondo `#0B0F19`.

@@ -64,4 +64,16 @@ En los resultados en formato JSON devueltos para cada publicación:
 
 1. **Cuando el usuario pregunte por conceptos complejos o preguntas abiertas:** Usa `semantic-search` en lugar de una búsqueda por coincidencia estricta de palabras clave (`search-works`).
 2. **Cuando menciones investigadores de México a partir de un paper:** Revisa siempre `mexican_affiliated_authors` para reportar a los especialistas nacionales y no atribuir la afiliación mexicana a coautores internacionales.
-3. **Para rankings cuantitativos globales por volumen de publicaciones en un tema:** Complementa con `top-entities --by authors` de la skill [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md).
+3. **Para rankings cuantitativos globales por volumen de publicaciones en un tema:** Complementa con `top-entities --by authors` de la skill [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
+
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+
+- ❌ **Anti-patrón 1: Tratar a coautores extranjeros como investigadores mexicanos**  
+  En un artículo de física médica con 30 autores de 10 países y 1 autor de la UNAM, listar a los 30 como investigadores nacionales.  
+  **Solución:** Consultar siempre el campo estructurado `authors_disambiguated.mexican_affiliated_authors`.
+- ❌ **Anti-patrón 2: Usar búsqueda léxica para conceptos interdisciplinarios amplios**  
+  Intentar cubrir "agricultura regenerativa y cambio climático" con docenas de filtros `LIKE '%...%'`.  
+  **Solución:** Utilizar `semantic-search --query "..."` aprovechando los embeddings nomic de 768d ya precalculados en ClickHouse.
+- ❌ **Anti-patrón 3: Violación de File-Output First**  
+  Omitir `--output`, provocando que el JSON con abstracts y vectores parciales se vuelque a la terminal.  
+  **Solución:** Escribir siempre el resultado a un archivo estructurado (`--output ./data/articulos_semanticos.json`).

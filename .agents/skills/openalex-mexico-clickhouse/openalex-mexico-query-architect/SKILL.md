@@ -14,6 +14,12 @@ Consultor metodológico y de seguridad para la formulación de consultas analít
 
 ClickHouse aloja más de 1.65 millones de registros detallados para México en `rag.works_academic_all` y 2.57 millones de autores en `rag.authors_seed_mexico`. Esta habilidad actúa como el guardián de rendimiento y buenas prácticas de ingeniería de datos, verificando que el agente nunca formule sentencias con `JOIN` que degraden la infraestructura.
 
+## Dependencies
+
+- **Entorno Python:** `/home/ambientesPy/revistaslatam`
+- **Script CLI:** `shared_scripts/openalex_mexico_cli.py`
+- **Tablas ClickHouse:** `rag.works_academic_all`, `rag.authors_seed_mexico`
+
 ## Regla de Oro: Prohibición Estricta de JOINs
 
 > [!CAUTION]
@@ -65,6 +71,18 @@ Para comprobar si una sentencia SQL cumple con las directivas de seguridad antes
   --query "SELECT * FROM rag.works_academic_all WHERE publication_year = 2024" \
   --output /ruta/a/reporte_validacion.json
 ```
+
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+
+- ❌ **Anti-patrón 1: Formular consultas con sentencia `JOIN`**  
+  Intentar enlazar tablas como si fuese una base de datos relacional tradicional (MySQL o PostgreSQL). ClickHouse MergeTree es columnar y el clúster rechaza consultas con JOIN sin optimización de memoria.  
+  **Solución:** Consultar las columnas de arrays nativas pre-materializadas (`has(institution_rors, '...')`).
+- ❌ **Anti-patrón 2: Consultas sin LIMIT o sin volcado a archivo (Violación de File-Output First)**  
+  Lanzar sentencias `SELECT *` abiertas que intentan retornar cientos de miles de registros a la consola.  
+  **Solución:** Especificar siempre un `--limit` explícito y dirigir la salida con `--output`.
+- ❌ **Anti-patrón 3: Comparaciones de cadenas case-sensitive sin diacríticos**  
+  Usar `WHERE author = 'Jose Lopez'` perdiendo miles de registros por acentuación o mayúsculas.  
+  **Solución:** Usar `positionCaseInsensitiveUTF8(x, '...') > 0`.
 
 ## References
 

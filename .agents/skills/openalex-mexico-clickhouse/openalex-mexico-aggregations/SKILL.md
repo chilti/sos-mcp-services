@@ -135,10 +135,18 @@ Con los tópicos reales descubiertos en la Fase 1, ejecuta `top-entities` para c
 
 - [Diccionario de Métricas y Modelo Económico APC](references/metrics_and_apc_dictionary.md)
 
-## Common Mistakes & Edge Cases
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- **Regla Anti-JOIN:** No intente concatenar con sentencias JOIN en el parámetro `--filter`. Los filtros deben basarse estrictamente en las columnas y arrays de `rag.works_academic_all`.
-- **Temas Sombrilla:** No busque "Inteligencia Artificial" en un solo paso; descomponga primero con la Fase 1 para no pasar por alto nichos de investigación nacionales.
-- **Rutas de Archivos:** Guarda siempre en `./data/`, nunca en `/tmp/`.
-- **Ventana de Contexto en Modelos Locales:** El CLI siempre genera su salida en disco (`--output`). Lea únicamente los primeros registros para mantener el consumo de tokens por debajo de 500.
+- ❌ **Anti-patrón 1: Formular JOINs en sentencias de agregación**  
+  Intentar cruzar `rag.works_academic_all` con otras tablas. ClickHouse rechaza consultas con JOIN sin optimización.  
+  **Solución:** Filtrar estrictamente sobre las columnas y arrays nativos de la tabla materializada (`has(institution_rors, '...')`).
+- ❌ **Anti-patrón 2: Consultar temas sombrilla en un solo paso**  
+  Buscar "Inteligencia Artificial" directamente como tópico. En México la producción está fragmentada en especialidades concretas.  
+  **Solución:** Descomponer primero agrupando por `topic` filtrado por `subfield = 'Artificial Intelligence'`, identificar los tópicos dominantes y luego consultar con `top-entities`.
+- ❌ **Anti-patrón 3: Violación de File-Output First (Almacenar en `/tmp/`)**  
+  Guardar los resultados en directorios volátiles del sistema operativo.  
+  **Solución:** Guardar siempre en `./data/` o en `scratch/` del workspace actual.
+- ❌ **Anti-patrón 4: Volcar reportes completos al contexto del chat**  
+  Leer e imprimir el JSON entero de cientos de líneas.  
+  **Solución:** Leer únicamente los primeros registros o el resumen ejecutivo para mantener el consumo de tokens por debajo de 500.
 

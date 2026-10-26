@@ -57,13 +57,21 @@ Recupera los centros de investigación de un estado determinado:
 ## Workflow de Vinculación
 
 1. **Resolver Institución:** Usar `get-institution` para obtener el ROR unívoco (`https://ror.org/...`).
-2. **Consultar Producción:** Alimentar dicho ROR en [`openalex-mexico-works-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md) para extraer todas las publicaciones de la universidad.
-3. **Evaluar Indicadores:** Alimentar el ROR en [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md) para calcular su cuota OA y gasto en APC.
+2. **Consultar Producción:** Alimentar dicho ROR en [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md) para extraer todas las publicaciones de la universidad.
+3. **Evaluar Indicadores:** Alimentar el ROR en [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md) para calcular su cuota OA y gasto en APC.
 
 ## References
 
 - [Catálogo de Principales Instituciones Mexicanas y Códigos ROR](references/institutions_mexico_catalog.md)
 
-## Common Mistakes & Edge Cases
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- **Múltiples Campus:** Universidades con sedes múltiples (ej. Tec de Monterrey, UAM) pueden reportar campus específicos; el campo `parent_name` permite rastrear la institución matriz.
+- ❌ **Anti-patrón 1: Tratar campus específicos como instituciones no vinculadas**  
+  Buscar el Tec de Monterrey o la UAM y tratar sedes o campus individuales como entidades aisladas sin considerar la institución matriz.  
+  **Solución:** Consultar el campo `parent_name` y `parent_ror` para consolidar o desglosar la producción según el alcance del estudio.
+- ❌ **Anti-patrón 2: Asumir que toda institución tiene acrónimo registrado**  
+  Buscar solo por `--acronym "INSP"` en instituciones pequeñas o centros estatales que solo están registradas por nombre completo.  
+  **Solución:** Si `--acronym` no arroja resultados, probar con `--query "Nombre Completo o Parcial"`.
+- ❌ **Anti-patrón 3: Violación de File-Output First**  
+  Omitir `--output`, provocando que el JSON de metadatos se imprima en stdout.  
+  **Solución:** Guardar siempre en archivo (`--output ./data/institucion.json`).

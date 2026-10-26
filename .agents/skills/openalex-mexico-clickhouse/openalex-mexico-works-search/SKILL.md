@@ -67,14 +67,24 @@ Para análisis de soberanía editorial y vías no comerciales:
 1. **Definir Filtros:** Seleccionar institución, año, tipo de acceso o nivel de impacto.
 2. **Ejecutar Búsqueda:** Correr `search-works` enviando la salida a JSON.
 3. **Flujos Posteriores:**
-   - Para cálculo de indicadores agregados: usar [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md).
-   - Para modelado en redes: alimentar [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/scientometrics-network/bibliometric-network-analyst/SKILL.md).
+   - Para cálculo de indicadores agregados: usar [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
+   - Para modelado en redes: alimentar [`bibliometric-network-analyst`](../../bibliometric-network-analyst/SKILL.md).
 
 ## References
 
 - [Diccionario de Campos de rag.works_academic_all](references/works_academic_all_schema.md)
 
-## Common Mistakes & Edge Cases
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- **Formato del ROR:** Puede pasar el ROR en formato corto (`01tmp8f25`) o URI completa (`https://ror.org/01tmp8f25`), el script resuelve ambas automáticamente.
-- **Volumen de Datos:** Para descargas masivas de más de 5,000 registros, aumente el `--limit` de forma prudente para evitar sobrecargar la memoria local.
+- ❌ **Anti-patrón 1: Búsqueda exhaustiva sin acotar por año o ROR**  
+  Lanzar búsquedas de texto abierto sobre 1.65M de registros sin delimitar ventana temporal.  
+  **Solución:** Especificar `--year-min` y `--year-max`, o filtrar por `--institution-ror`.
+- ❌ **Anti-patrón 2: Confusión en el formato del código ROR**  
+  Asumir que sólo se acepta el ID numérico corto o sólo la URI completa.  
+  **Solución:** El CLI acepta indistintamente formato corto (`01tmp8f25`) o URI (`https://ror.org/01tmp8f25`), resolviendo ambos de manera transparente.
+- ❌ **Anti-patrón 3: Descargas masivas sin paginación ni límite prudente**  
+  Intentar descargar 50,000 registros en un solo comando sin verificar el impacto en memoria local.  
+  **Solución:** Aumentar el `--limit` de forma escalonada (ej. 500 $\rightarrow$ 1,000 $\rightarrow$ 2,500).
+- ❌ **Anti-patrón 4: Violación de File-Output First**  
+  No pasar el flag `--output`, provocando que el CLI intente volcar miles de artículos con abstracts y metadatos a la terminal.  
+  **Solución:** Especificar siempre `--output ./data/publicaciones.json`.

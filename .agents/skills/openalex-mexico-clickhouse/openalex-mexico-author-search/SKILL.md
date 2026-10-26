@@ -55,14 +55,24 @@ Para consultas de personal académico adscrito al Padrón SNII:
 
 1. **Búsqueda Inicial:** Ejecutar `search-authors` con el nombre del investigador y volcar a archivo JSON.
 2. **Identificación Canónica:** Extraer el `id` OpenAlex (`https://openalex.org/A...`) y el `orcid`.
-3. **Paso a Publicaciones:** Utilizar el nombre o ID obtenido para alimentar la skill [`openalex-mexico-works-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md).
+3. **Paso a Publicaciones:** Utilizar el nombre o ID obtenido para alimentar la skill [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md).
 
 ## References
 
 - [Esquema de Tablas de Autores en ClickHouse](references/academics_all_schema.md)
 - [Reglas de Permutación de Nombres Hispanos](references/hispanic_name_permutations.md)
 
-## Common Mistakes & Edge Cases
+## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- **No usar JOIN:** Jamás intente cruzar autores con tablas de artículos mediante SQL JOIN; extraiga primero los autores y luego filtre los trabajos por nombre o ROR.
-- **Salida obligatoria:** Siempre especifique `--output` para mantener la memoria del agente limpia.
+- ❌ **Anti-patrón 1: Búsqueda con cadenas exactas sin contemplar diacríticos hispanos**  
+  Buscar `"Rafael Torres Cordoba"` sin acento en una consulta SQL directa sensible a mayúsculas.  
+  **Solución:** Usar el subcomando `search-authors` del CLI, que genera permutaciones fonéticas y normaliza diacríticos automáticamente.
+- ❌ **Anti-patrón 2: Formular JOINs entre autores y artículos**  
+  Intentar cruzar `rag.authors_seed_mexico` con `rag.works_academic_all` mediante SQL JOIN.  
+  **Solución:** Extraer primero el autor para obtener su ID u ORCID, y luego filtrar `rag.works_academic_all` mediante arrays nativos.
+- ❌ **Anti-patrón 3: Consultas sin límite explícito**  
+  Buscar un apellido común (e.g. `"Hernández"`, `"González"`) sin `--limit`, devolviendo miles de homónimos.  
+  **Solución:** Acotar siempre con `--limit 10` o `--limit 20` y refinar filtrando por `--institution`.
+- ❌ **Anti-patrón 4: Violación de File-Output First**  
+  Omitir `--output` y volcar listas masivas de autores en la consola.  
+  **Solución:** Guardar siempre en archivo estructurado (`--output ./data/autores.json`).
