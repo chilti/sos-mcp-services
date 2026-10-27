@@ -25,9 +25,22 @@ from typing import Dict, List, Any, Optional
 import numpy as np
 
 
+def find_rscript_path() -> Optional[str]:
+    """Busca el ejecutable Rscript en el PATH o en ubicaciones estándar de Windows/Linux."""
+    which_path = shutil.which("Rscript")
+    if which_path:
+        return which_path
+
+    if sys.platform == "win32":
+        candidates = sorted(Path("C:/Program Files/R").glob("R-*/bin/Rscript.exe"), reverse=True)
+        if candidates and candidates[0].exists():
+            return str(candidates[0])
+    return None
+
+
 def check_rscript_available() -> bool:
-    """Verifica si Rscript está en el PATH del sistema."""
-    return shutil.which("Rscript") is not None
+    """Verifica si Rscript está disponible en el sistema."""
+    return find_rscript_path() is not None
 
 
 def parse_wos_plaintext(filepath: str) -> List[Dict[str, Any]]:
@@ -502,25 +515,40 @@ def cmd_run(args):
         sys.stderr.write(f"Error: No se encontró el runner de R en: {runner_r}\n")
         sys.exit(1)
 
-    if not check_rscript_available():
-        print("Aviso: 'Rscript' no se encuentra en el PATH del sistema.", file=sys.stderr)
+    rscript_bin = find_rscript_path()
+    if not rscript_bin:
+        print("Aviso: 'Rscript' no se encuentra instalado o disponible en el sistema.", file=sys.stderr)
         recipe_out = Path(args.output).with_suffix(".R")
         script_code = generate_r_recipe(args.input, str(recipe_out), args.command, field=args.field)
         recipe_out.write_text(script_code, encoding="utf-8")
         print(f"Script R generado para ejecución en RStudio: {recipe_out}")
         sys.exit(0)
 
+    # Auto-detección de formato y dbsource
+    input_lower = args.input.lower()
+    if input_lower.endswith(".txt"):
+        dbsource = "wos"
+        fmt = "plaintext"
+    elif "scopus" in input_lower:
+        dbsource = "scopus"
+        fmt = "csv"
+    else:
+        dbsource = "wos"
+        fmt = "csv"
+
     cmd = [
-        "Rscript", str(runner_r),
+        rscript_bin, str(runner_r),
         "--command", args.command,
         "--input", args.input,
         "--output", args.output,
+        "--dbsource", dbsource,
+        "--format", fmt,
         "--field", args.field
     ]
     if args.plot_output:
         cmd.extend(["--plot-output", args.plot_output])
 
-    print(f"Ejecutando: {' '.join(cmd)}")
+    print(f"Ejecutando R bibliometrix con: {rscript_bin}")
     subprocess.check_call(cmd)
 
 

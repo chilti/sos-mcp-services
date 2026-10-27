@@ -79,18 +79,20 @@ main <- function() {
     results <- biblioAnalysis(M, sep = ";")
     s <- summary(results, k = 10, pause = FALSE)
 
-    # Extraer métricas clave a estructura serializable
+    ci_val <- suppressWarnings(as.numeric(results$CollaborationIndex))
+    agr_val <- suppressWarnings(as.numeric(results$AnnualGrowthRate))
+
     summary_data <- list(
       n_documents = nrow(M),
       period = c(min(M$PY, na.rm = TRUE), max(M$PY, na.rm = TRUE)),
       total_authors = results$nAuthors,
       single_authored_docs = results$nAuthors - results$nAuthorsFractional,
       co_authors_per_doc = round(results$nAuthors / nrow(M), 2),
-      collaboration_index = round(results$CollaborationIndex, 2),
-      annual_growth_rate = round(results$AnnualGrowthRate, 2),
-      top_sources = as.data.frame(results$Sources[1:min(10, nrow(results$Sources)), ]),
-      top_authors = as.data.frame(results$Authors[1:min(10, nrow(results$Authors)), ]),
-      top_countries = as.data.frame(results$Countries[1:min(10, nrow(results$Countries)), ])
+      collaboration_index = if (length(ci_val) > 0 && !is.na(ci_val[1])) round(ci_val[1], 2) else NULL,
+      annual_growth_rate = if (length(agr_val) > 0 && !is.na(agr_val[1])) round(agr_val[1], 2) else NULL,
+      top_sources = if (!is.null(results$Sources)) as.data.frame(head(results$Sources, 10)) else data.frame(),
+      top_authors = if (!is.null(results$Authors)) as.data.frame(head(results$Authors, 10)) else data.frame(),
+      top_countries = if (!is.null(results$Countries)) as.data.frame(head(results$Countries, 10)) else data.frame()
     )
 
     dir.create(dirname(normalizePath(params$output, mustWork = FALSE)), recursive = TRUE, showWarnings = FALSE)
