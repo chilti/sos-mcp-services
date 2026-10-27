@@ -2,17 +2,19 @@
 """
 CLI Helper: Bibliometrix Python Orchestrator & Bridge
 Orquesta el análisis de mapeo científico con R bibliometrix o genera
-recetas reproducibles y diagramas temáticos de Callon (1991).
+recetas reproducibles, resúmenes cienciométricos y diagramas temáticos de Callon (1991).
 
 Uso:
-  python scripts/bibliometrix_cli.py generate-script --input corpus.csv --output run_analysis.R --analysis thematic
-  python scripts/bibliometrix_cli.py run --input corpus.csv --command summary --output summary.json
-  python scripts/bibliometrix_cli.py callon-map --input corpus.parquet --output callon_themes.json --plot-output callon.png
+  python scripts/bibliometrix_cli.py summary --input savedrecs.txt --output summary.json
+  python scripts/bibliometrix_cli.py callon-map --input savedrecs.txt --output callon.json --plot-output callon.png
+  python scripts/bibliometrix_cli.py convert --input savedrecs.txt --output corpus.csv
+  python scripts/bibliometrix_cli.py generate-script --input savedrecs.txt --output run_analysis.R --analysis thematic
 """
 
 import sys
 import os
 import json
+import csv
 import argparse
 import subprocess
 import shutil
@@ -28,10 +30,97 @@ def check_rscript_available() -> bool:
     return shutil.which("Rscript") is not None
 
 
+def parse_wos_plaintext(filepath: str) -> List[Dict[str, Any]]:
+    """Parsea archivos de texto plano etiquetados de Web of Science (savedrecs.txt)."""
+    records = []
+    current_rec = {}
+    current_tag = None
+
+    with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f:
+        for line in f:
+            line_str = line.rstrip("\r\n")
+            if not line_str:
+                continue
+            if line_str == "ER" or line_str.startswith("ER "):
+                if current_rec:
+                    rec_clean = {}
+                    for tag, val in current_rec.items():
+                        if isinstance(val, list):
+                            if tag in ("AU", "AF", "CR", "C1"):
+                                rec_clean[tag] = "; ".join(val)
+                            else:
+                                rec_clean[tag] = " ".join(val)
+                        else:
+                            rec_clean[tag] = val
+
+                    # Campos canónicos y alias
+                    rec_clean["title"] = rec_clean.get("TI", "")
+                    rec_clean["authors"] = rec_clean.get("AU", "")
+                    rec_clean["author_keywords"] = rec_clean.get("DE", "")
+                    rec_clean["keywords"] = rec_clean.get("DE", "") or rec_clean.get("ID", "")
+                    rec_clean["source_title"] = rec_clean.get("SO", "")
+                    rec_clean["year"] = rec_clean.get("PY", "")
+                    rec_clean["references"] = rec_clean.get("CR", "")
+                    rec_clean["doi"] = rec_clean.get("DI", "")
+                    rec_clean["abstract"] = rec_clean.get("AB", "")
+                    rec_clean["times_cited"] = rec_clean.get("TC", "0")
+                    records.append(rec_clean)
+                    current_rec = {}
+                current_tag = None
+                continue
+
+            if line_str.startswith("   ") and current_tag:
+                val = line_str.strip()
+                if current_tag in current_rec:
+                    if isinstance(current_rec[current_tag], list):
+                        current_rec[current_tag].append(val)
+                    else:
+                        current_rec[current_tag] = [current_rec[current_tag], val]
+            elif len(line_str) >= 2 and line_str[:2].isupper() and (len(line_str) == 2 or line_str[2] == " "):
+                tag = line_str[:2]
+                val = line_str[3:].strip()
+                current_tag = tag
+                current_rec[tag] = [val] if tag in ("AU", "AF", "CR", "C1") else val
+
+    return records
+
+
+def load_corpus_records(filepath: str) -> List[Dict[str, Any]]:
+    """Carga registros desde Parquet, CSV, JSON o Web of Science Plain Text (.txt)."""
+    lower = filepath.lower()
+    if lower.endswith(".parquet"):
+        import pandas as pd
+        df = pd.read_parquet(filepath)
+        return df.to_dict(orient="records")
+    elif lower.endswith(".csv"):
+        with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f:
+            return list(csv.DictReader(f))
+    elif lower.endswith(".json"):
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("records", data) if isinstance(data, dict) else data
+    elif lower.endswith(".txt"):
+        # Detectar si es WoS plain text
+        return parse_wos_plaintext(filepath)
+
+    sys.stderr.write(f"Error: Formato no soportado para el archivo: {filepath}\n")
+    sys.exit(1)
+
+
 def generate_r_recipe(input_path: str, output_path: str, analysis: str, field: str = "DE") -> str:
     """Genera un script de R listo para ejecutar en RStudio o terminal."""
     clean_input = input_path.replace("\\", "/")
-    clean_output = output_path.replace("\\", "/")
+
+    # Detectar fuente y formato
+    if clean_input.lower().endswith(".txt"):
+        formato = "plaintext"
+        fuente = "wos"
+    elif clean_input.lower().endswith(".csv"):
+        formato = "csv"
+        fuente = "scopus" if "scopus" in clean_input.lower() else "wos"
+    else:
+        formato = "csv"
+        fuente = "scopus"
 
     script_template = f"""# ==============================================================================
 # Script Reproducible de Bibliometrix
@@ -45,12 +134,8 @@ library(bibliometrix)
 archivo_datos <- "{clean_input}"
 cat("Cargando dataset:", archivo_datos, "\\n")
 
-# Detectar formato por extensión
-formato <- if (grepl("\\\\.csv$", archivo_datos, ignore.case = TRUE)) "csv" else "plaintext"
-fuente <- if (grepl("scopus", archivo_datos, ignore.case = TRUE)) "scopus" else "wos"
-
-M <- convert2df(file = archivo_datos, dbsource = fuente, format = formato)
-cat("Dimensiones del corpus:", nrow(M), "documentos y", ncol(M), "variables.\\n")
+M <- convert2df(file = archivo_datos, dbsource = "{fuente}", format = "{formato}")
+cat(sprintf("Dimensiones del corpus: %d documentos y %d variables.\\n", nrow(M), ncol(M)))
 
 # 2. Análisis seleccionado: {analysis}
 """
@@ -60,73 +145,155 @@ cat("Dimensiones del corpus:", nrow(M), "documentos y", ncol(M), "variables.\\n"
 results <- biblioAnalysis(M, sep = ";")
 S <- summary(results, k = 10, pause = FALSE)
 plot(x = results, k = 10, pause = FALSE)
-cat("Análisis descriptivo finalizado.\\n")
+cat("Análisis descriptivo finalizado con éxito.\\n")
 """
     elif analysis == "co-citation":
         script_template += """
-# Red de Co-citación
 NetMatrix <- biblioNetwork(M, analysis = "co-citation", network = "references", sep = ";")
 net <- networkPlot(NetMatrix, n = 40, Title = "Red de Co-citación de Referencias",
                    type = "fruchterman", size = TRUE, labelsize = 0.8)
 """
     elif analysis == "collaboration":
         script_template += """
-# Red de Colaboración entre Autores
 NetMatrix <- biblioNetwork(M, analysis = "collaboration", network = "authors", sep = ";")
-net <- networkPlot(NetMatrix, n = 50, Title = "Red de Colaboración Científica",
+net <- networkPlot(NetMatrix, n = 50, Title = "Red de Colaboración Científica entre Autores",
                    type = "kamada", size = TRUE, labelsize = 0.8)
 """
     elif analysis == "thematic":
         script_template += f"""
-# Diagrama Estratégico de Callon (1991)
 Map <- thematicMap(M, field = "{field}", n = 250, minfreq = 3,
                   stemming = FALSE, size = 0.5, n.labels = 3, repel = TRUE)
 plot(Map$map)
-cat("Mapa temático de Callon renderizado con éxito.\\n")
+cat("Diagrama Estratégico de Callon renderizado con éxito.\\n")
 """
     elif analysis == "evolution":
         script_template += f"""
-# Evolución Temática Longitudinal
 nexus <- thematicEvolution(M, field = "{field}", n = 100, minFreq = 3)
 plotThematicEvolution(nexus$Nodes, nexus$Edges)
 """
     elif analysis == "biblioshiny":
         script_template += """
-# Lanzar interfaz web interactiva Biblioshiny
+# Lanzar interfaz web interactiva Biblioshiny en el navegador
 biblioshiny()
 """
 
     return script_template
 
 
-def cmd_callon_map(args):
-    """Calcula nativamente en Python el Diagrama Estratégico de Callon (Centralidad vs Densidad)."""
-    input_path = args.input
-    if not os.path.exists(input_path):
-        sys.stderr.write(f"Error: No existe el archivo de entrada: {input_path}\n")
+def cmd_summary(args):
+    """Calcula un resumen descriptivo completo del corpus bibliográfico."""
+    records = load_corpus_records(args.input)
+    if not records:
+        sys.stderr.write("Error: El archivo no contiene registros válidos.\n")
         sys.exit(1)
 
-    # Cargar datos desde parquet, csv o json
-    records = []
-    if input_path.endswith(".parquet"):
-        import pandas as pd
-        df = pd.read_parquet(input_path)
-        records = df.to_dict(orient="records")
-    elif input_path.endswith(".csv"):
-        import csv
-        with open(input_path, "r", encoding="utf-8-sig", errors="replace") as f:
-            records = list(csv.DictReader(f))
-    elif input_path.endswith(".json"):
-        with open(input_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            records = data.get("records", data) if isinstance(data, dict) else data
+    years = []
+    sources = Counter()
+    authors_counter = Counter()
+    keywords_counter = Counter()
+    doc_author_counts = []
+    total_citations = 0
 
+    for r in records:
+        yr = r.get("year") or r.get("PY")
+        if yr:
+            try:
+                y_int = int(str(yr)[:4])
+                if 1900 <= y_int <= 2030:
+                    years.append(y_int)
+            except (ValueError, TypeError):
+                pass
+
+        src = r.get("source_title") or r.get("SO") or ""
+        if src:
+            sources[src.strip().upper()] += 1
+
+        raw_auth = r.get("authors") or r.get("AU") or ""
+        auth_list = [a.strip() for a in str(raw_auth).split(";") if a.strip()]
+        doc_author_counts.append(len(auth_list))
+        for a in auth_list:
+            authors_counter[a] += 1
+
+        raw_kw = r.get("keywords") or r.get("DE") or r.get("ID") or ""
+        kw_list = [k.strip().lower() for k in str(raw_kw).replace(",", ";").split(";") if k.strip()]
+        for kw in kw_list:
+            keywords_counter[kw] += 1
+
+        try:
+            tc = int(r.get("times_cited") or r.get("TC") or 0)
+            total_citations += tc
+        except (ValueError, TypeError):
+            pass
+
+    n_docs = len(records)
+    total_authors = len(authors_counter)
+    single_author_docs = sum(1 for c in doc_author_counts if c == 1)
+    multi_author_docs = n_docs - single_author_docs
+    avg_authors_per_doc = round(sum(doc_author_counts) / n_docs, 2) if n_docs > 0 else 0.0
+    collab_index = round(total_authors / multi_author_docs, 2) if multi_author_docs > 0 else 0.0
+
+    min_yr = min(years) if years else None
+    max_yr = max(years) if years else None
+    cagr = 0.0
+    if min_yr and max_yr and max_yr > min_yr:
+        cnt_min = years.count(min_yr)
+        cnt_max = years.count(max_yr)
+        span = max_yr - min_yr
+        if cnt_min > 0 and cnt_max > 0 and span > 0:
+            cagr = round(((cnt_max / cnt_min) ** (1.0 / span) - 1.0) * 100.0, 2)
+
+    summary_data = {
+        "analysis": "Bibliometric Descriptive Summary",
+        "total_documents": n_docs,
+        "timespan": f"{min_yr} - {max_yr}" if min_yr else "N/A",
+        "annual_growth_rate_percent": cagr,
+        "total_authors": total_authors,
+        "single_authored_documents": single_author_docs,
+        "multi_authored_documents": multi_author_docs,
+        "average_authors_per_doc": avg_authors_per_doc,
+        "collaboration_index": collab_index,
+        "total_citations_accumulated": total_citations,
+        "average_citations_per_doc": round(total_citations / n_docs, 2) if n_docs > 0 else 0.0,
+        "top_sources": [{"source": s, "articles": c} for s, c in sources.most_common(10)],
+        "top_authors": [{"author": a, "articles": c} for a, c in authors_counter.most_common(10)],
+        "top_keywords": [{"keyword": k, "frequency": c} for k, c in keywords_counter.most_common(15)]
+    }
+
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(summary_data, f, indent=2, ensure_ascii=False)
+
+    print("\n" + "="*70)
+    print("RESUMEN BIBLIOMÉTRICO (BIBLIOMETRIX DESCRIPTIVE ANALYSIS)")
+    print("="*70)
+    print(f"Total de Documentos Analizados: {n_docs}")
+    print(f"Periodo Cronológico:           {summary_data['timespan']}")
+    print(f"Tasa de Crecimiento Anual:     {cagr}%")
+    print(f"Total de Autores:              {total_authors}")
+    print(f"Documentos con Autor Único:    {single_author_docs}")
+    print(f"Promedio de Autores por Doc:   {avg_authors_per_doc}")
+    print(f"Índice de Colaboración:        {collab_index}")
+    print(f"Citas Totales Acumuladas:      {total_citations} (Promedio: {summary_data['average_citations_per_doc']} citas/doc)")
+    print("\nTop 5 Revistas Más Productivas:")
+    for idx, s in enumerate(summary_data["top_sources"][:5], 1):
+        print(f"  {idx}. {s['source']} ({s['articles']} artículos)")
+    print("\nTop 5 Autores Más Prolíficos:")
+    for idx, a in enumerate(summary_data["top_authors"][:5], 1):
+        print(f"  {idx}. {a['author']} ({a['articles']} artículos)")
+    print("\nTop 5 Palabras Clave Principales:")
+    for idx, k in enumerate(summary_data["top_keywords"][:5], 1):
+        print(f"  {idx}. {k['keyword']} (frecuencia: {k['frequency']})")
+    print("="*70)
+    print(f"Reporte JSON guardado en: {args.output}\n")
+
+
+def cmd_callon_map(args):
+    """Calcula nativamente el Diagrama Estratégico de Callon (Centralidad vs Densidad)."""
+    records = load_corpus_records(args.input)
     if not records:
         sys.stderr.write("Error: El archivo de entrada no contiene registros legibles.\n")
         sys.exit(1)
 
-    field_name = args.field or "keywords"
-    # Extraer términos de palabras clave
     co_occurrences = defaultdict(int)
     term_counts = Counter()
     doc_keywords = []
@@ -134,20 +301,18 @@ def cmd_callon_map(args):
     for r in records:
         raw_kw = (
             r.get("keywords") or r.get("Keywords") or r.get("DE") or r.get("ID") or
-            r.get("author_keywords") or r.get("concepts") or ""
+            r.get("author_keywords") or ""
         )
         if isinstance(raw_kw, list):
             kws = [str(k).strip().lower() for k in raw_kw if str(k).strip()]
         else:
             kws = [k.strip().lower() for k in str(raw_kw).replace(",", ";").split(";") if k.strip()]
 
-        # Filtrar términos muy cortos o genéricos
         kws = [k for k in kws if len(k) > 2]
         if kws:
             doc_keywords.append(kws)
             for k in kws:
                 term_counts[k] += 1
-            # Pares de coocurrencia
             for i in range(len(kws)):
                 for j in range(i + 1, len(kws)):
                     t1, t2 = sorted([kws[i], kws[j]])
@@ -159,31 +324,27 @@ def cmd_callon_map(args):
         sys.exit(1)
 
     top_set = set(top_terms)
-    # Construir grafo simple para clustering
     adj = defaultdict(dict)
     for (t1, t2), weight in co_occurrences.items():
         if t1 in top_set and t2 in top_set and weight >= args.min_freq:
             adj[t1][t2] = weight
             adj[t2][t1] = weight
 
-    # Comunidades con algoritmo voraz o componentes conexas
+    # Clustering de comunidades
     assigned_cluster = {}
     cluster_id = 1
     for term in top_terms:
         if term not in assigned_cluster:
-            # BFS simple para agrupar términos fuertemente conectados
             neighbors = sorted(adj[term].items(), key=lambda x: -x[1])
             cluster_terms = [term] + [nb for nb, w in neighbors[:5] if nb not in assigned_cluster]
             for ct in cluster_terms:
                 assigned_cluster[ct] = cluster_id
             cluster_id += 1
 
-    # Agrupar clusters
     clusters_map = defaultdict(list)
     for t, cid in assigned_cluster.items():
         clusters_map[cid].append(t)
 
-    # Calcular Callon Centrality y Callon Density por cluster
     cluster_metrics = []
     for cid, terms in clusters_map.items():
         if len(terms) < 2:
@@ -199,9 +360,6 @@ def cmd_callon_map(args):
                 else:
                     external_edges += w
 
-        # Callon formulas:
-        # Centrality = 10 * sum(e_external)
-        # Density = 100 * (sum(e_internal) / 2) / len(terms)
         centrality = round(float(external_edges * 10.0), 2)
         density = round(float((internal_edges / 2.0 * 100.0) / len(terms)), 2)
 
@@ -215,10 +373,9 @@ def cmd_callon_map(args):
         })
 
     if not cluster_metrics:
-        sys.stderr.write("Error: No fue posible calcular métricas de clusters de Callon.\n")
+        sys.stderr.write("Error: No fue posible calcular clusters con los umbrales indicados.\n")
         sys.exit(1)
 
-    # Medianas para delimitar cuadrantes
     med_cent = float(np.median([c["callon_centrality"] for c in cluster_metrics]))
     med_dens = float(np.median([c["callon_density"] for c in cluster_metrics]))
 
@@ -248,7 +405,6 @@ def cmd_callon_map(args):
         "clusters": cluster_metrics
     }
 
-    # Graficar si se solicita
     if args.plot_output:
         import matplotlib
         matplotlib.use("Agg")
@@ -259,20 +415,18 @@ def cmd_callon_map(args):
 
         cents = [c["callon_centrality"] for c in cluster_metrics]
         dens = [c["callon_density"] for c in cluster_metrics]
-        sizes = [c["size"] * 50 for c in cluster_metrics]
+        sizes = [c["size"] * 80 for c in cluster_metrics]
 
-        plt.scatter(cents, dens, s=sizes, color="#3b82f6", alpha=0.6, edgecolors="#1d4ed8", linewidth=1.5, zorder=3)
+        plt.scatter(cents, dens, s=sizes, color="#2563eb", alpha=0.6, edgecolors="#1d4ed8", linewidth=1.5, zorder=3)
 
         for c in cluster_metrics:
             plt.annotate(c["label"], (c["callon_centrality"], c["callon_density"]),
-                         fontsize=9, weight="bold", ha="center", va="bottom",
-                         xytext=(0, 6), textcoords="offset points")
+                         fontsize=10, weight="bold", ha="center", va="bottom",
+                         xytext=(0, 7), textcoords="offset points")
 
-        # Líneas de cuadrantes en las medianas
         plt.axvline(med_cent, color="#dc2626", linestyle="--", alpha=0.7, label=f"Mediana Centralidad ({med_cent:.1f})")
         plt.axhline(med_dens, color="#16a34a", linestyle="--", alpha=0.7, label=f"Mediana Densidad ({med_dens:.1f})")
 
-        # Cuadrantes anotaciones
         xlim = plt.xlim()
         ylim = plt.ylim()
         plt.text(xlim[1] * 0.95, ylim[1] * 0.95, "I. Motores", color="#1e3a8a", fontsize=11, weight="bold", ha="right", va="top")
@@ -297,6 +451,36 @@ def cmd_callon_map(args):
     print(f"Callon Map calculado con éxito: {len(cluster_metrics)} clusters identificados. Output: {args.output}")
 
 
+def cmd_convert(args):
+    """Convierte el archivo a CSV, Parquet o JSON canónico."""
+    records = load_corpus_records(args.input)
+    if not records:
+        sys.stderr.write("Error: El archivo no contiene registros para convertir.\n")
+        sys.exit(1)
+
+    out_lower = args.output.lower()
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+
+    if out_lower.endswith(".csv"):
+        all_keys = set()
+        for r in records:
+            all_keys.update(r.keys())
+        fieldnames = sorted(all_keys)
+        with open(args.output, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(records)
+    elif out_lower.endswith(".parquet"):
+        import pandas as pd
+        df = pd.DataFrame(records)
+        df.to_parquet(args.output, index=False)
+    elif out_lower.endswith(".json"):
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2, ensure_ascii=False)
+
+    print(f"Conversión finalizada: {len(records)} documentos guardados en: {args.output}")
+
+
 def cmd_generate_script(args):
     """Genera un script de R listo para usar."""
     script_content = generate_r_recipe(
@@ -319,15 +503,13 @@ def cmd_run(args):
         sys.exit(1)
 
     if not check_rscript_available():
-        print("Aviso: 'Rscript' no se encuentra disponible en el PATH del sistema.", file=sys.stderr)
-        print("Generando script reproducible de R para ejecución manual o en servidor...", file=sys.stderr)
+        print("Aviso: 'Rscript' no se encuentra en el PATH del sistema.", file=sys.stderr)
         recipe_out = Path(args.output).with_suffix(".R")
         script_code = generate_r_recipe(args.input, str(recipe_out), args.command, field=args.field)
         recipe_out.write_text(script_code, encoding="utf-8")
-        print(f"Script R guardado en: {recipe_out}")
+        print(f"Script R generado para ejecución en RStudio: {recipe_out}")
         sys.exit(0)
 
-    # Si Rscript está disponible, ejecutar
     cmd = [
         "Rscript", str(runner_r),
         "--command", args.command,
@@ -346,15 +528,27 @@ def main():
     parser = argparse.ArgumentParser(description="CLI Helper: Bibliometrix Orchestrator & Callon Map")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
-    # Subcomando: callon-map (cálculo nativo y autónomo)
+    # Subcomando: summary
+    p_sum = subparsers.add_parser("summary", help="Calcula el resumen bibliométrico descriptivo completo")
+    p_sum.add_argument("--input", required=True, help="Ruta al archivo corpus (.txt, .csv, .parquet, .json)")
+    p_sum.add_argument("--output", required=True, help="Ruta para el JSON de resultados")
+    p_sum.set_defaults(func=cmd_summary)
+
+    # Subcomando: callon-map
     p_map = subparsers.add_parser("callon-map", help="Calcula el Diagrama Estratégico de Callon (Centralidad vs Densidad)")
-    p_map.add_argument("--input", required=True, help="Ruta al archivo corpus (.parquet, .csv o .json)")
+    p_map.add_argument("--input", required=True, help="Ruta al archivo corpus (.txt, .parquet, .csv o .json)")
     p_map.add_argument("--output", required=True, help="Ruta para el JSON de resultados")
     p_map.add_argument("--plot-output", help="Ruta opcional para guardar el gráfico en PNG")
     p_map.add_argument("--field", default="DE", help="Campo de términos (DE: author keywords, ID: keywords plus)")
     p_map.add_argument("--top-terms", type=int, default=50, help="Número de términos más frecuentes a clusterizar")
     p_map.add_argument("--min-freq", type=int, default=2, help="Frecuencia mínima de coocurrencia")
     p_map.set_defaults(func=cmd_callon_map)
+
+    # Subcomando: convert
+    p_con = subparsers.add_parser("convert", help="Convierte WoS plaintext a CSV, Parquet o JSON estructurado")
+    p_con.add_argument("--input", required=True, help="Ruta al archivo de entrada (.txt)")
+    p_con.add_argument("--output", required=True, help="Ruta del archivo de salida (.csv, .parquet o .json)")
+    p_con.set_defaults(func=cmd_convert)
 
     # Subcomando: generate-script
     p_gen = subparsers.add_parser("generate-script", help="Genera un script de R listo para ejecutar")
