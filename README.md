@@ -54,6 +54,8 @@ Y registra `mcp_config.remote.json` en Antigravity para conectar vía SSE (`http
   *Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)*
 - **Humberto Andrés Carrillo Calvet** (ORCID: [0000-0003-3659-6769](https://orcid.org/0000-0003-3659-6769))  
   *Facultad de Ciencias y Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)*
+- **Ricardo Arencibia Jorge** (ORCID: [0000-0001-8907-2454](https://orcid.org/0000-0001-8907-2454))  
+  *Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)*
 
 ---
 
