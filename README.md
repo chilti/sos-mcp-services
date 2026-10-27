@@ -1,6 +1,8 @@
-# SOS MCP Services (Sistema de Inteligencia Científica UNAM)
+# SOS (Science of Science) MCP Services
 
-Monorepo de microservicios MCP (Model Context Protocol) para el ecosistema de inteligencia cienciométrica y bibliométrica de la UNAM.
+> **Sistema de Inteligencia Científica, Cienciometría Computacional y Modelado Informétrico — UNAM**
+
+Monorepo de microservicios MCP (Model Context Protocol) para el ecosistema de **Science of Science (SOS)** e inteligencia cienciométrica y bibliométrica de la Universidad Nacional Autónoma de México (UNAM). El nombre del proyecto (**SOS**) proviene formalmente del campo interdisciplinario **Science of Science** (la ciencia de la ciencia), dedicado a la cuantificación, modelado matemático y comprensión integral del quehacer científico mediante grandes volúmenes de datos empíricos.
 
 Este proyecto desacopla las herramientas analíticas para humanos (Streamlit, React, Dashboards) de los servicios consumibles por Agentes de Inteligencia Artificial (Antigravity / LLMs), soportando transporte dual:
 - **Desarrollo:** `stdio` (ejecución directa y veloz como subprocesos en local).
