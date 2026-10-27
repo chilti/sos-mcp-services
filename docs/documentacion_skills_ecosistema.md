@@ -70,7 +70,7 @@ El ecosistema se estructura en **6 dominios analíticos**:
 │ • classical-bibliometrics-laws│ • open-access-monitor         │ • tlachia-master-index                  │
 │ • tlachia-metrics-engine      │ • openalex-mexico-clickhouse  │                                         │
 │ • scientometrics-incites      │ • revistaslatam-indicators    │                                         │
-│                               │ • revistaslatam-editorial     │                                         │
+│ • bibliometrix-guide          │ • revistaslatam-editorial     │                                         │
 │                               │ • topics-research-fronts      │                                         │
 │                               │ • graphrag-scientific-intel   │                                         │
 │                               │ • research-fronts-detection   │                                         │
@@ -139,6 +139,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `classical-bibliometrics-laws` | CLI / Protocolo | `bibliometric_laws_cli.py` | JSON / Parquet | Ajuste matemático de leyes clásicas: Lotka (autores), Bradford (dispersión de revistas), Zipf (vocabulario) e Índice de Price. |
 | `scientometrics-incites-expert` | Metodológica | — | N/A | Benchmarking institucional con indicadores normalizados por categoría (CNCI, FWCI, % Top 10%, colaboración internacional). |
 | `tlachia-metrics-engine` | CLI Autónoma | `tlachia_metrics_cli.py` | Parquet / JSON | Motor integral con más de 30 indicadores cienciométricos, gasto comercial APC, distribución OA y desglose temporal. |
+| `bibliometrix-guide` | CLI / R Runner | `bibliometrix_cli.py` / `bibliometrix_runner.R` | JSON / PNG / R | Mapeo científico integral en R (Aria & Cuccurullo, 2017), co-citación, redes de colaboración, diagrama estratégico de Callon y Biblioshiny. |
 
 ---
 
@@ -182,6 +183,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `bibliometric-entity-normalizer` | `knomap` | Sí | 2 docs | Conforme a estándar. |
 | `bibliometric-network-analyst` | `TlachIA`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Divergencia: TlachIA tiene versión resumen (19 líns), sos-mcp tiene versión completa (164 líns). |
 | `bibliometrics-som-flow` | `knomap` | No | — | Metodológica pura. Conforme. |
+| `bibliometrix-guide` | `sos-mcp` | Sí | 2 docs | **Nueva:** Mapeo de ciencia en R, runner desatendido, diagrama estratégico de Callon y recetas reproducibles. |
 | `classical-bibliometrics-laws` | `TlachIA`, `sos-mcp`, `gemini-config` | Sí | 2 docs | Divergencia: TlachIA tiene versión resumen (21 líns), sos-mcp tiene versión completa (73 líns). |
 | `geopolitical-collaboration-analyst` | `sos-mcp`, `gemini-config` | Sí | 2 docs | Conforme a estándar. |
 | `geopolitical-science-mapping` | `TlachIA`, `sos-mcp`, `gemini-config` | No | — | Versión corta (14 líns, MCP stub). |
