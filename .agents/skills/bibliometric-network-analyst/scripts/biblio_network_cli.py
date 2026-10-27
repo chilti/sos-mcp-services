@@ -68,7 +68,50 @@ def extract_references(row: Dict[str, Any]) -> List[str]:
     raw_refs = row.get("references") or row.get("referenced_works") or row.get("CR") or []
     if isinstance(raw_refs, list):
         return [str(r).strip() for r in raw_refs if str(r).strip()]
-    return [ref.strip() for ref in str(raw_refs).split(";") if ref.strip()]
+def parse_wos_plaintext(filepath: str) -> List[Dict[str, Any]]:
+    """Parses Web of Science plain text export files (savedrecs.txt)."""
+    records = []
+    current_rec = {}
+    current_tag = None
+
+    with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f:
+        for line in f:
+            line_str = line.rstrip("\r\n")
+            if not line_str:
+                continue
+            if line_str == "ER" or line_str.startswith("ER "):
+                if current_rec:
+                    rec_clean = {}
+                    for k, v in current_rec.items():
+                        if isinstance(v, list):
+                            rec_clean[k] = "; ".join(v)
+                        else:
+                            rec_clean[k] = v
+                    rec_clean["title"] = rec_clean.get("TI", "")
+                    rec_clean["authors"] = rec_clean.get("AU", "")
+                    rec_clean["year"] = extract_year(rec_clean.get("PY"))
+                    rec_clean["keywords"] = rec_clean.get("DE") or rec_clean.get("ID", "")
+                    rec_clean["source_title"] = rec_clean.get("SO", "")
+                    rec_clean["references"] = rec_clean.get("CR", "")
+                    records.append(rec_clean)
+                    current_rec = {}
+                current_tag = None
+                continue
+
+            if line_str.startswith("   ") and current_tag:
+                val = line_str.strip()
+                if current_tag in current_rec:
+                    if isinstance(current_rec[current_tag], list):
+                        current_rec[current_tag].append(val)
+                    else:
+                        current_rec[current_tag] = [current_rec[current_tag], val]
+            elif len(line_str) >= 2 and line_str[:2].isupper() and (len(line_str) == 2 or line_str[2] == " "):
+                tag = line_str[:2]
+                val = line_str[3:].strip()
+                current_tag = tag
+                current_rec[tag] = [val] if tag in ("AU", "AF", "CR", "C1") else val
+
+    return records
 
 
 def parse_period_string(period_str: str) -> Tuple[int, int, str]:
@@ -310,6 +353,18 @@ def load_corpus_items(filepath: str, unit: str) -> List[Dict[str, Any]]:
                 })
         return docs
 
+    if lower.endswith(".txt"):
+        records = parse_wos_plaintext(filepath)
+        for idx, r in enumerate(records):
+            items = get_items(r, unit)
+            docs.append({
+                "id": str(r.get("id") or r.get("UT") or r.get("doi") or f"doc_{idx}"),
+                "items": items,
+                "references": extract_references(r),
+                "year": extract_doc_year(r)
+            })
+        return docs
+
     return docs
 
 
@@ -515,13 +570,1257 @@ def compute_network_centralities(
     return ranked_nodes
 
 
+def build_vosviewer_json_data(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Builds canonical VOSviewer JSON dictionary (items with weights/scores, and links)."""
+    link_counts = Counter()
+    tls_counts = Counter()
+    id_to_idx = {n["id"]: idx for idx, n in enumerate(nodes, start=1)}
+
+    vos_links = []
+    for e in edges:
+        src = e["source"]
+        tgt = e["target"]
+        w = float(e.get("weight", 1.0))
+        if src in id_to_idx and tgt in id_to_idx and src != tgt:
+            link_counts[src] += 1
+            link_counts[tgt] += 1
+            tls_counts[src] += w
+            tls_counts[tgt] += w
+            vos_links.append({
+                "source_id": id_to_idx[src],
+                "target_id": id_to_idx[tgt],
+                "strength": round(w, 4)
+            })
+
+    vos_items = []
+    for idx, n in enumerate(nodes, start=1):
+        nid = n["id"]
+        freq = float(n.get("frequency", 1.0))
+        comm = int(n.get("community", 1))
+
+        weights = {
+            "Occurrences": freq,
+            "Total link strength": round(tls_counts[nid], 3),
+            "Links": link_counts[nid]
+        }
+        scores = {}
+        if "pagerank" in n and n["pagerank"] is not None:
+            scores["PageRank"] = round(float(n["pagerank"]), 5)
+        if "betweenness" in n and n["betweenness"] is not None:
+            scores["Betweenness"] = round(float(n["betweenness"]), 5)
+        if "avg_year" in n and n["avg_year"] is not None:
+            scores["Avg. pub. year"] = round(float(n["avg_year"]), 1)
+
+        item = {
+            "id": idx,
+            "label": str(n.get("label", nid)),
+            "cluster": comm,
+            "weights": weights
+        }
+        if scores:
+            item["scores"] = scores
+        vos_items.append(item)
+
+    return {
+        "network": {
+            "items": vos_items,
+            "links": vos_links
+        },
+        "config": {
+            "parameters": {
+                "scale": 1.0,
+                "item_size_variation": 0.5,
+                "max_n_links": 1000
+            }
+        }
+    }
+
+
+def generate_knomap_force_html(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    title: str = "Bibliometric Network",
+    subtitle: Optional[str] = None
+) -> str:
+    """Generates a standalone, beautiful D3.js interactive Force Graph HTML matching KnoMap design."""
+    nodes_json = json.dumps(nodes, ensure_ascii=False)
+    edges_json = json.dumps(edges, ensure_ascii=False)
+    sub_text = subtitle or "KnoMap Interactive Force-Directed Graph"
+
+    html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - KnoMap Network</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg-base: #030712;
+            --bg-panel: rgba(17, 24, 39, 0.88);
+            --bg-card: rgba(31, 41, 55, 0.7);
+            --border-dim: rgba(255, 255, 255, 0.08);
+            --accent-primary: #6366f1;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-dim: #6b7280;
+        }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }}
+        header {{
+            height: 56px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 20;
+        }}
+        .brand {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        .brand-logo {{
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #6366f1, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.5);
+        }}
+        .brand-title {{
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.01em;
+        }}
+        .brand-subtitle {{
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 8px;
+            font-weight: 400;
+        }}
+        .badge-pill {{
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+            font-weight: 600;
+        }}
+        .top-stats {{
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }}
+        .top-stat-val {{
+            color: #fff;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }}
+        main {{
+            flex: 1;
+            position: relative;
+            display: flex;
+        }}
+        #graph-container {{
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }}
+        svg {{
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }}
+        svg:active {{
+            cursor: grabbing;
+        }}
+        .controls-overlay {{
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            width: 280px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .control-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+        .control-label {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }}
+        .search-input {{
+            width: 100%;
+            background: rgba(3, 7, 18, 0.8);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            padding: 7px 10px;
+            color: #fff;
+            font-size: 12px;
+            outline: none;
+            transition: all 0.2s ease;
+        }}
+        .search-input:focus {{
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }}
+        .toggle-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }}
+        .toggle-row input[type="checkbox"] {{
+            accent-color: var(--accent-primary);
+            cursor: pointer;
+        }}
+        .btn-row {{
+            display: flex;
+            gap: 8px;
+        }}
+        .btn {{
+            flex: 1;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid var(--border-dim);
+            color: #e5e7eb;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }}
+        .btn:hover {{
+            background: var(--accent-primary);
+            color: #fff;
+            border-color: var(--accent-primary);
+        }}
+        .inspector-card {{
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 300px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .inspector-title {{
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            word-break: break-word;
+        }}
+        .metric-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }}
+        .metric-box {{
+            background: rgba(3, 7, 18, 0.5);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            padding: 6px 8px;
+        }}
+        .metric-lbl {{
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }}
+        .metric-val {{
+            font-size: 13px;
+            font-weight: 700;
+            color: #a5b4fc;
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 2px;
+        }}
+        .link {{
+            stroke: #6366f1;
+            stroke-opacity: 0.35;
+            transition: stroke-opacity 0.2s, stroke 0.2s;
+        }}
+        .link.highlight {{
+            stroke: #a5b4fc;
+            stroke-opacity: 0.9;
+        }}
+        .link.dimmed {{
+            stroke-opacity: 0.04;
+        }}
+        .node circle {{
+            stroke: #fff;
+            stroke-width: 1.5px;
+            cursor: pointer;
+            transition: transform 0.2s, stroke-width 0.2s;
+        }}
+        .node circle:hover {{
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 8px currentColor);
+        }}
+        .node.dimmed circle {{
+            opacity: 0.15;
+        }}
+        .node text {{
+            font-size: 10px;
+            font-weight: 500;
+            fill: #f3f4f6;
+            pointer-events: none;
+            paint-order: stroke fill;
+            stroke: #030712;
+            stroke-width: 3px;
+        }}
+        .node.dimmed text {{
+            opacity: 0.1;
+        }}
+        .legend-container {{
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 11px;
+            z-index: 10;
+        }}
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .legend-dot {{
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-logo">K</div>
+            <div class="brand-title">{title}</div>
+            <div class="brand-subtitle">{sub_text}</div>
+            <div class="badge-pill">knoMap Engine</div>
+        </div>
+        <div class="top-stats">
+            <div>Nodos: <span class="top-stat-val" id="stat-nodes">0</span></div>
+            <div>Aristas: <span class="top-stat-val" id="stat-edges">0</span></div>
+            <div>Comunidades: <span class="top-stat-val" id="stat-comms">0</span></div>
+        </div>
+    </header>
+
+    <main>
+        <div class="controls-overlay">
+            <div class="control-group">
+                <span class="control-label">Búsqueda de Término</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Filtrar por etiqueta...">
+            </div>
+            <div class="control-group">
+                <div class="toggle-row">
+                    <span>Solo Componente Conexo (LCC)</span>
+                    <input type="checkbox" id="toggle-lcc">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn" id="btn-reset-zoom">Reset Vista</button>
+                <button class="btn" id="btn-export-svg">Export SVG</button>
+            </div>
+        </div>
+
+        <div id="inspector" class="inspector-card">
+            <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Detalles del Nodo</div>
+            <div id="inspector-name" class="inspector-title">Pase el cursor sobre un nodo</div>
+            <div id="inspector-badge" style="display:none;" class="badge-pill">Cluster 1</div>
+            <div class="metric-grid" id="inspector-metrics" style="display:none;">
+                <div class="metric-box">
+                    <div class="metric-lbl">Frecuencia</div>
+                    <div class="metric-val" id="m-freq">-</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-lbl">Grado Ponderado</div>
+                    <div class="metric-val" id="m-deg">-</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-lbl">PageRank</div>
+                    <div class="metric-val" id="m-pr">-</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-lbl">Betweenness</div>
+                    <div class="metric-val" id="m-bet">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="graph-container">
+            <svg id="network-svg"></svg>
+        </div>
+
+        <div class="legend-container" id="legend"></div>
+    </main>
+
+    <script>
+        const rawNodes = {nodes_json};
+        const rawEdges = {edges_json};
+
+        const colorPalette = [
+            '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6',
+            '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6', '#e11d48',
+            '#84cc16', '#d946ef', '#64748b'
+        ];
+
+        function getNodeColor(comm) {{
+            const c = (parseInt(comm) || 1) - 1;
+            return colorPalette[Math.abs(c) % colorPalette.length];
+        }}
+
+        const communitiesSet = new Set(rawNodes.map(n => n.community || 1));
+        document.getElementById('stat-nodes').textContent = rawNodes.length;
+        document.getElementById('stat-edges').textContent = rawEdges.length;
+        document.getElementById('stat-comms').textContent = communitiesSet.size;
+
+        const legendDiv = document.getElementById('legend');
+        Array.from(communitiesSet).sort((a,b)=>a-b).slice(0, 7).forEach(cid => {{
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `<div class="legend-dot" style="background:${{getNodeColor(cid)}}"></div><span>C${{cid}}</span>`;
+            legendDiv.appendChild(item);
+        }});
+
+        const container = document.getElementById('graph-container');
+        const width = container.clientWidth || window.innerWidth;
+        const height = container.clientHeight || (window.innerHeight - 56);
+
+        const svg = d3.select('#network-svg');
+        const g = svg.append('g');
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 5])
+            .on('zoom', (event) => g.attr('transform', event.transform));
+        svg.call(zoom);
+
+        document.getElementById('btn-reset-zoom').addEventListener('click', () => {{
+            svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+        }});
+
+        let activeNodes = rawNodes.map(d => Object.assign({{}}, d));
+        let activeEdges = rawEdges.map(d => Object.assign({{}}, d));
+
+        const neighborMap = new Map();
+        rawNodes.forEach(n => neighborMap.set(n.id, new Set()));
+        rawEdges.forEach(e => {{
+            const u = e.source.id || e.source;
+            const v = e.target.id || e.target;
+            if (neighborMap.has(u)) neighborMap.get(u).add(v);
+            if (neighborMap.has(v)) neighborMap.get(v).add(u);
+        }});
+
+        const simulation = d3.forceSimulation(activeNodes)
+            .force('link', d3.forceLink(activeEdges).id(d => d.id).distance(70))
+            .force('charge', d3.forceManyBody().strength(-180))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.frequency || 1) * 5 + 8));
+
+        const link = g.append('g')
+            .selectAll('line')
+            .data(activeEdges)
+            .join('line')
+            .attr('class', 'link')
+            .attr('stroke-width', d => Math.max(1, Math.min(5, (d.weight || 1) * 2.5)));
+
+        const node = g.append('g')
+            .selectAll('.node')
+            .data(activeNodes)
+            .join('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        node.append('circle')
+            .attr('r', d => Math.sqrt(d.frequency || 1) * 5 + 4)
+            .attr('fill', d => getNodeColor(d.community))
+            .attr('color', d => getNodeColor(d.community));
+
+        node.append('text')
+            .attr('dy', d => -(Math.sqrt(d.frequency || 1) * 5 + 7))
+            .attr('text-anchor', 'middle')
+            .text(d => d.label || d.id);
+
+        simulation.on('tick', () => {{
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('transform', d => `translate(${{d.x}},${{d.y}})`);
+        }});
+
+        function dragstarted(event, d) {{
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }}
+
+        function dragged(event, d) {{
+            d.fx = event.x;
+            d.fy = event.y;
+        }}
+
+        function dragended(event, d) {{
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }}
+
+        node.on('mouseenter', (event, d) => {{
+            const neighbors = neighborMap.get(d.id) || new Set();
+            node.classed('dimmed', n => n.id !== d.id && !neighbors.has(n.id));
+            link.classed('dimmed', l => {{
+                const u = l.source.id || l.source;
+                const v = l.target.id || l.target;
+                return u !== d.id && v !== d.id;
+            }});
+            link.classed('highlight', l => {{
+                const u = l.source.id || l.source;
+                const v = l.target.id || l.target;
+                return u === d.id || v === d.id;
+            }});
+
+            document.getElementById('inspector-name').textContent = d.label || d.id;
+            const badge = document.getElementById('inspector-badge');
+            badge.style.display = 'inline-block';
+            badge.textContent = `Cluster ${{d.community || 1}}`;
+            badge.style.borderColor = getNodeColor(d.community);
+            badge.style.color = getNodeColor(d.community);
+
+            document.getElementById('inspector-metrics').style.display = 'grid';
+            document.getElementById('m-freq').textContent = d.frequency || 1;
+            document.getElementById('m-deg').textContent = d.degree_weighted || (d.frequency ? (d.frequency * 1.5).toFixed(2) : '-');
+            document.getElementById('m-pr').textContent = d.pagerank ? d.pagerank.toFixed(4) : '-';
+            document.getElementById('m-bet').textContent = d.betweenness ? d.betweenness.toFixed(4) : '-';
+        }});
+
+        node.on('mouseleave', () => {{
+            node.classed('dimmed', false);
+            link.classed('dimmed', false);
+            link.classed('highlight', false);
+        }});
+
+        document.getElementById('search-input').addEventListener('input', (e) => {{
+            const term = e.target.value.toLowerCase().trim();
+            if (!term) {{
+                node.classed('dimmed', false);
+                return;
+            }}
+            node.classed('dimmed', d => !d.label.toLowerCase().includes(term));
+        }});
+
+        document.getElementById('btn-export-svg').addEventListener('click', () => {{
+            const svgEl = document.getElementById('network-svg');
+            const serializer = new XMLSerializer();
+            const source = serializer.serializeToString(svgEl);
+            const blob = new Blob([source], {{ type: 'image/svg+xml;charset=utf-8' }});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{title.lower().replace(" ", "_")}_knomap.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        }});
+    </script>
+</body>
+</html>"""
+    return html
+
+
+def generate_vosviewer_html(
+    vos_data: Dict[str, Any],
+    title: str = "VOSviewer Map",
+    subtitle: Optional[str] = None
+) -> str:
+    """Generates a standalone, beautiful HTML visualizer reproducing the VOSviewer experience (Network, Overlay & Density)."""
+    vos_json_str = json.dumps(vos_data, ensure_ascii=False)
+    sub_text = subtitle or "VOSviewer Engine - Network, Overlay & Density Visualizations"
+
+    html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - VOSviewer Map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg-base: #050508;
+            --bg-panel: rgba(17, 24, 39, 0.92);
+            --border-panel: rgba(255, 255, 255, 0.1);
+            --accent-primary: #6366f1;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            background: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }}
+        header {{
+            height: 54px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-panel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            z-index: 20;
+        }}
+        .brand {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .brand-badge {{
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            color: #fff;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }}
+        .brand-title {{
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+        }}
+        .brand-sub {{
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 6px;
+        }}
+        .mode-tabs {{
+            display: flex;
+            background: rgba(3, 7, 18, 0.7);
+            border: 1px solid var(--border-panel);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 2px;
+        }}
+        .mode-btn {{
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .mode-btn.active {{
+            background: var(--accent-primary);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }}
+        .mode-btn:hover:not(.active) {{
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }}
+        .header-actions {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .action-btn {{
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid var(--border-panel);
+            color: #e5e7eb;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }}
+        .action-btn:hover {{
+            background: #374151;
+            color: #fff;
+            border-color: var(--accent-primary);
+        }}
+        main {{
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }}
+        canvas {{
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }}
+        canvas:active {{
+            cursor: grabbing;
+        }}
+        .search-panel {{
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-panel);
+            border-radius: 10px;
+            padding: 10px 14px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        }}
+        .search-input {{
+            background: #030712;
+            border: 1px solid var(--border-panel);
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 12px;
+            color: #fff;
+            width: 180px;
+            outline: none;
+        }}
+        .search-input:focus {{
+            border-color: var(--accent-primary);
+        }}
+        .inspector-panel {{
+            position: absolute;
+            bottom: 18px;
+            right: 18px;
+            width: 280px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-panel);
+            border-radius: 10px;
+            padding: 14px;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+        .inspector-title {{
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+        }}
+        .meta-row {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 4px;
+        }}
+        .meta-val {{
+            font-weight: 600;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }}
+        .overlay-colorbar {{
+            position: absolute;
+            bottom: 18px;
+            left: 18px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-panel);
+            border-radius: 8px;
+            padding: 8px 14px;
+            z-index: 10;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        .colorbar-gradient {{
+            width: 160px;
+            height: 10px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725);
+        }}
+        .colorbar-labels {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <span class="brand-badge">VOSviewer Engine</span>
+            <span class="brand-title">{title}</span>
+            <span class="brand-sub">{sub_text}</span>
+        </div>
+        
+        <div class="mode-tabs">
+            <button class="mode-btn active" id="tab-net" onclick="setVisualMode('network')">● Red (Network)</button>
+            <button class="mode-btn" id="tab-overlay" onclick="setVisualMode('overlay')">◐ Superposición (Overlay)</button>
+            <button class="mode-btn" id="tab-density" onclick="setVisualMode('density')">◎ Densidad (Density)</button>
+        </div>
+
+        <div class="header-actions">
+            <button class="action-btn" id="btn-dl-json">Descargar vosviewer.json</button>
+            <a href="https://app.vosviewer.com" target="_blank" class="action-btn" style="color:#a5b4fc; border-color:#6366f1;">Abrir VOSviewer Online ↗</a>
+        </div>
+    </header>
+
+    <main id="canvas-container">
+        <div class="search-panel">
+            <input type="text" id="search-box" class="search-input" placeholder="Buscar elemento en mapa...">
+            <span id="match-count" style="font-size:11px; color:var(--text-muted);"></span>
+        </div>
+
+        <div class="inspector-panel" id="inspector">
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Elemento Seleccionado</div>
+            <div class="inspector-title" id="insp-name">Pase el cursor sobre un nodo</div>
+            <div id="insp-meta" style="display:none; flex-direction:column; gap:6px;">
+                <div class="meta-row"><span>Cluster:</span><span class="meta-val" id="insp-cluster">-</span></div>
+                <div class="meta-row"><span>Ocurrencias:</span><span class="meta-val" id="insp-occ">-</span></div>
+                <div class="meta-row"><span>Total Link Strength:</span><span class="meta-val" id="insp-tls">-</span></div>
+                <div class="meta-row"><span>Enlaces (Links):</span><span class="meta-val" id="insp-links">-</span></div>
+                <div class="meta-row" id="row-score" style="display:none;"><span>Puntuación:</span><span class="meta-val" id="insp-score">-</span></div>
+            </div>
+        </div>
+
+        <div class="overlay-colorbar" id="colorbar">
+            <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Puntuación de Superposición</div>
+            <div class="colorbar-gradient"></div>
+            <div class="colorbar-labels">
+                <span id="cb-min">0.00</span>
+                <span id="cb-max">1.00</span>
+            </div>
+        </div>
+
+        <canvas id="vos-canvas"></canvas>
+    </main>
+
+    <script>
+        const vosData = {vos_json_str};
+        const items = vosData.network.items;
+        const links = vosData.network.links;
+
+        let visualMode = 'network';
+        let hoveredItem = null;
+        let searchTerm = '';
+
+        const clusterColors = [
+            '#e11d48', '#2563eb', '#16a34a', '#d97706', '#9333ea',
+            '#0891b2', '#ea580c', '#4f46e5', '#059669', '#ca8a04'
+        ];
+        function getItemColor(cluster) {{
+            const c = (parseInt(cluster) || 1) - 1;
+            return clusterColors[Math.abs(c) % clusterColors.length];
+        }}
+
+        function viridis(t) {{
+            const r = Math.round(255 * Math.sin(t * Math.PI / 2));
+            const g = Math.round(255 * (t < 0.5 ? 2 * t * 0.8 : 0.8 + 0.2 * (2 * t - 1)));
+            const b = Math.round(255 * Math.cos(t * Math.PI / 2));
+            return `rgb(${{r}}, ${{g}}, ${{b}})`;
+        }}
+
+        const canvas = document.getElementById('vos-canvas');
+        const width = window.innerWidth;
+        const height = window.innerHeight - 54;
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        const nItems = items.length;
+        const itemMap = new Map();
+        
+        let minScore = Infinity, maxScore = -Infinity;
+        items.forEach((it) => {{
+            const sc = (it.scores && Object.values(it.scores)[0]) || it.weights.Occurrences;
+            if (sc < minScore) minScore = sc;
+            if (sc > maxScore) maxScore = sc;
+        }});
+        if (minScore === maxScore) {{ minScore = 0; maxScore = 1; }}
+        document.getElementById('cb-min').textContent = minScore.toFixed(3);
+        document.getElementById('cb-max').textContent = maxScore.toFixed(3);
+
+        const clusters = Array.from(new Set(items.map(it => it.cluster)));
+        const clusterCenters = {{}};
+        clusters.forEach((cid, idx) => {{
+            const angle = (idx / clusters.length) * 2 * Math.PI;
+            const dist = Math.min(width, height) * 0.28;
+            clusterCenters[cid] = {{
+                x: width / 2 + Math.cos(angle) * dist,
+                y: height / 2 + Math.sin(angle) * dist
+            }};
+        }});
+
+        items.forEach((it) => {{
+            const center = clusterCenters[it.cluster] || {{ x: width / 2, y: height / 2 }};
+            const angle = Math.random() * 2 * Math.PI;
+            const r = Math.random() * (Math.min(width, height) * 0.14);
+            it.x = center.x + Math.cos(angle) * r;
+            it.y = center.y + Math.sin(angle) * r;
+            it.radius = Math.max(5, Math.min(22, Math.sqrt(it.weights.Occurrences || 1) * 4 + 4));
+            itemMap.set(it.id, it);
+        }});
+
+        for (let step = 0; step < 80; step++) {{
+            links.forEach(l => {{
+                const u = itemMap.get(l.source_id);
+                const v = itemMap.get(l.target_id);
+                if (u && v) {{
+                    const dx = v.x - u.x;
+                    const dy = v.y - u.y;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const force = (d - 70) * 0.015 * (l.strength || 1);
+                    u.x += (dx / d) * force;
+                    u.y += (dy / d) * force;
+                    v.x -= (dx / d) * force;
+                    v.y -= (dy / d) * force;
+                }}
+            }});
+            for (let i = 0; i < nItems; i++) {{
+                for (let j = i + 1; j < nItems; j++) {{
+                    const u = items[i];
+                    const v = items[j];
+                    const dx = v.x - u.x;
+                    const dy = v.y - u.y;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const minD = u.radius + v.radius + 15;
+                    if (d < minD) {{
+                        const rep = (minD - d) * 0.1;
+                        u.x -= (dx / d) * rep;
+                        u.y -= (dy / d) * rep;
+                        v.x += (dx / d) * rep;
+                        v.y += (dy / d) * rep;
+                    }}
+                }}
+            }}
+        }}
+
+        function render() {{
+            ctx.clearRect(0, 0, width, height);
+            if (visualMode === 'density') {{
+                renderDensity();
+            }} else {{
+                renderLinks();
+                renderNodes();
+            }}
+        }}
+
+        function renderLinks() {{
+            ctx.save();
+            links.forEach(l => {{
+                const u = itemMap.get(l.source_id);
+                const v = itemMap.get(l.target_id);
+                if (!u || !v) return;
+
+                const isConnectedToHover = hoveredItem && (hoveredItem.id === u.id || hoveredItem.id === v.id);
+                ctx.beginPath();
+                ctx.moveTo(u.x, u.y);
+                ctx.lineTo(v.x, v.y);
+                
+                if (hoveredItem) {{
+                    ctx.strokeStyle = isConnectedToHover ? '#a5b4fc' : 'rgba(255,255,255,0.03)';
+                    ctx.lineWidth = isConnectedToHover ? 2.5 : 0.5;
+                }} else {{
+                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.22)';
+                    ctx.lineWidth = Math.max(0.8, Math.min(4, (l.strength || 1) * 1.5));
+                }}
+                ctx.stroke();
+            }});
+            ctx.restore();
+        }}
+
+        function renderNodes() {{
+            items.forEach(it => {{
+                const isHovered = hoveredItem && hoveredItem.id === it.id;
+                const matchesSearch = searchTerm && it.label.toLowerCase().includes(searchTerm);
+                
+                let nodeColor;
+                if (visualMode === 'overlay') {{
+                    const sc = (it.scores && Object.values(it.scores)[0]) || it.weights.Occurrences;
+                    const t = Math.max(0, Math.min(1, (sc - minScore) / (maxScore - minScore)));
+                    nodeColor = viridis(t);
+                }} else {{
+                    nodeColor = getItemColor(it.cluster);
+                }}
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(it.x, it.y, isHovered ? it.radius * 1.35 : it.radius, 0, 2 * Math.PI);
+                ctx.fillStyle = nodeColor;
+                ctx.shadowColor = nodeColor;
+                ctx.shadowBlur = (isHovered || matchesSearch) ? 14 : 0;
+                ctx.fill();
+                ctx.strokeStyle = isHovered ? '#fff' : 'rgba(255,255,255,0.7)';
+                ctx.lineWidth = isHovered ? 2.5 : 1.2;
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.save();
+                ctx.font = `${{isHovered ? 'bold 12px' : '10px'}} 'Inter', sans-serif`;
+                ctx.fillStyle = isHovered ? '#fff' : '#e5e7eb';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                ctx.fillText(it.label, it.x, it.y - it.radius - 3);
+                ctx.restore();
+            }});
+        }}
+
+        function renderDensity() {{
+            const step = 8;
+            const sigma = 45;
+            const twoSigmaSq = 2 * sigma * sigma;
+
+            for (let x = 0; x < width; x += step) {{
+                for (let y = 0; y < height; y += step) {{
+                    let density = 0;
+                    items.forEach(it => {{
+                        const dx = x - it.x;
+                        const dy = y - it.y;
+                        const dSq = dx * dx + dy * dy;
+                        density += (it.weights.Occurrences || 1) * Math.exp(-dSq / twoSigmaSq);
+                    }});
+
+                    if (density > 0.05) {{
+                        const normD = Math.min(1, density / 12);
+                        const r = Math.round(255 * Math.max(0, Math.min(1, (normD - 0.5) * 2)));
+                        const g = Math.round(255 * Math.max(0, Math.min(1, 1 - Math.abs(normD - 0.5) * 2)));
+                        const b = Math.round(255 * Math.max(0, Math.min(1, (0.5 - normD) * 2)));
+                        
+                        ctx.fillStyle = `rgba(${{r}}, ${{g}}, ${{b}}, ${{normD * 0.75}})`;
+                        ctx.fillRect(x, y, step, step);
+                    }}
+                }}
+            }}
+
+            items.forEach(it => {{
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(it.x, it.y, 3, 0, 2 * Math.PI);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.font = "9px 'Inter', sans-serif";
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.textAlign = 'center';
+                ctx.fillText(it.label, it.x, it.y - 6);
+                ctx.restore();
+            }});
+        }}
+
+        window.setVisualMode = function(mode) {{
+            visualMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if (mode === 'network') document.getElementById('tab-net').classList.add('active');
+            if (mode === 'overlay') document.getElementById('tab-overlay').classList.add('active');
+            if (mode === 'density') document.getElementById('tab-density').classList.add('active');
+
+            document.getElementById('colorbar').style.display = (mode === 'overlay') ? 'flex' : 'none';
+            render();
+        }};
+
+        canvas.addEventListener('mousemove', (e) => {{
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let found = null;
+            for (const it of items) {{
+                const dx = mouseX - it.x;
+                const dy = mouseY - it.y;
+                if (dx * dx + dy * dy <= it.radius * it.radius * 1.5) {{
+                    found = it;
+                    break;
+                }}
+            }}
+
+            if (found !== hoveredItem) {{
+                hoveredItem = found;
+                if (hoveredItem) {{
+                    document.getElementById('insp-name').textContent = hoveredItem.label;
+                    document.getElementById('insp-meta').style.display = 'flex';
+                    document.getElementById('insp-cluster').textContent = hoveredItem.cluster;
+                    document.getElementById('insp-occ').textContent = hoveredItem.weights.Occurrences;
+                    document.getElementById('insp-tls').textContent = hoveredItem.weights['Total link strength'] || '-';
+                    document.getElementById('insp-links').textContent = hoveredItem.weights.Links || '-';
+                    
+                    if (hoveredItem.scores && Object.keys(hoveredItem.scores).length > 0) {{
+                        document.getElementById('row-score').style.display = 'flex';
+                        const scKey = Object.keys(hoveredItem.scores)[0];
+                        document.getElementById('insp-score').textContent = hoveredItem.scores[scKey];
+                    }} else {{
+                        document.getElementById('row-score').style.display = 'none';
+                    }}
+                }} else {{
+                    document.getElementById('insp-name').textContent = 'Pase el cursor sobre un nodo';
+                    document.getElementById('insp-meta').style.display = 'none';
+                }}
+                render();
+            }}
+        }});
+
+        document.getElementById('search-box').addEventListener('input', (e) => {{
+            searchTerm = e.target.value.toLowerCase().trim();
+            const count = searchTerm ? items.filter(it => it.label.toLowerCase().includes(searchTerm)).length : 0;
+            document.getElementById('match-count').textContent = searchTerm ? `${{count}} coincidencias` : '';
+            render();
+        }});
+
+        document.getElementById('btn-dl-json').addEventListener('click', () => {{
+            const blob = new Blob([JSON.stringify(vosData, null, 2)], {{ type: 'application/json' }});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vosviewer.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }});
+
+        render();
+    </script>
+</body>
+</html>"""
+    return html
+
+
+def export_som_matrix(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    output_csv: str,
+    output_json: Optional[str] = None
+) -> int:
+    """
+    Exports the N x N symmetric co-occurrence/adjacency matrix formatted for
+    direct ingestion into SOM (som-methodological-expert).
+    """
+    labels = sorted([n["label"] for n in nodes])
+    n_items = len(labels)
+    label_to_idx = {lbl: i for i, lbl in enumerate(labels)}
+
+    mat = [[0.0] * n_items for _ in range(n_items)]
+    freq_map = {n["label"]: float(n.get("frequency", 1.0)) for n in nodes}
+
+    for lbl, i in label_to_idx.items():
+        mat[i][i] = freq_map.get(lbl, 1.0)
+
+    for e in edges:
+        u = e["source"]
+        v = e["target"]
+        w = float(e.get("weight", 1.0))
+        if u in label_to_idx and v in label_to_idx:
+            i = label_to_idx[u]
+            j = label_to_idx[v]
+            mat[i][j] = round(w, 4)
+            mat[j][i] = round(w, 4)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_csv)), exist_ok=True)
+    with open(output_csv, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Entity"] + labels)
+        for i, lbl in enumerate(labels):
+            writer.writerow([lbl] + [round(val, 4) for val in mat[i]])
+
+    if output_json:
+        os.makedirs(os.path.dirname(os.path.abspath(output_json)), exist_ok=True)
+        meta = {
+            "originType": "bibliometrics",
+            "unitName": "Bibliometrics Co-occurrence",
+            "description": "Adjacency/Association Strength matrix for Kohonen Self-Organizing Map",
+            "dimension": [n_items, n_items],
+            "labels": labels,
+            "matrix": mat
+        }
+        with open(output_json, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+
+    return n_items
+
+
 def export_network_graph(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]],
     output_path: str,
     fmt: str = "gexf"
 ):
-    """Exports graph to GEXF, Pajek (.net), or VOSviewer JSON."""
+    """Exports graph to GEXF, Pajek (.net), or canonical VOSviewer JSON."""
     G = nx.Graph()
     for n in nodes:
         attrs = {k: v for k, v in n.items() if k != "id"}
@@ -537,26 +1836,9 @@ def export_network_graph(
         nx.write_pajek(G, output_path)
     else:
         # VOSviewer JSON format
-        vos_items = []
-        for idx, n in enumerate(nodes, start=1):
-            vos_items.append({
-                "id": idx,
-                "label": n.get("label", n["id"]),
-                "cluster": n.get("community", 1),
-                "weight": n.get("frequency", 1.0)
-            })
-        id_map = {n["id"]: idx for idx, n in enumerate(nodes, start=1)}
-        vos_links = []
-        for e in edges:
-            if e["source"] in id_map and e["target"] in id_map:
-                vos_links.append({
-                    "node1_id": id_map[e["source"]],
-                    "node2_id": id_map[e["target"]],
-                    "strength": e.get("weight", 1.0)
-                })
-        vos_data = {"network": {"items": vos_items, "links": vos_links}}
+        vos_data = build_vosviewer_json_data(nodes, edges)
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(vos_data, f, indent=2)
+            json.dump(vos_data, f, indent=2, ensure_ascii=False)
 
 
 def cmd_build(args):
@@ -610,6 +1892,27 @@ def cmd_build(args):
     nodes = [{"id": item, "label": item, "frequency": freqs.get(item, 0.0)} for item in items if any(item in p for p in norm_pairs)]
     edges = [{"source": u, "target": v, "weight": w, "raw_cooccur": pairs.get((u, v), w)} for (u, v), w in norm_pairs.items()]
 
+    # Auto-analysis (communities and centralities) if requested or when exporting visualizers
+    needs_analysis = (
+        getattr(args, "auto_analyze", False)
+        or getattr(args, "html_knomap", None)
+        or getattr(args, "html_vosviewer", None)
+        or getattr(args, "vosviewer_json", None)
+        or getattr(args, "som_matrix", None)
+    )
+    if needs_analysis and len(nodes) > 0:
+        comms, node_to_comm = detect_network_communities(nodes, edges, "leiden", 1.0)
+        for n in nodes:
+            n["community"] = node_to_comm.get(n["id"], 1)
+
+        centralities = compute_network_centralities(nodes, edges)
+        c_map = {c["id"]: c for c in centralities}
+        for n in nodes:
+            c_info = c_map.get(n["id"], {})
+            n["degree_weighted"] = c_info.get("degree_weighted", 0.0)
+            n["betweenness"] = c_info.get("betweenness", 0.0)
+            n["pagerank"] = c_info.get("pagerank", 0.0)
+
     graph_data = {
         "network_type": net_type,
         "unit": unit,
@@ -628,6 +1931,37 @@ def cmd_build(args):
 
     p_str = f" [Period: {period_meta.get('label')}]" if period_meta.get("filter_applied") else ""
     print(f"Built network ({net_type}, {unit}){p_str}: {len(nodes)} nodes, {len(edges)} edges. Output: {args.output}")
+
+    # Generate visualizers if requested
+    if getattr(args, "html_knomap", None):
+        title = f"{unit.capitalize()} {net_type.capitalize()} Network"
+        p_sub = f"Period: {period_meta.get('label')}" if period_meta.get("filter_applied") else "KnoMap Force-Directed Network"
+        html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=p_sub)
+        os.makedirs(os.path.dirname(os.path.abspath(args.html_knomap)), exist_ok=True)
+        with open(args.html_knomap, "w", encoding="utf-8") as f:
+            f.write(html_code)
+        print(f"Generated KnoMap Force Graph HTML: {args.html_knomap}")
+
+    if getattr(args, "vosviewer_json", None) or getattr(args, "html_vosviewer", None):
+        vos_data = build_vosviewer_json_data(nodes, edges)
+        if getattr(args, "vosviewer_json", None):
+            os.makedirs(os.path.dirname(os.path.abspath(args.vosviewer_json)), exist_ok=True)
+            with open(args.vosviewer_json, "w", encoding="utf-8") as f:
+                json.dump(vos_data, f, indent=2, ensure_ascii=False)
+            print(f"Exported VOSviewer JSON: {args.vosviewer_json}")
+        if getattr(args, "html_vosviewer", None):
+            title = f"{unit.capitalize()} {net_type.capitalize()} VOS Map"
+            p_sub = f"Period: {period_meta.get('label')}" if period_meta.get("filter_applied") else None
+            html_vos = generate_vosviewer_html(vos_data, title=title, subtitle=p_sub)
+            os.makedirs(os.path.dirname(os.path.abspath(args.html_vosviewer)), exist_ok=True)
+            with open(args.html_vosviewer, "w", encoding="utf-8") as f:
+                f.write(html_vos)
+            print(f"Generated VOSviewer HTML: {args.html_vosviewer}")
+
+    if getattr(args, "som_matrix", None):
+        n_dim = export_som_matrix(nodes, edges, output_csv=args.som_matrix)
+        print(f"Exported SOM Adjacency Matrix ({n_dim}x{n_dim}) for SOM training: {args.som_matrix}")
+
     sys.exit(0)
 
 
@@ -917,6 +2251,55 @@ def cmd_centralities(args):
     sys.exit(0)
 
 
+def cmd_render_knomap(args):
+    """Renders standalone KnoMap Force Graph HTML from a network JSON."""
+    with open(args.input, "r", encoding="utf-8") as f:
+        net = json.load(f)
+    nodes = net.get("nodes", net.get("nodes_with_community", []))
+    edges = net.get("edges", [])
+    title = args.title or "Bibliometric Network"
+    subtitle = args.subtitle or "KnoMap Interactive Force-Directed Graph"
+    html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=subtitle)
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(html_code)
+    print(f"Generated KnoMap Force Graph HTML: {args.output}")
+    sys.exit(0)
+
+
+def cmd_render_vosviewer(args):
+    """Renders standalone VOSviewer HTML visualizer and optional JSON."""
+    with open(args.input, "r", encoding="utf-8") as f:
+        net = json.load(f)
+    nodes = net.get("nodes", net.get("nodes_with_community", []))
+    edges = net.get("edges", [])
+    vos_data = build_vosviewer_json_data(nodes, edges)
+    if args.output_json:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output_json)), exist_ok=True)
+        with open(args.output_json, "w", encoding="utf-8") as f:
+            json.dump(vos_data, f, indent=2, ensure_ascii=False)
+        print(f"Exported VOSviewer JSON: {args.output_json}")
+    title = args.title or "VOSviewer Map"
+    subtitle = args.subtitle or "VOSviewer Engine - Network, Overlay & Density Visualizations"
+    html_code = generate_vosviewer_html(vos_data, title=title, subtitle=subtitle)
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(html_code)
+    print(f"Generated VOSviewer HTML visualizer: {args.output}")
+    sys.exit(0)
+
+
+def cmd_export_som_matrix(args):
+    """Exports N x N adjacency/co-occurrence matrix for SOM training."""
+    with open(args.input, "r", encoding="utf-8") as f:
+        net = json.load(f)
+    nodes = net.get("nodes", net.get("nodes_with_community", []))
+    edges = net.get("edges", [])
+    n_dim = export_som_matrix(nodes, edges, output_csv=args.output_csv, output_json=args.output_json)
+    print(f"Exported SOM Adjacency Matrix ({n_dim}x{n_dim}) to CSV: {args.output_csv}")
+    sys.exit(0)
+
+
 def cmd_export(args):
     """Exports network to GEXF, Pajek (.net), or VOSviewer JSON."""
     input_path = args.input
@@ -940,7 +2323,7 @@ def main():
 
     # Subcommand: build-network
     p_bld = subparsers.add_parser("build-network", help="Build bibliometric network from corpus with optional period filter")
-    p_bld.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json)")
+    p_bld.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json, .txt)")
     p_bld.add_argument("--output", required=True, help="Path to output network JSON")
     p_bld.add_argument("--network-type", choices=["cooccurrence", "coauthorship", "coupling", "direct-citation"], default="cooccurrence")
     p_bld.add_argument("--unit", choices=["keywords", "authors", "institutions", "countries", "sources"], default="keywords")
@@ -953,12 +2336,41 @@ def main():
     p_bld.add_argument("--period", type=str, default=None, help="Specific period (e.g. 2020-2024 or 2024)")
     p_bld.add_argument("--last-years", type=int, default=None, help="Filter last N years relative to corpus max year")
     p_bld.add_argument("--max-terms", type=int, default=None, help="Limit network to top N prominent terms")
+    p_bld.add_argument("--auto-analyze", action="store_true", help="Automatically run Leiden communities and centralities")
+    p_bld.add_argument("--html-knomap", type=str, default=None, help="Path to output standalone KnoMap Force Graph HTML")
+    p_bld.add_argument("--html-vosviewer", type=str, default=None, help="Path to output standalone VOSviewer HTML visualizer")
+    p_bld.add_argument("--vosviewer-json", type=str, default=None, help="Path to output canonical VOSviewer JSON format")
+    p_bld.add_argument("--som-matrix", type=str, default=None, help="Path to output N x N co-occurrence matrix CSV for SOM training")
     p_bld.set_defaults(func=cmd_build)
+
+    # Subcommand: render-knomap
+    p_rkn = subparsers.add_parser("render-knomap", help="Render standalone KnoMap Force Graph HTML from network JSON")
+    p_rkn.add_argument("--input", required=True, help="Path to network JSON")
+    p_rkn.add_argument("--output", required=True, help="Path to output HTML file")
+    p_rkn.add_argument("--title", default=None, help="Visualizer title")
+    p_rkn.add_argument("--subtitle", default=None, help="Visualizer subtitle")
+    p_rkn.set_defaults(func=cmd_render_knomap)
+
+    # Subcommand: render-vosviewer
+    p_rvos = subparsers.add_parser("render-vosviewer", help="Render standalone VOSviewer HTML visualizer from network JSON")
+    p_rvos.add_argument("--input", required=True, help="Path to network JSON")
+    p_rvos.add_argument("--output", required=True, help="Path to output HTML file")
+    p_rvos.add_argument("--output-json", default=None, help="Optional path to output vosviewer.json")
+    p_rvos.add_argument("--title", default=None, help="Visualizer title")
+    p_rvos.add_argument("--subtitle", default=None, help="Visualizer subtitle")
+    p_rvos.set_defaults(func=cmd_render_vosviewer)
+
+    # Subcommand: export-som-matrix
+    p_esom = subparsers.add_parser("export-som-matrix", help="Export N x N adjacency/co-occurrence matrix for SOM training")
+    p_esom.add_argument("--input", required=True, help="Path to network JSON")
+    p_esom.add_argument("--output-csv", required=True, help="Path to output N x N CSV file")
+    p_esom.add_argument("--output-json", default=None, help="Optional path to output sidecar JSON")
+    p_esom.set_defaults(func=cmd_export_som_matrix)
 
     # Subcommand: sequential-networks (alias period-networks)
     for sub_name in ["sequential-networks", "period-networks"]:
         p_seq = subparsers.add_parser(sub_name, help="Generate sequential longitudinal networks & SOM manifest")
-        p_seq.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json)")
+        p_seq.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json, .txt)")
         p_seq.add_argument("--output-dir", required=True, help="Output directory for period networks and sequence_manifest.json")
         p_seq.add_argument("--network-type", choices=["cooccurrence", "coauthorship", "coupling", "direct-citation"], default="cooccurrence")
         p_seq.add_argument("--unit", choices=["keywords", "authors", "institutions", "countries", "sources"], default="keywords")
