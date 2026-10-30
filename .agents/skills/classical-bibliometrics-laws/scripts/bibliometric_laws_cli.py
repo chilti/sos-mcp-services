@@ -24,6 +24,23 @@ from scipy.optimize import curve_fit
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+try:
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
+
+def export_plotly_chart(fig, html_path: Optional[str] = None, png_path: Optional[str] = None):
+    if html_path:
+        os.makedirs(os.path.dirname(os.path.abspath(html_path)), exist_ok=True)
+        fig.write_html(html_path, include_plotlyjs="cdn")
+    if png_path:
+        os.makedirs(os.path.dirname(os.path.abspath(png_path)), exist_ok=True)
+        try:
+            fig.write_image(png_path, scale=2)
+        except Exception:
+            pass
+
 
 
 def load_corpus_data(filepath: str) -> List[Dict[str, Any]]:
@@ -129,6 +146,33 @@ def cmd_lotka(args):
         plt.savefig(args.plot_output, dpi=200)
         plt.close()
         result["plot_path"] = args.plot_output
+    # Plotly interactive figure if requested
+    plotly_path = getattr(args, "plotly_html", None)
+    if plotly_path and HAS_PLOTLY:
+        fig_lotka = go.Figure()
+        fig_lotka.add_trace(go.Scatter(
+            x=log_x.tolist(), y=log_y.tolist(),
+            mode="markers", name="Empirical Data",
+            marker=dict(color="#2563eb", size=8),
+            hovertemplate="ln(Papers): %{x:.2f}<br>ln(Authors): %{y:.2f}<extra></extra>"
+        ))
+        pred_line = (intercept + slope * log_x).tolist()
+        fig_lotka.add_trace(go.Scatter(
+            x=log_x.tolist(), y=pred_line,
+            mode="lines", name=f"Lotka Fit (c={c_exponent:.2f}, R²={r_value**2:.2f})",
+            line=dict(color="#dc2626", dash="dash", width=2.5)
+        ))
+        fig_lotka.update_layout(
+            title=f"Lotka's Law Distribution ({counting.capitalize()} Counting)",
+            xaxis_title="ln(Papers per Author)",
+            yaxis_title="ln(Number of Authors)",
+            template="plotly_white",
+            hovermode="closest",
+            margin=dict(l=60, r=40, t=60, b=60)
+        )
+        export_plotly_chart(fig_lotka, html_path=plotly_path, png_path=args.plot_output if not os.path.exists(args.plot_output or "") else None)
+        result["plotly_html_path"] = plotly_path
+
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
@@ -365,6 +409,40 @@ def cmd_growth(args):
         plt.close()
         result["plot_path"] = args.plot_output
 
+    
+    # Plotly interactive figure if requested
+    plotly_path = getattr(args, "plotly_html", None)
+    if plotly_path and HAS_PLOTLY:
+        fig_gro = go.Figure()
+        fig_gro.add_trace(go.Scatter(
+            x=years.tolist(), y=docs.tolist(),
+            mode="markers+lines", name="Empirical Output",
+            marker=dict(color="#1e293b", size=7),
+            line=dict(color="#94a3b8", width=1),
+            hovertemplate="Year: %{x}<br>Publications: %{y:,}<extra></extra>"
+        ))
+        fig_gro.add_trace(go.Scatter(
+            x=years.tolist(), y=docs_pred_exp.tolist(),
+            mode="lines", name=f"Exponential Model (R²={r2_exp:.2f})",
+            line=dict(color="#2563eb", dash="dash", width=2.5)
+        ))
+        if docs_pred_log is not None:
+            fig_gro.add_trace(go.Scatter(
+                x=years.tolist(), y=docs_pred_log.tolist(),
+                mode="lines", name=f"Logistic Model (R²={r2_log:.2f})",
+                line=dict(color="#16a34a", width=2.5)
+            ))
+        fig_gro.update_layout(
+            title=f"Scientific Growth Curve ({growth_phase})",
+            xaxis_title="Year",
+            yaxis_title="Annual Publication Volume",
+            template="plotly_white",
+            hovermode="x unified",
+            margin=dict(l=60, r=40, t=60, b=60)
+        )
+        export_plotly_chart(fig_gro, html_path=plotly_path, png_path=args.plot_output if not os.path.exists(args.plot_output or "") else None)
+        result["plotly_html_path"] = plotly_path
+
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
@@ -383,6 +461,7 @@ def main():
     p_lot.add_argument("--output", required=True, help="Path to output JSON")
     p_lot.add_argument("--counting", choices=["full", "fractional"], default="full")
     p_lot.add_argument("--plot-output", help="Optional path to output PNG plot")
+    p_lot.add_argument("--plotly-html", help="Optional path to output interactive Plotly HTML")
     p_lot.set_defaults(func=cmd_lotka)
 
     # Subcommand: bradford
@@ -402,6 +481,7 @@ def main():
     p_gro.add_argument("--input", required=True, help="Path to corpus file")
     p_gro.add_argument("--output", required=True, help="Path to output JSON")
     p_gro.add_argument("--plot-output", help="Optional path to output PNG plot")
+    p_gro.add_argument("--plotly-html", help="Optional path to output interactive Plotly HTML")
     p_gro.set_defaults(func=cmd_growth)
 
     args = parser.parse_args()

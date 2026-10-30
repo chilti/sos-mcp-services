@@ -3,7 +3,7 @@ import sys
 import re
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 
 # Agregar KnoMap Engine al path tanto en Windows como en entornos Linux
 KNOMAP_ENGINE_CANDIDATES = [

@@ -125,6 +125,7 @@ python scripts/bibliometric_laws_cli.py lotka \
   --input ./data/corpus_cientifico.parquet \
   --counting full \
   --plot-output ./data/grafico_lotka.png \
+  --plotly-html ./data/grafico_lotka.html \
   --output ./data/resultado_lotka.json
 ```
 * **Opciones de `--counting`:**
@@ -153,6 +154,7 @@ Compara el ajuste Exponencial vs. Logístico para diagnosticar la fase de madure
 python scripts/bibliometric_laws_cli.py growth-phase \
   --input ./data/corpus_cientifico.parquet \
   --plot-output ./data/grafico_crecimiento.png \
+  --plotly-html ./data/grafico_crecimiento.html \
   --output ./data/diagnostico_fase.json
 ```
 
