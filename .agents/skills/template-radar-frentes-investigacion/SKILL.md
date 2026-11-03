@@ -34,12 +34,29 @@ Antes de redactar el reporte, debes cosechar los datos cuantitativos mediante la
 5. **Alineación con Objetivos de Desarrollo Sostenible (ODS 1–17):**
    - Invocar `sos_topics` (`get_sdg_impact_matrix`) o `sos_openalex` (`openalex_plot_sdg_grid`) para mapear la contribución a la Agenda 2030 de la ONU.
 6. **Artefactos Visuales Nativos en LibreChat:**
-   - Invocar `openalex_plot_sunburst`, `openalex_plot_topic_dynamics`, `openalex_plot_geopolitical_sankey` o `knomap_render_alluvial_diagram` y envolver el resultado con:
+   - Invocar `openalex_plot_sunburst`, `openalex_plot_topic_dynamics`, o `openalex_plot_geopolitical_sankey` y envolver el resultado con:
      ```markdown
      :::artifact{identifier="radar-frentes" type="text/html" title="Título de la Visualización"}
      [html_content retornado por la herramienta]
      :::
      ```
+
+---
+
+## Disponibilidad de Datos y Reglas Anti-Fabricación (Verificadas contra el Corpus y las Herramientas)
+
+**Columnas reales de `rag.works_academic_all`** (usar solo estas; no inventar nombres): `publication_year`, `cited_by_count`, `is_oa`, `oa_status` (valores: `closed`, `green`, `diamond`, `gold`, `bronze`, `hybrid`), `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`, `counts_by_year`.
+
+1. **Número de autores:** no existe columna `authors_count`; usar `length(author_names)`.
+2. **APC:** no existe `apc_usd`; usar `apc_paid_usd` (pagado) y `apc_list_usd` (precio de lista), indicando cuál se reporta.
+3. **Primer autor y autor de correspondencia:** NO son columnas; solo existen dentro del JSON de `raw_data`. Si no se extraen de `raw_data` (consulta costosa, acotada a una sola entidad y sin JOINs), reportar `N/D (no disponible en el corpus)` en las celdas correspondientes y consignarlo como limitación. Nunca estimarlos ni completarlos con cifras plausibles.
+4. **Cuartiles Q1/Q2 y colaboración con industria:** no existen en el corpus. No incluirlos como indicador calculado; si se mencionan, marcar `N/D`. Como proxies disponibles: `is_core_journal`, `is_doaj_journal`, `is_top_10`, `is_top_1`.
+5. **Dependencias dentro de una institución (ej. Instituto de Neurobiología dentro de la UNAM):** el ROR solo identifica a la institución matriz. Para aislar una dependencia filtrar por `institution_names` con coincidencia insensible a mayúsculas y diacríticos, y declarar que el filtro es aproximado y puede subcontar variantes toponímicas.
+6. **Coseno de Salton:** el índice que devuelve `get_geopolitical_collaboration_matrix` es una aproximación (usa un denominador proxy). Recalcular $S_{ij} = C_{ij}/\sqrt{C_i C_j}$ a partir de los conteos de coautoría ($C_{ij}$, $C_i$, $C_j$) y reportar el valor recalculado; si no es posible, rotular el índice como *aproximado*.
+7. **Detección de quiebres (CUSUM / Pettitt):** no existe herramienta para ello. Calcularlos a partir de la serie anual extraída (declarando método y estadístico), o acotar los periodos con `analyze_scientific_growth_phases`; no atribuir a una herramienta resultados que no produce. La partición modular disponible es Louvain (`detect_louvain_communities`), no Leiden.
+8. **Modo contingencia (`status: "fallback"`):** `train_som`, `evaluate_som_clusters` y `recluster_som` devuelven valores sintéticos (error de cuantización fijo, clusters y BMU ficticios) cuando el motor no está disponible. Si algún resultado trae `status: "fallback"`, NO usarlo para conclusiones: informar que el modelado SOM no pudo ejecutarse y limitar el análisis a lo no-SOM.
+9. **Persistencia del SOM:** `train_som` devuelve el estado (pesos, U-Matrix, BMU, clusters) en la respuesta pero no lo guarda en archivo, y `knomap_render_som_dashboard` exige `som_state_path` (JSON en disco). Solo invocar el dashboard si el estado puede guardarse en un archivo accesible al servicio; de lo contrario, describir la U-Matrix, los clusters y los BMU a partir de la respuesta de `train_som` y declarar que no se generó el dashboard interactivo. No volcar matrices de pesos completas en el texto del documento.
+10. **Matriz de entrada del SOM:** construirla solo con indicadores realmente calculados y estandarizados (z-score); las dimensiones `N/D` se excluyen del vector, no se rellenan.
 
 ---
 

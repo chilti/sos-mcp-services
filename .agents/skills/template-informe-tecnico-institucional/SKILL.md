@@ -24,12 +24,12 @@ Antes de redactar el informe, debes cosechar los datos cuantitativos mediante la
 3. **Producción e Impacto Normalizado (CERO JOINs):**
    - Invocar `sos_openalex` (`openalex_search_works`, `openalex_aggregate_mexico`) o consultar `rag.works_academic_all` en `ClickHouse-OpenAlex` filtrando con `has(institution_rors, 'https://ror.org/01tmp8f25')`. Extraer series anuales de publicaciones, citas, FWCI y artículos en el decil Top 10%.
 4. **Filtro de Hiperautoría Tripartito Obligatorio:**
-   - Desagregar la producción mediante la columna `authors_count`:
+   - Desagregar la producción mediante `length(author_names)` (no existe columna `authors_count`):
      * *Régimen A (Total Bruto):* Todo el volumen institucional sin filtro.
      * *Régimen B (Producción Autónoma):* Trabajos con $\le 20$ autores.
      * *Régimen C (Mega-consorcios):* Trabajos con $> 20$ autores (Big Science).
 5. **Auditoría de Acceso Abierto y Fuga en APC:**
-   - Filtrar por `oa_status` en las 6 vías canónicas: Diamante (*diamond*), Gold APC (*gold*), Híbrida (*hybrid*), Bronce (*bronze*), Verde (*green*) y Cerrada (*closed*). Computar el gasto estimado en cuotas APC comerciales en USD a partir de `apc_usd` y `apc_list_usd`.
+   - Filtrar por `oa_status` en las 6 vías canónicas: Diamante (*diamond*), Gold APC (*gold*), Híbrida (*hybrid*), Bronce (*bronze*), Verde (*green*) y Cerrada (*closed*). Computar el gasto estimado en cuotas APC comerciales en USD a partir de `apc_paid_usd` y `apc_list_usd`.
 6. **Modelado Multidimensional con Redes Neuronales SOM (`sos_knomap`):**
    - Invocar `sos_knomap`:
      * `suggest_grid_size`: Obtener el ratio de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y la sobremalla óptima ($20N-30N$).
@@ -43,6 +43,23 @@ Antes de redactar el informe, debes cosechar los datos cuantitativos mediante la
      [html_content retornado por la herramienta]
      :::
      ```
+
+---
+
+## Disponibilidad de Datos y Reglas Anti-Fabricación (Verificadas contra el Corpus y las Herramientas)
+
+**Columnas reales de `rag.works_academic_all`** (usar solo estas; no inventar nombres): `publication_year`, `cited_by_count`, `is_oa`, `oa_status` (valores: `closed`, `green`, `diamond`, `gold`, `bronze`, `hybrid`), `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`, `counts_by_year`.
+
+1. **Número de autores:** no existe columna `authors_count`; usar `length(author_names)`.
+2. **APC:** no existe `apc_usd`; usar `apc_paid_usd` (pagado) y `apc_list_usd` (precio de lista), indicando cuál se reporta.
+3. **Primer autor y autor de correspondencia:** NO son columnas; solo existen dentro del JSON de `raw_data`. Si no se extraen de `raw_data` (consulta costosa, acotada a una sola entidad y sin JOINs), reportar `N/D (no disponible en el corpus)` en las celdas correspondientes y consignarlo como limitación. Nunca estimarlos ni completarlos con cifras plausibles.
+4. **Cuartiles Q1/Q2 y colaboración con industria:** no existen en el corpus. No incluirlos como indicador calculado; si se mencionan, marcar `N/D`. Como proxies disponibles: `is_core_journal`, `is_doaj_journal`, `is_top_10`, `is_top_1`.
+5. **Dependencias dentro de una institución (ej. Instituto de Neurobiología dentro de la UNAM):** el ROR solo identifica a la institución matriz. Para aislar una dependencia filtrar por `institution_names` con coincidencia insensible a mayúsculas y diacríticos, y declarar que el filtro es aproximado y puede subcontar variantes toponímicas.
+6. **Coseno de Salton:** el índice que devuelve `get_geopolitical_collaboration_matrix` es una aproximación (usa un denominador proxy). Recalcular $S_{ij} = C_{ij}/\sqrt{C_i C_j}$ a partir de los conteos de coautoría ($C_{ij}$, $C_i$, $C_j$) y reportar el valor recalculado; si no es posible, rotular el índice como *aproximado*.
+7. **Detección de quiebres (CUSUM / Pettitt):** no existe herramienta para ello. Calcularlos a partir de la serie anual extraída (declarando método y estadístico), o acotar los periodos con `analyze_scientific_growth_phases`; no atribuir a una herramienta resultados que no produce. La partición modular disponible es Louvain (`detect_louvain_communities`), no Leiden.
+8. **Modo contingencia (`status: "fallback"`):** `train_som`, `evaluate_som_clusters` y `recluster_som` devuelven valores sintéticos (error de cuantización fijo, clusters y BMU ficticios) cuando el motor no está disponible. Si algún resultado trae `status: "fallback"`, NO usarlo para conclusiones: informar que el modelado SOM no pudo ejecutarse y limitar el análisis a lo no-SOM.
+9. **Persistencia del SOM:** `train_som` devuelve el estado (pesos, U-Matrix, BMU, clusters) en la respuesta pero no lo guarda en archivo, y `knomap_render_som_dashboard` exige `som_state_path` (JSON en disco). Solo invocar el dashboard si el estado puede guardarse en un archivo accesible al servicio; de lo contrario, describir la U-Matrix, los clusters y los BMU a partir de la respuesta de `train_som` y declarar que no se generó el dashboard interactivo. No volcar matrices de pesos completas en el texto del documento.
+10. **Matriz de entrada del SOM:** construirla solo con indicadores realmente calculados y estandarizados (z-score); las dimensiones `N/D` se excluyen del vector, no se rellenan.
 
 ---
 
@@ -120,7 +137,7 @@ graph TD
 
 - **3.1. Fundamentación Epistemológica: Superación de la Falacia del "Pesar y Sumar":**
   * Los rankings comerciales (ARWU, QS, THE) colapsan indicadores disímiles en un único escalar mediante ponderaciones arbitrarias, enmascarando misiones diferenciadas y castigando la diversidad académica.
-  * Modelado de cada dependencia como un vector en un espacio abstracto $\mathbb{R}^D$ definido por 8 dimensiones cardinales normalizadas: 1) Volumen, 2) FWCI Régimen B, 3) % Top 10%, 4) % Top 1%, 5) % Publicaciones Q1, 6) % Colaboración Internacional, 7) % Colaboración con Industria, y 8) % Acceso Abierto Diamante.
+  * Modelado de cada dependencia como un vector en un espacio abstracto $\mathbb{R}^D$ definido por 8 dimensiones cardinales normalizadas: 1) Volumen, 2) FWCI Régimen B, 3) % Top 10%, 4) % Top 1%, 5) % Colaboración Internacional (derivable de `all_country_codes`), 6) % Acceso Abierto Diamante, 7) % Acceso Abierto total (`is_oa`) y 8) % en revistas núcleo/DOAJ (`is_core_journal`, `is_doaj_journal`).
 - **3.2. Parámetros de Calibración Neurocomputacional:**
   * **Relación de Aspecto Espectral SVD:** Proporción de la retícula ajustada a $\sigma_1 / \sigma_2$ para preservar la dispersión principal de los datos.
   * **Sobremalla Empírica:** Retícula hexagonal *flat-topped* dimensionada con $M \approx 20N\text{--}30N$ neuronas (o Big SOM $\ge 10N$), garantizando una representación cuasi-continua del espacio de estados.
@@ -140,8 +157,8 @@ graph TD
 
 | Cluster SOM ($K^*$) | Dependencias / Instituciones Miembros | Perfil Cualitativo Dominante | Fortalezas Cardinales (Zonas Rojas) | Vulnerabilidades (Zonas Verdes) | Posición de la Institución Evaluada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Cluster 1 (Polo Élite)** | [Institución A, Institución B, ...] | Alta excelencia, alto FWCI autónomo y fuerte inserción Q1 | FWCI, % Top 10%, Q1 | Colaboración con sector productivo | [Pertenencia / Distancia al BMU] |
-| **Cluster 2 (Orientación Social / Diamante)** | [Institución C, Institución D, ...] | Fuerte impacto regional, liderazgo autoral y vía Diamante | % Primer Autor, OA Diamante | Presencia en índices comerciales Q1 | [Pertenencia / Distancia al BMU] |
+| **Cluster 1 (Polo Élite)** | [Institución A, Institución B, ...] | Alta excelencia, alto FWCI autónomo y fuerte inserción en revistas núcleo | FWCI, % Top 10%, % Top 1% | Colaboración internacional | [Pertenencia / Distancia al BMU] |
+| **Cluster 2 (Orientación Social / Diamante)** | [Institución C, Institución D, ...] | Fuerte impacto regional, liderazgo autoral y vía Diamante | % Primer Autor, OA Diamante | Presencia en revistas de corriente principal | [Pertenencia / Distancia al BMU] |
 | **Cluster 3 (Intensivo en Volumen)** | [Institución E, Institución F, ...] | Elevada masa crítica de papers con impacto normalizado medio | Volumen de producción bruta | FWCI autónomo Régimen B | [Pertenencia / Distancia al BMU] |
 | **Perfiles Singulares ($|C_k|=1$)** | [Institución Aislada] | Especialización hiperfocalizada o nicho metodológico atípico | [Indicador singular] | [Indicador deprimido] | [Pertenencia / Distancia al BMU] |
 
@@ -154,7 +171,7 @@ graph TD
   * **Tasa de Autor de Correspondencia (% Corresponding Author):** Responsabilidad intelectual directa, tutoría principal, obtención de financiamiento y conducción de los proyectos.
   * Análisis de asimetrías de liderazgo en colaboraciones internacionales (Sur Global vs. Norte Global).
 - **4.2. Visibilidad y Excelencia:**
-  * Distribución por cuartiles Scimago/JCR (proporción en Q1 y Q2).
+  * Proporción en revistas núcleo y DOAJ (`is_core_journal`, `is_doaj_journal`); los cuartiles Scimago/JCR no están en el corpus (`N/D`).
   * Volumen y tasa de publicaciones ubicadas en el decil superior de impacto mundial (Top 10%) y en el percentil de élite (Top 1%).
 - **4.3. Especialización Temática:**
   * Descomposición entre el Índice de Actividad ($AI$) y la participación temática ($DShareC$ vs. $CShareD$).
