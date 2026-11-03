@@ -145,7 +145,7 @@ graph TD
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Cluster 1 (Frontera de Ruptura)** | [Frente A, Frente D, ...] | Alta aceleración cinética, alto FWCI y tracción global | Tasa $\alpha$, FWCI, Top 10% | Baja adopción regional Sur Global | ODS 9 (Industria / Innovación) |
 | **Cluster 2 (Consolidados / Maduros)** | [Frente B, Frente E, ...] | Elevado volumen acumulado, baja duplicación y alta citación | Volumen, Citas acumuladas | Tasa de aceleración reciente | ODS 7 (Energía Asequible) |
-| **Cluster 3 (Nicho Regional / Diamante)** | [Frente C, Frente F, ...] | Enfoque en problemáticas locales, liderazgo autoral y OA Diamante | % Primer Autor, OA Diamante | Presencia en revistas comerciales Q1 | ODS 3 / ODS 13 (Salud / Clima) |
+| **Cluster 3 (Nicho Regional / Diamante)** | [Frente C, Frente F, ...] | Enfoque en problemáticas locales, liderazgo autoral y OA Diamante | OA Diamante, Coautoría nacional (N/D si no se calcula primer autor) | Presencia en revistas núcleo | ODS 3 / ODS 13 (Salud / Clima) |
 
 ---
 
