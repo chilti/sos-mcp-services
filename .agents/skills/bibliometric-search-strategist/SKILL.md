@@ -96,8 +96,8 @@ A continuación se detalla la correspondencia sintáctica exacta entre las princ
 |---|---|---|---|---|
 | **Título + Resumen + Palabras Clave** | `TS=("deep learning" OR "neural net*")` | `TITLE-ABS-KEY("deep learning" OR "neural net*")` | `("deep learning"[tiab] OR "neural net*"[tiab])` | `(positionCaseInsensitiveUTF8(title, 'deep learning') > 0 OR positionCaseInsensitiveUTF8(title, 'neural net') > 0)` |
 | **Título solamente** | `TI=("quantum computing")` | `TITLE("quantum computing")` | `"quantum computing"[ti]` | `positionCaseInsensitiveUTF8(title, 'quantum computing') > 0` |
-| **Palabras Clave de Autor** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'solar cell') > 0, concepts)` |
-| **Vocabulario Controlado / Tópicos** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `has(topics, 'Solar Cells')` o `arrayExists(x -> ilike(x, '%Solar%'), concepts)` |
+| **Palabras Clave de Autor / Términos** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'solar cell') > 0, keywords)` |
+| **Vocabulario Controlado / Tópicos** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `positionCaseInsensitiveUTF8(topic, 'Solar Cells') > 0` |
 | **Proximidad (distancia $\le 3$)** | `"circular economy" NEAR/3 policy` | `"circular economy" W/3 policy` | N/A (`"circular economy policy"~3`) | `positionCaseInsensitiveUTF8(...)` con validación compuesta |
 | **Ventana Temporal** | `PY=(2015-2024)` | `PUBYEAR > 2014 AND PUBYEAR < 2025` | `2015:2024[dp]` | `publication_year >= 2015 AND publication_year <= 2024` |
 | **Tipo de Documento (Artículos)** | `DT=(Article OR Review)` | `DOCTYPE(ar) OR DOCTYPE(re)` | `"journal article"[pt]` | `type IN ('article', 'review')` |
@@ -107,10 +107,10 @@ A continuación se detalla la correspondencia sintáctica exacta entre las princ
 
 En la base de producción local de ClickHouse rigen las siguientes restricciones inviolables:
 1. **REGLA ESTRICTA DE CERO JOINS:** Todas las condiciones deben resolverse contra columnas y arrays nativos de la tabla `rag.works_academic_all`.
-2. **Funciones de Arrays:**
-   - Búsqueda exacta en arrays: `has(concepts, 'Machine Learning')` o `has(topics, 'Natural Language Processing')`.
-   - Búsqueda difusa en arrays: `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'sensor') > 0, concepts)`.
-   - Identificación de autores/instituciones: `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'unam') > 0, institutions)`.
+2. **Columnas y Funciones de Arrays:**
+   - Búsqueda en palabras clave: `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'sensor') > 0, keywords)`.
+   - Búsqueda en tópico primario: `positionCaseInsensitiveUTF8(topic, 'Natural Language Processing') > 0`.
+   - Identificación de autores e instituciones: `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'unam') > 0, institution_names)`.
 3. **Evitar comodines masivos en `LIKE` sin prefijo:** En ClickHouse, `positionCaseInsensitiveUTF8(col, 'term') > 0` es más eficiente y predecible que `col ILIKE '%term%'`.
 
 ---
@@ -201,3 +201,4 @@ Para garantizar la validez sintáctica y la transpilación automática entre pla
    - Si es producción mexicana: Convertir a ClickHouse SQL y delegar a [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md).
    - Si es corpus mundial: Convertir a sintaxis de API y cosechar con [`openalex-harvester`](../openalex-harvester/SKILL.md), [`scopus-harvester`](../scopus-harvester/SKILL.md) o [`pubmed-harvester`](../pubmed-harvester/SKILL.md).
 4. **Revisión Profunda y Snowballing:** Enlazar con [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) para ejecutar la revisión sistemática PRISMA 2020.
+

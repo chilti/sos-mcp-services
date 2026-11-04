@@ -212,11 +212,11 @@ class QueryTranspiler:
             for t in terms:
                 clean_term = t.replace("'", "\\'").replace("*", "")
                 facet_subs.append(f"positionCaseInsensitiveUTF8(title, '{clean_term}') > 0")
-                facet_subs.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_term}') > 0, concepts)")
+                facet_subs.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_term}') > 0, keywords)")
 
             for top in topics:
                 clean_top = top.replace("'", "\\'")
-                facet_subs.append(f"has(topics, '{clean_top}')")
+                facet_subs.append(f"positionCaseInsensitiveUTF8(topic, '{clean_top}') > 0")
 
             clause = "(\n      " + "\n      OR ".join(facet_subs) + "\n    )"
             where_conditions.append(clause)
@@ -236,7 +236,7 @@ class QueryTranspiler:
 
         countries = self.filters.get("countries", [])
         if "Mexico" in countries or "MX" in countries:
-            where_conditions.append("has(institutions_country_codes, 'MX')")
+            where_conditions.append("(country_code = 'MX' OR has(all_country_codes, 'MX'))")
 
         oa_status = self.filters.get("oa_status")
         if oa_status:
@@ -254,8 +254,9 @@ class QueryTranspiler:
         sql += "    cited_by_count,\n"
         sql += "    fwci,\n"
         sql += "    author_names,\n"
-        sql += "    institutions,\n"
-        sql += "    topics\n"
+        sql += "    institution_names,\n"
+        sql += "    topic,\n"
+        sql += "    keywords\n"
         sql += "FROM rag.works_academic_all\n"
         sql += "WHERE\n  " + "\n  AND ".join(where_conditions) + "\n"
         sql += "ORDER BY cited_by_count DESC\n"
@@ -356,3 +357,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

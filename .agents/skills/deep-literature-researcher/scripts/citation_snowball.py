@@ -59,10 +59,17 @@ def clean_work_id(raw_id: str) -> str:
 
 
 def resolve_seed(identifier: str, ch_client=None) -> Optional[Dict[str, Any]]:
-    """Resuelve un DOI o Work ID a un objeto Work estandarizado."""
+    """Resuelve un DOI, arXiv ID o Work ID a un objeto Work estandarizado."""
     identifier = identifier.strip()
     is_doi = "10." in identifier
     is_openalex = identifier.startswith("W") or "openalex.org/W" in identifier
+
+    # Autodetección de identificadores arXiv (ej. 2306.05836, arXiv:2306.05836)
+    if not is_doi and not is_openalex:
+        arxiv_match = re.search(r"(?:arxiv[:/]|abs/)?(\d{4}\.\d{4,5}(?:v\d+)?)", identifier, re.IGNORECASE)
+        if arxiv_match:
+            identifier = f"10.48550/arXiv.{arxiv_match.group(1)}"
+            is_doi = True
 
     # Intento 1: ClickHouse local
     if ch_client:
