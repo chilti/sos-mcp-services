@@ -1,9 +1,13 @@
 import os
 import sys
+import json
 import math
+import logging
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # Agregar KnoMap Engine al path tanto en Windows como en entornos Linux
 KNOMAP_ENGINE_CANDIDATES = [
@@ -102,11 +106,21 @@ def train_som(
     iterations: int = 100,
     clustering_algorithm: str = "kmeans",
     n_clusters: int = 4,
-    run_umap: bool = True
+    run_umap: bool = True,
+    output_state_path: Optional[str] = None,
+    indicator_names: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Entrena un mapa auto-organizado (SOM) hexagonal en GPU (CUDA) o CPU utilizando el PyTorch SOM Solver.
     Calcula U-Matrix, asignaciones BMU, frecuencias neuronales, error de cuantización y coordenadas UMAP.
+
+    Args:
+        output_state_path: (Opcional) Ruta de un archivo JSON donde persistir el estado del SOM entrenado
+            (rows, cols, weights, umatrix, clustering, frequencies, mapped_labels, indicators). Ese archivo es el
+            que consume `knomap_render_som_dashboard(som_state_path=...)`. Si se omite, no se escribe nada.
+        indicator_names: (Opcional) Nombres de las columnas de `data`, guardados en el estado para el dashboard.
+
+    Si el motor falla o no está disponible devuelve `status: "error"` (no datos sintéticos).
     """
     if not data or len(data) == 0:
         return {"error": "Se requiere matriz numérica de datos."}
@@ -134,7 +148,7 @@ def train_som(
                 mean_qe = round(float(sum(qe_list) / max(1, len(qe_list))), 4) if qe_list else 0.0
                 raw_device = res.get("device", "")
                 device_str = "CUDA (RTX 4090)" if "cuda" in raw_device.lower() or "cuda" in str(res.get("errors", "")).lower() else "CPU"
-                return {
+                result = {
                     "status": "success",
                     "device": device_str,
                     "grid_dimensions": {"rows": rows, "cols": cols, "total_neurons": rows * cols},
@@ -149,21 +163,40 @@ def train_som(
                     "umap_coordinates": res.get("umap", []),
                     "summary": f"SOM hexagonal de {rows}x{cols} entrenado exitosamente en PyTorch/CUDA con error medio de cuantización {mean_qe}."
                 }
+                if output_state_path:
+                    try:
+                        state = {
+                            "rows": rows,
+                            "cols": cols,
+                            "weights": result["weights"],
+                            "umatrix": result["u_matrix"],
+                            "clustering": result["cluster_labels"],
+                            "frequencies": result["frequencies"],
+                            "mapped_labels": result["mapped_labels"],
+                            "bmus": result["bmus"],
+                        }
+                        if indicator_names:
+                            state["indicators"] = list(indicator_names)
+                        out_dir = os.path.dirname(os.path.abspath(output_state_path))
+                        os.makedirs(out_dir, exist_ok=True)
+                        with open(output_state_path, "w", encoding="utf-8") as fh:
+                            json.dump(state, fh)
+                        result["state_path"] = output_state_path
+                    except Exception as save_err:
+                        logger.exception("No se pudo persistir el estado del SOM")
+                        result["state_path"] = None
+                        result["state_save_error"] = f"{type(save_err).__name__}: {save_err}"
+                return result
+            engine_error = str(res.get("error", "el motor devolvió success=False"))
         except Exception as e:
-            pass
+            logger.exception("train_som: fallo del motor KnoMap")
+            engine_error = f"{type(e).__name__}: {e}"
+    else:
+        engine_error = "KnoMap engine no disponible en este entorno"
 
-    # Fallback
-    arr = np.array(data, dtype=float)
-    n_samples = arr.shape[0]
     return {
-        "status": "fallback",
-        "grid_dimensions": {"rows": rows, "cols": cols, "total_neurons": rows * cols},
-        "training_parameters": {"method": method, "init": init, "iterations": iterations},
-        "mean_quantization_error": 0.045,
-        "u_matrix": [[0.5 for _ in range(cols)] for _ in range(rows)],
-        "bmus": [{"sample_idx": i, "label": lbls[i], "bmu_row": 0, "bmu_col": 0} for i in range(n_samples)],
-        "cluster_labels": [i % n_clusters for i in range(rows * cols)],
-        "summary": f"SOM entrenado en modo de contingencia para {n_samples} observaciones."
+        "status": "error",
+        "error": f"No se pudo entrenar el SOM: {engine_error}. No se generaron resultados (se omiten valores sintéticos).",
     }
 
 
@@ -175,6 +208,7 @@ def evaluate_som_clusters(weights: List[List[float]], max_k: int = 15) -> Dict[s
     if not weights or len(weights) < 3:
         return {"error": "Se requieren vectores de pesos neuronales (mínimo 3 neuronas)."}
 
+    engine_error = "KnoMap engine no disponible en este entorno"
     if HAS_KNOMAP_ENGINE:
         try:
             res = main_engine.handle_evaluate_clusters({"weights": weights, "max_k": max_k})
@@ -188,14 +222,14 @@ def evaluate_som_clusters(weights: List[List[float]], max_k: int = 15) -> Dict[s
                         "recommended_k": best_k,
                         "summary": f"Evaluación de clusters completada para K=2..{max_k}. K óptimo sugerido: K={best_k}."
                     }
-        except Exception:
-            pass
+            engine_error = str(res.get("error", "el motor devolvió success=False o sin métricas"))
+        except Exception as e:
+            logger.exception("evaluate_som_clusters: fallo del motor KnoMap")
+            engine_error = f"{type(e).__name__}: {e}"
 
     return {
-        "status": "fallback",
-        "evaluations": [{"k": k, "silhouette": round(0.5 + 0.1 * math.sin(k), 3)} for k in range(2, min(max_k + 1, 8))],
-        "recommended_k": 3,
-        "summary": "K=3 recomendado por Silhouette Score."
+        "status": "error",
+        "error": f"No se pudo evaluar K óptimo: {engine_error}. No se generaron resultados (se omiten valores sintéticos).",
     }
 
 
@@ -210,6 +244,7 @@ def recluster_som(
     if not weights or len(weights) == 0:
         return {"error": "Se requieren los vectores de pesos neuronales del SOM."}
 
+    engine_error = "KnoMap engine no disponible en este entorno"
     if HAS_KNOMAP_ENGINE:
         try:
             res = main_engine.handle_recluster({
@@ -226,13 +261,12 @@ def recluster_som(
                     "cluster_assignments": res.get("clustering", []),
                     "summary": f"Clusters reasignados exitosamente mediante {algorithm} con K={n_clusters}."
                 }
-        except Exception:
-            pass
+            engine_error = str(res.get("error", "el motor devolvió success=False"))
+        except Exception as e:
+            logger.exception("recluster_som: fallo del motor KnoMap")
+            engine_error = f"{type(e).__name__}: {e}"
 
     return {
-        "status": "fallback",
-        "algorithm": algorithm,
-        "n_clusters": n_clusters,
-        "cluster_assignments": [i % n_clusters for i in range(len(weights))],
-        "summary": f"Clusters asignados en modo fallback con K={n_clusters}."
+        "status": "error",
+        "error": f"No se pudo reasignar clusters: {engine_error}. No se generaron resultados (se omiten valores sintéticos).",
     }

@@ -1227,12 +1227,15 @@ def knomap_render_som_dashboard(
 # ==============================================================================
 
 def knomap_render_alluvial_diagram(data_path: str, output_path: str) -> dict:
-    """Genera un diagrama aluvial (Sankey) temporal de los frentes de investigación."""
-    try:
-        df = pd.DataFrame()
-        return render_alluvial_diagram(df, output_path)
-    except Exception as e:
-        return {"error": str(e)}
+    """Genera un diagrama aluvial (Sankey) temporal de los frentes de investigación.
+
+    NOTA: aún no implementado. El renderizador del engine (`render_alluvial_diagram`) es un TODO y este wrapper
+    no cargaba `data_path`; se devuelve un error explícito en lugar de un diagrama vacío.
+    """
+    return {
+        "status": "error",
+        "error": "knomap_render_alluvial_diagram no está implementado todavía; use openalex_plot_topic_dynamics u openalex_plot_geopolitical_sankey.",
+    }
 
 def knomap_render_dumbbell_chart(data_path: str, metric: str, output_path: str) -> dict:
     """Genera un Dumbbell chart para evidenciar brechas en indicadores cienciométricos."""
