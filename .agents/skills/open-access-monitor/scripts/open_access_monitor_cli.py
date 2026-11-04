@@ -110,6 +110,9 @@ def cmd_apc(args):
 
     gold_docs = 0
     hybrid_docs = 0
+    observed_paid_usd = 0.0
+    observed_list_usd = 0.0
+    observed_paid_count = 0
 
     for r in records:
         oa_val = r.get("oa_status") or r.get("Open Access") or ""
@@ -119,6 +122,19 @@ def cmd_apc(args):
             gold_docs += 1
         elif pathway == "hybrid":
             hybrid_docs += 1
+        try:
+            paid = float(r.get("apc_paid_usd") or 0.0)
+            if paid > 0:
+                observed_paid_usd += paid
+                observed_paid_count += 1
+        except (ValueError, TypeError):
+            pass
+        try:
+            lst = float(r.get("apc_list_usd") or 0.0)
+            if lst > 0:
+                observed_list_usd += lst
+        except (ValueError, TypeError):
+            pass
 
     gold_total_usd = gold_docs * gold_cost
     hybrid_total_usd = hybrid_docs * hybrid_cost
@@ -128,6 +144,9 @@ def cmd_apc(args):
         "total_commercial_apc_articles": gold_docs + hybrid_docs,
         "gold_oa_articles": gold_docs,
         "hybrid_oa_articles": hybrid_docs,
+        "observed_apc_paid_articles": observed_paid_count,
+        "observed_apc_paid_total_usd": round(observed_paid_usd, 2),
+        "observed_apc_list_total_usd": round(observed_list_usd, 2),
         "benchmark_apc_unit_costs_usd": {"gold_apc": gold_cost, "hybrid_apc": hybrid_cost},
         "estimated_gold_apc_total_usd": round(gold_total_usd, 2),
         "estimated_hybrid_apc_total_usd": round(hybrid_total_usd, 2),

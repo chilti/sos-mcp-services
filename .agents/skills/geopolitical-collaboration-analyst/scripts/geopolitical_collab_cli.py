@@ -206,8 +206,10 @@ def resolve_country_code(raw: str) -> Optional[str]:
     if raw_clean in COUNTRY_NAME_VARIANTS:
         return COUNTRY_NAME_VARIANTS[raw_clean]
 
-    # 2. Check uppercase ISO-3
+    # 2. Check uppercase ISO-2 or ISO-3
     upper_raw = raw.strip().upper().replace(".", "")
+    if len(upper_raw) == 2 and upper_raw in ISO2_TO_ISO3:
+        return ISO2_TO_ISO3[upper_raw]
     if len(upper_raw) == 3 and upper_raw in ISO2_TO_ISO3.values():
         return upper_raw
 
@@ -342,9 +344,32 @@ def extract_record_countries(r: Dict[str, Any]) -> Tuple[List[str], Optional[str
         corr_c = extract_countries_from_wos_address(str(rp))
         corresponding_countries.extend(corr_c)
 
-    # 3. Generic Affiliations / Countries fields (Scopus, CSV)
+    # 3. Canonical country_codes / all_country_codes / countries fields (OpenAlex Harvester & ClickHouse)
     if not all_countries:
-        affils = r.get("affiliations") or r.get("Affiliations") or r.get("Affiliation") or r.get("countries") or ""
+        raw_cc = r.get("country_codes") if r.get("country_codes") is not None else (
+            r.get("all_country_codes") if r.get("all_country_codes") is not None else r.get("countries")
+        )
+        if raw_cc is not None:
+            if hasattr(raw_cc, "tolist"):
+                raw_cc = raw_cc.tolist()
+            parts = raw_cc if isinstance(raw_cc, list) else [x.strip() for x in str(raw_cc).replace(",", ";").split(";") if x.strip()]
+            for p in parts:
+                c3 = resolve_country_code(str(p))
+                if c3 and c3 not in all_countries:
+                    all_countries.append(c3)
+            primary_c2 = str(r.get("country_code") or "").strip()
+            if primary_c2:
+                c3_first = resolve_country_code(primary_c2)
+                if c3_first:
+                    first_author_country = c3_first
+                    if c3_first not in all_countries:
+                        all_countries.insert(0, c3_first)
+            if all_countries and not first_author_country:
+                first_author_country = all_countries[0]
+
+    # 4. Generic Affiliations fields (Scopus, CSV)
+    if not all_countries:
+        affils = r.get("affiliations") or r.get("Affiliations") or r.get("Affiliation") or ""
         if affils:
             all_countries = extract_countries_from_wos_address(str(affils))
             if all_countries and not first_author_country:
@@ -419,7 +444,9 @@ def load_corpus(filepath: str) -> List[Dict[str, Any]]:
     if lower.endswith(".json"):
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("records", data) if isinstance(data, dict) else data
+            if isinstance(data, dict):
+                return data.get("records") or data.get("works") or data.get("data") or []
+            return data
     return []
 
 # ==============================================================================

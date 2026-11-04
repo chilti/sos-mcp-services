@@ -132,3 +132,4 @@ En entornos analíticos y paneles ejecutivos, el diagrama aluvial se renderiza d
 4. **Rosvall, M., & Bergstrom, C. T. (2010).** Mapping change in large networks. *PLOS ONE*, 5(1), e8694. https://doi.org/10.1371/journal.pone.0008694
 5. **Shibata, N., Kajikawa, Y., Takeda, Y., & Matsushima, K. (2011).** Detecting emerging research fronts in regenerative medicine by the citation network analysis of scientific papers. *Technological Forecasting and Social Change*, 78(2), 274–282. https://doi.org/10.1016/j.techfore.2010.07.016
 6. **Vinh, N. X., Epps, J., & Bailey, J. (2010).** Information theoretic measures for clusterings comparison: Variants, properties, normalization and correction for chance. *Journal of Machine Learning Research*, 11, 2837–2854.
+

@@ -11,8 +11,8 @@ description: >-
 Esta skill se activa cuando el usuario proporciona un **paquete exportado desde TlachIA Metrics** (archivo `.zip` o directorio descomprimido, por ejemplo `Artificial_Intelligence_in_Education.zip`) y requiere:
 
 1. **Inspeccionar el Inventario del Paquete:** Identificar las unidades analíticas disponibles (`Locations`, `Organizations`, `Publication Sources`, `Research Areas Topic`, `Corpus`), los periodos temporales y los metadatos generales del corpus.
-2. **Extraer Matrices Multidimensionales para el SOM:** Extraer perfiles tabulares limpios $[N \times D]$ de entidades específicas (ej. países en `Locations`, universidades en `Organizations`) seleccionando los indicadores cienciométricos deseados para enviarlos a [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md), [`neural-longitudinal-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md) o [`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
-3. **Localizar y Preparar el Archivo de Metadatos de Obras (`works_file`):** Extraer y validar el archivo canónico de documentos (`*_openalex_works.csv` o `.parquet`) para su posterior consumo en análisis de redes complejas con [`bibliometric-network-analyst`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) (coautoría, acoplamiento bibliográfico, cocitación y coocurrencia de palabras clave).
+2. **Extraer Matrices Multidimensionales para el SOM:** Extraer perfiles tabulares limpios $[N \times D]$ de entidades específicas (ej. países en `Locations`, universidades en `Organizations`) seleccionando los indicadores cienciométricos deseados para enviarlos a [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md), [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md) o [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
+3. **Localizar y Preparar el Archivo de Metadatos de Obras (`works_file`):** Extraer y validar el archivo canónico de documentos (`*_openalex_works.csv` o `.parquet`) para su posterior consumo en análisis de redes complejas con [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) (coautoría, acoplamiento bibliográfico, cocitación y coocurrencia de palabras clave).
 
 ---
 
@@ -126,7 +126,7 @@ get_tlachia_unit_matrix(
 
 ### Paso 3: Enviar al Pipeline SOM
 Una vez obtenida la matriz `data` y las etiquetas `labels`:
-1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para obtener el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
+1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para obtener el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
 2. **Entrenar SOM:** Invocar `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
 3. **Optimizar Clusters:** Invocar `knomap-som-engine -> evaluate_som_clusters` para calibrar el $K$ óptimo vía Silhouette Score.
 4. **Interpretar Resultados:** Examinar la U-Matrix y los mapas de componentes para identificar clusters de países con perfiles análogos (pares legítimos), polos de excelencia y perfiles atípicos.
@@ -142,7 +142,7 @@ get_tlachia_works_metadata(session_dir_or_zip=session_dir)
   * `institution_names` / `country_codes` $\rightarrow$ Redes de colaboración institucional y geopolítica.
   * `referenced_works` $\rightarrow$ Acoplamiento bibliográfico y cocitación.
   * `keywords` / `concepts` $\rightarrow$ Redes de coocurrencia conceptual.
-* Esta ruta queda lista para transferirse directamente a [`bibliometric-network-analyst`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md).
+* Esta ruta queda lista para transferirse directamente a [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md).
 
 ---
 
@@ -173,8 +173,8 @@ Al asesorar al usuario en la selección de indicadores para caracterizar el perf
 
 ## 6. Referencias Técnicas
 
-- [SOM Methodological Expert](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
-- [SOM Trajectory Mapping](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
-- [Neural Longitudinal Mapping](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)
-- [Bibliometric Network Analyst](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md)
+- [SOM Methodological Expert](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
+- [SOM Trajectory Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
+- [Neural Longitudinal Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)
+- [Bibliometric Network Analyst](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md)
 - [KnoMap Engine Tlachia Parser](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/tlachia_parser.py)

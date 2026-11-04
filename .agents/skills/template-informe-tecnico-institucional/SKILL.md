@@ -1,298 +1,120 @@
 ---
 name: template-informe-tecnico-institucional
 description: >-
-  Elaboración de informes técnicos de evaluación institucional cienciométrica de máxima autoridad (estilo Instituto de Neurobiología / INB UNAM, ICN, INCan). Orquesta el flujo de 7 fases delegando en las Agent Skills especializadas del stack: 1) Identidad institucional y catálogo ROR (openalex-mexico-institutions), 2) Censo del claustro SNII (snii-identity-resolver, infotlachia-scholar-intelligence), 3) Producción y filtro tripartito <=20 autores (openalex-mexico-works-search, openalex-mexico-aggregations), 4) Auditoría OA y fuga APC USD (open-access-monitor), 5) Diagnóstico multidimensional SOM y pares comparables (som-methodological-expert), 6) Artefactos visuales ejecutivos (openalex-mexico-visualizer), y 7) Recomendaciones de gobernanza a 1, 3 y 5 años con material suplementario reproducible.
+  Elaboración de informes técnicos de evaluación institucional cienciométrica de máxima autoridad (estilo Instituto de Neurobiología / INB UNAM, ICN, INCan). Opera bajo un protocolo en 2 etapas: I) Exploración empírica en el workspace mediante el menú de Agent Skills (identidad ROR y dependencias, cosecha global/nacional, benchmarking con instituciones homólogas especializadas, motor de 42+ indicadores sin truncar, censo SNII, redes de colaboración, evolución temática, auditoría OA/APC y tríada SOM estática/trayectorias/longitudinal), y II) Curaduría científica para descartar análisis sin señal y estructurar el informe con las dimensiones e indicadores de mayor valor diagnóstico.
 ---
 
-# Plantilla Maestra: Informe Técnico de Evaluación Institucional, Gobernanza Científica y Diagnóstico Multidimensional SOM
-### *Inspirada en el modelo de evaluación cienciométrica de dependencias UNAM (Instituto de Neurobiología / ICN / INCan)*
+# Plantilla Maestra: Informe Técnico de Evaluación Institucional, Benchmarking con Pares y Diagnóstico Multidimensional SOM
+### *Inspirada en los reportes cienciométricos del C3-UNAM / LabSOM para dependencias e institutos de investigación (Instituto de Neurobiología / INB, ICN, INCan)*
 
-Esta plantilla está diseñada para que un **agente único** en LibreChat / `agentic-data-stack` o entornos de automatización elabore un **INFORME TÉCNICO DE EVALUACIÓN INSTITUCIONAL** de máxima autoridad para rectorías, direcciones de institutos, consejos técnicos y comités de política científica.
+Esta plantilla guía la elaboración de un **INFORME TÉCNICO DE EVALUACIÓN INSTITUCIONAL** de máxima autoridad para rectorías, direcciones de institutos, consejos técnicos y comités de política científica.
 
-Integra rigurosamente el **marco neurocomputacional de análisis multidimensional de perfiles de desempeño basado en Mapas Autoorganizados de Kohonen (SOM)** (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017) para superar la falacia y el reduccionismo de los rankings unidimensionales (*pesar y sumar*), evaluando a la institución **únicamente frente a sus pares legítimos**.
-
----
-
-## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
-
-Esta plantilla opera como una **meta-habilidad orquestadora** de evaluación institucional. Para garantizar la máxima trazabilidad, neutralidad y precisión, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**.
-
-El protocolo canónico de 7 fases se orquesta como sigue:
-
-1. **Fase 1: Identidad Institucional, Catálogo ROR y Desambiguación de Dependencias:**
-   - **Agent Skill Orquestada:** [`openalex-mexico-institutions`](../openalex-mexico-institutions/SKILL.md).
-   - **Propósito y Directivas:**
-     * Resolver el código canónico ROR oficial de la institución (ej. UNAM: `https://ror.org/01tmp8f25`, Cinvestav: `https://ror.org/05cb51e40`) en el catálogo canónico (`rag.institutions_seed_mexico`).
-     * Resolver acrónimos y aislar dependencias académicas o centros foráneos (ej. *Instituto de Neurobiología*, *Campus Juriquilla*) mediante filtrado de subcadenas insensible a mayúsculas y acentos sobre `institution_names`.
-   - **Artefactos Producidos:** Ficha de identidad institucional ROR y parámetros de acotamiento toponímico.
-
-2. **Fase 2: Censo del Claustro Académico y Padrón Oficial SNII:**
-   - **Agent Skills Orquestadas:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
-   - **Propósito y Directivas:**
-     * Cuantificar la masa crítica del personal académico adscrito a la dependencia desagregado por niveles en el SNII (Candidato, Nivel 1, Nivel 2, Nivel 3 y Emérito).
-     * Evaluar la estructura por áreas del conocimiento, calcular el ratio de masa crítica consolidada (N2 + N3 + Eméritos) vs. personal novel (Candidato + N1) y diagnosticar riesgos de envejecimiento del claustro y relevo generacional.
-   - **Artefactos Producidos:** Censo demográfico del claustro y métricas de consolidación académica.
-
-3. **Fase 3: Producción Científica, Filtro Tripartito y Métricas de Impacto (CERO JOINs):**
-   - **Agent Skills Orquestadas:** [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md) y [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
-   - **Propósito y Directivas:**
-     * Extraer y agregar la producción institucional completa en ClickHouse (`rag.works_academic_all`) bajo la regla inviolable de **CERO JOINs**, filtrando por `has(institution_rors, '<ROR>')`.
-     * **Filtro de Hiperautoría Tripartito Obligatorio:** Aislar rigurosamente el impacto de mega-consorcios internacionales mediante `length(author_names)`:
-       - *Régimen A (Total Bruto):* Volumen global sin filtros de autoría.
-       - *Régimen B (Producción Autónoma):* Publicaciones con $\le 20$ autores (reflejo fiel de la capacidad propia instalada).
-       - *Régimen C (Mega-consorcios Big Science):* Publicaciones con $> 20$ autores.
-     * Calcular volumen anual, citas totales, FWCI normalizado, porcentaje de publicaciones en el decil de élite (Top 10%) y percentil promedio para cada régimen.
-   - **Artefactos Producidos:** Tabla 1 (Semáforo Institucional) y Tabla 2 (Desglose Tripartito de Producción e Impacto).
-
-4. **Fase 4: Auditoría de las 6 Vías de Acceso Abierto y Fuga de Capital en APC Comercial:**
-   - **Agent Skill Orquestada:** [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
-   - **Propósito y Directivas:**
-     * Auditar el corpus institucional según las 6 vías canónicas de publicación: Diamante (*diamond*), Gold APC (*gold*), Híbrida (*hybrid*), Bronce (*bronze*), Verde (*green*) y Cerrada (*closed*).
-     * Cuantificar con exactitud el gasto estimado en cuotas comerciales APC en USD a partir de `apc_paid_usd` y `apc_list_usd`, evidenciando el costo de oportunidad y la transferencia de recursos universitarios hacia corporaciones comerciales (Elsevier, Springer, Wiley, MDPI, Frontiers).
-   - **Artefactos Producidos:** Tabla 4 (Auditoría de Acceso Abierto y Costos de Publicación en USD).
-
-5. **Fase 5: Diagnóstico Multidimensional y Pares Comparables con Redes SOM (Kohonen):**
-   - **Agent Skill Orquestada:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
-   - **Propósito y Directivas:**
-     * Superar la falacia de los rankings lineales escalares (*pesar y sumar*) modelando a la institución en un espacio multivariado $\mathbb{R}^D$ de 8 dimensiones normalizadas frente a su universo de instituciones homólogas.
-     * Dimensionar la retícula hexagonal mediante la relación de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla continua $20N\text{--}30N$ con inicialización PCA.
-     * Generar la **Tríada Visual LabSOM**: U-Matrix roja/amarilla (barreras topológicas y valles densos), Mapas de Componentes Verde-Amarillo-Rojo (fortalezas cardinales y áreas deprimidas) y partición aglomerativa en dos etapas de Vesanto & Alhoniemi optimizada con Silhouette ($s^*$).
-     * Identificar el Best Matching Unit (BMU) de la institución y caracterizar su cluster de **pares comparables legítimos**, evaluándola exclusivamente contra dependencias con misiones afines.
-   - **Artefactos Producidos:** Tabla 3 (Caracterización de Pares Comparables y Perfil Cualitativo en el SOM) y archivo de estado persistido (`som_institutional_state.json`).
-
-6. **Fase 6: Generación de Artefactos Visuales Interactivos:**
-   - **Agent Skill Orquestada:** [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
-   - **Propósito y Directivas:**
-     * Generar visualizaciones interactivas autónomas en HTML con Plotly.js (donas de acceso abierto, series temporales duales de producción y citas, gráficos de barras de rankings y matrices de cuadrantes).
-     * Guardar los artefactos en `./reports/` o `./supplementary/` y presentarlos listos para auditoría ejecutiva.
-   - **Artefactos Producidos:** Gráficas interactivas (`oa_donut.html`, `timeseries.html`, `quadrant_matrix.html`).
-
-7. **Fase 7: Gobernanza, Recomendaciones Estratégicas y Material Suplementario Auditable:**
-   - **Propósito y Directivas:**
-     * Elaborar la Tabla 5 con recomendaciones de política científica orientadas a la alta dirección a horizontes de 1, 3 y 5 años.
-     * Para garantizar la completa auditabilidad ante Consejos Técnicos, Comisiones Dictaminadoras y Órganos de Gobierno, empaquetar en `./scripts/` o `./supplementary/`:
-       * `Script S1: 01_extract_institutional_data.py`: Sentencias SQL deterministas en ClickHouse con ROR institucional, filtro tripartito ($\le 20$ aut) y sumatorias APC.
-       * `Script S2: 02_som_institutional_evaluation.py`: Matriz $N \times D$ de pares y entrenamiento SOM reproducible con semilla fija.
-       * `Dataset S1: data/indicadores_institucionales.csv`: Datos consolidados.
-       * `Dataset S2: data/som_institutional_state.json`: Membresía de clusters y pesos sinápticos.
+Integra el **marco neurocomputacional de análisis multidimensional de perfiles de desempeño basado en Mapas Autoorganizados de Kohonen (SOM)** (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017; Jiménez-Andrade et al., 2024, 2025, 2026) para superar el reduccionismo de los rankings unidimensionales (*pesar y sumar*), evaluando a la institución **frente a instituciones homólogas especializadas y pares legítimos** (como en el estudio comparativo del INB con centros de neurociencias nacionales e internacionales).
 
 ---
 
-## Disponibilidad de Datos y Reglas Anti-Fabricación (Verificadas contra el Corpus y las Herramientas)
+## Etapa I: Menú de Agent Skills para la Exploración Institucional (*Fase de Laboratorio*)
 
-**Columnas reales de `rag.works_academic_all`** (usar solo estas; no inventar nombres): `publication_year`, `cited_by_count`, `is_oa`, `oa_status` (valores: `closed`, `green`, `diamond`, `gold`, `bronze`, `hybrid`), `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`, `counts_by_year`.
+El agente opera bajo el principio **Workspace-First** (`./corpus.parquet` $\to$ `./matrices/*.parquet` $\to$ `./reportes/`) y dispone del siguiente **Menú de Agent Skills** para explorar las distintas dimensiones de la institución evaluada:
 
-1. **Número de autores:** no existe columna `authors_count`; usar `length(author_names)`.
-2. **APC:** no existe `apc_usd`; usar `apc_paid_usd` (pagado) y `apc_list_usd` (precio de lista), indicando cuál se reporta.
-3. **Primer autor y autor de correspondencia:** NO son columnas; solo existen dentro del JSON de `raw_data`. Si no se extraen de `raw_data` (consulta costosa, acotada a una sola entidad y sin JOINs), reportar `N/D (no disponible en el corpus)` en las celdas correspondientes y consignarlo como limitación. Nunca estimarlos ni completarlos con cifras plausibles.
-4. **Cuartiles Q1/Q2 y colaboración con industria:** no existen en el corpus. No incluirlos como indicador calculado; si se mencionan, marcar `N/D`. Como proxies disponibles: `is_core_journal`, `is_doaj_journal`, `is_top_10`, `is_top_1`.
-5. **Dependencias dentro de una institución (ej. Instituto de Neurobiología dentro de la UNAM):** el ROR solo identifica a la institución matriz. Para aislar una dependencia filtrar por `institution_names` con coincidencia insensible a mayúsculas y diacríticos, y declarar que el filtro es aproximado y puede subcontar variantes toponímicas.
-6. **Coseno de Salton:** el índice que devuelve `get_geopolitical_collaboration_matrix` es una aproximación (usa un denominador proxy). Recalcular $S_{ij} = C_{ij}/\sqrt{C_i C_j}$ a partir de los conteos de coautoría ($C_{ij}$, $C_i$, $C_j$) y reportar el valor recalculado; si no es posible, rotular el índice como *aproximado*.
-7. **Detección de quiebres (CUSUM / Pettitt):** no existe herramienta para ello. Calcularlos a partir de la serie anual extraída (declarando método y estadístico), o acotar los periodos con `analyze_scientific_growth_phases`; no atribuir a una herramienta resultados que no produce. La partición modular disponible es Louvain (`detect_louvain_communities`), no Leiden.
-8. **Modo contingencia (`status: "fallback"`):** `train_som`, `evaluate_som_clusters` y `recluster_som` devuelven valores sintéticos (error de cuantización fijo, clusters y BMU ficticios) cuando el motor no está disponible. Si algún resultado trae `status: "fallback"`, NO usarlo para conclusiones: informar que el modelado SOM no pudo ejecutarse y limitar el análisis a lo no-SOM.
-9. **Persistencia y Dashboard del SOM:** `train_som` cuenta con el parámetro `output_state_path` (ej. `output_state_path="/tmp/som_state.json"`) e `indicator_names`. Para generar el dashboard interactivo oficial con `knomap_render_som_dashboard`, se debe indicar `output_state_path` al invocar `train_som` y pasar esa misma ruta a `knomap_render_som_dashboard(som_state_path=...)`. Si el motor no está disponible, la herramienta devuelve `status: "error"` con la causa raíz; nunca inventar métricas ni volcar matrices numéricas completas de pesos en el cuerpo del texto.
-10. **Matriz de entrada del SOM:** construirla solo con indicadores realmente calculados y estandarizados (z-score); las dimensiones `N/D` se excluyen del vector, no se rellenan.
-
----
-
-## Reglas Editoriales Estrictas
-
-- **LENGUAJE MODERADO Y SOBRIO (PROHIBICIÓN ABSOLUTA DE SUPERLATIVOS):** Emplear un tono exclusivamente analítico, neutro y respaldado en cifras empíricas. Queda terminantemente prohibido el uso de adjetivos hiperbólicos (*"espectacular"*, *"revolucionario"*, *"sin precedentes"*, *"extraordinario"*, *"abrumador"*, *"pionero"*, *"asombroso"*). Sustituir siempre por métricas cuantitativas precisas.
-- **ZERO-SCAFFOLDING LEAKAGE:** No mencionar nombres de herramientas MCP, prompts, tokens, bases de datos ni mecánicas del chat. El documento debe leerse como un informe oficial elaborado por especialistas en cienciometría institucional.
-- **TABLAS ESTRUCTURADAS EN EL TEXTO:** Todas las tablas canónicas (Tablas 1, 2, 3, 4 y 5) deben desplegarse íntegramente en Markdown en el cuerpo del documento.
+1. **Identidad Institucional, Cosecha y Universo de Comparación (`./corpus.parquet`):**
+   - [`openalex-mexico-institutions`](../openalex-mexico-institutions/SKILL.md) y [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md): Resolución del código canónico **ROR** (ej. UNAM `https://ror.org/01tmp8f25`, Cinvestav `https://ror.org/05cb51e40`) y aislamiento de dependencias o campus (ej. *Instituto de Neurobiología*, *Instituto de Ciencias Nucleares*) mediante filtrado insensible a mayúsculas y diacríticos en `institution_names` sobre `rag.works_academic_all` (CERO JOINs).
+   - [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) (`rag.works_flat`) y [`scientometrics-incites-expert`](../scientometrics-incites-expert/SKILL.md): Extracción de producción e indicadores de **instituciones homólogas internacionales o nacionales especializadas en el mismo dominio y de escala comparable** (estilo Sección 2 del *Informe del INB 2022*).
+2. **Motor de 42+ Indicadores Multidimensionales (Sin Truncar Columnas):**
+   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Genera en `./matrices/` la matriz completa de **46 columnas (42 indicadores numéricos + 4 metadatos)** para la institución, sus pares comparables, sus investigadores o sus áreas temáticas (`by-entity`), así como la serie anual suavizada con Media Móvil Centrada (`annual-series --cma-window 3`) y la evolución por periodos (`period-series`).
+3. **Menú de Módulos Analíticos Exploratorios (Probar y Seleccionar según la Naturaleza de la Institución):**
+   - **Módulo de Hiperautoría y Capacidad Autónoma:** Desglose de la producción según `length(author_names)` ($\le 20$ autores vs. mega-consorcios $> 20$ autores) cuando el instituto participe en colaboraciones de *Big Science* (ej. física de altas energías en ICN, genómica o astronomía).
+   - **Módulo de Evolución Temática y Especialización ($AI$, $\text{F-measure}$, $DShareC$, $CShareD$):** [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md) y análisis de categorías/subcampos para identificar las etapas de desarrollo temático del instituto, su priorización interna ($DShareC$) y su peso en el contexto nacional/mundial ($CShareD$) (Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2026).
+   - **Módulo de Redes de Colaboración Institucional e Internacional:** [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md) y [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md) para mapear las redes de coautoría intramuros, nacionales e internacionales.
+   - **Módulo de Cartografía Multidimensional SOM (Las 3 Variantes LabSOM):**
+     * [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Posicionamiento del instituto frente a su universo de instituciones homólogas en el SOM estático, eligiendo los indicadores con mayor poder diagnóstico (`--indicator-cols`), U-Matrix, Mapas de Componentes y clusters de pares comparables.
+     * [`som-trajectory-mapping`](../som-trajectory-mapping/SKILL.md) y [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md): Evolución histórica del perfil de desempeño del propio instituto a través de los años (trayectoria continua CMA+Splines, como en la Sección 5 del *Informe del INB*) o entre gestiones/periodos (Warm-Start $\Delta W$).
+   - **Módulo de Claustro Académico y Padrón SNII:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md), [`openalex-mexico-author-search`](../openalex-mexico-author-search/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md) (distribución por niveles Candidato a Emérito, concentración de Lotka y relevo generacional).
+   - **Módulo de Acceso Abierto, Costos APC, Revistas y ODS:** [`open-access-monitor`](../open-access-monitor/SKILL.md) (6 vías OA y gasto APC en USD), [`journal-editorial-intelligence`](../journal-editorial-intelligence/SKILL.md), [`sdg-impact-intelligence`](../sdg-impact-intelligence/SKILL.md) y [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
 
 ---
 
-# [Título Oficial: Evaluación Cienciométrica Integral, Diagnóstico Multidimensional SOM y Gobernanza Científica de [Nombre de la Institución/Dependencia], Periodo [Año Inicio – Año Fin]]
+## Etapa II: Criterios de Curaduría y Descarte en Informes Institucionales
+
+Cada institución tiene una vocación, escala y problemática distinta (no es igual evaluar un instituto de física nuclear con mega-consorcios del CERN que un instituto de neurobiología o uno de investigaciones sociales). El agente debe aplicar estas reglas antes de redactar:
+
+1. **Adaptación a la Vocación de la Dependencia (Probar y Descartar):**
+   - **Filtro de Hiperautoría ($\le 20$ vs. $> 20$ autores):** Si al explorar `./corpus.parquet` se observa que los artículos con $> 20$ autores representan una fracción significativa o distorsionan el FWCI institucional, el análisis tripartito se convierte en un eje central del informe. Si en cambio $\ge 98\%$ de la producción tiene $\le 20$ autores, **no se fuerza una sección ni tabla artificial de mega-consorcios**: basta con consignar el dato en una línea metodológica y dedicar el espacio a la evolución temática y al benchmarking con pares.
+   - **Selección de Dimensiones en el SOM:** Explorar en `./matrices/` qué combinación de indicadores refleja mejor tanto las fortalezas como las áreas de oportunidad de la dependencia frente a sus homólogas (ej. volumen, FWCI, % Top 10%, % colaboración internacional, índice H/G, vía Diamante o especialización) verificando el coeficiente Silhouette ($s^*$).
+   - **Evolución del Perfil Propio vs. Comparación con Pares:** Siguiendo el modelo del *Informe del INB*, combinar cuando los datos lo permitan: (a) el mapa SOM comparativo frente a instituciones homólogas, y (b) el mapa SOM de la trayectoria evolutiva de la propia institución a lo largo de sus años o periodos.
+2. **Cero Columnas Vacías (`N/D`) en las Tablas:**
+   - Construir todas las tablas del informe **exclusivamente con los indicadores calculados con datos reales**. Si un indicador (como tasa de primer autor desde `raw_data` o padrón SNII cuando se evalúa una entidad extranjera) no está presente en los datos del workspace, omitir esa columna de la tabla en vez de llenarla con `N/D`.
+3. **Bitácora de Exploración (`./reportes/exploration_log.md`):**
+   - Documentar en `./reportes/exploration_log.md` los análisis realizados en el workspace y la justificación de las dimensiones seleccionadas para el informe.
+
+---
+
+## Disponibilidad de Datos, Reglas Anti-Fabricación y Reglas Editoriales
+
+1. **Tablas y columnas reales en ClickHouse (`rag.works_academic_all` y `rag.works_flat`):** `publication_year`, `cited_by_count`, `is_oa`, `oa_status`, `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `keywords`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`, `referenced_works`.
+2. **Desambiguación de dependencias universitarias:** El ROR identifica a la institución matriz (ej. UNAM). Para aislar una dependencia o instituto, filtrar por `institution_names` e indicar explícitamente en la nota metodológica el alcance del filtro toponímico.
+3. **Lenguaje ejecutivo sobrio y cero filtración de andamiaje (*Zero-Scaffolding Leakage*):** Prohibición absoluta de adjetivos hiperbólicos (*"espectacular"*, *"revolucionario"*, *"sin precedentes"*). No mencionar prompts ni herramientas de chat en el cuerpo del informe.
+
+---
+
+# Estructura Modular del Informe Técnico Institucional (Adaptar a los Hallazgos Seleccionados)
+
+# [Título Oficial: Evaluación Cienciométrica, Evolución Temática y Diagnóstico Multidimensional SOM de [Nombre de la Institución / Dependencia], Periodo [Año_i – Año_f]]
 
 ## 1. RESUMEN EJECUTIVO Y DIAGNÓSTICO SITUACIONAL
-
-- **1.1. Diagnóstico de Alto Nivel:**
-  * Síntesis ejecutiva del posicionamiento institucional, volumen global de producción, impacto normalizado (FWCI institucional) y nivel de inserción en el sistema científico nacional e internacional.
-  * Identificación de las principales tensiones estructurales detectadas: asimetría entre volumen e impacto autónomo, concentración de liderazgo autoral, fuga financiera en cuotas de publicación y relevo generacional del claustro.
-- **1.2. Semáforo de Desempeño Institucional:**
-  * Presentar la **Tabla 1: Semáforo de Desempeño Institucional** evaluando los indicadores críticos en tres estados normativos:
-    - **Verde (🟢):** Desempeño óptimo / por encima de la media de referencia.
-    - **Amarillo (🟡):** Alerta preventiva / vulnerabilidad moderada.
-    - **Rojo (🔴):** Riesgo crítico / requiere intervención correctiva inmediata.
-
-| Indicador Institucional | Valor Actual | Benchmark de Referencia (UNAM / Nacional / Mundial) | Estado (Semáforo) | Diagnóstico Operativo |
-| :--- | :--- | :--- | :--- | :--- |
-| **Producción Bruta Anual** | [X] trabajos/año | [X] trabajos/año | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **FWCI Autónomo (Régimen B $\le 20$ aut)** | [X.XX] | 1.00 (Mundial) / [X.XX] (Media UNAM) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Tasa de Primer Autor Institucional** | [XX.X]% | [XX.X]% (Media nacional) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Tasa de Autor de Correspondencia** | [XX.X]% | [XX.X]% (Media nacional) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Publicaciones en Decil Superior (Top 10%)** | [XX.X]% | 10.0% (Esperado global) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Cuota de Acceso Abierto Diamante** | [XX.X]% | [XX.X]% (Referencia Iberoamericana) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Gasto Estimado en APC Comercial** | $[XXX,XXX] USD | Baseline histórico institucional | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-| **Masa Crítica en SNII (Nivel 2, 3 y Eméritos)** | [XX.X]% | [XX.X]% (Media del subsistema) | 🟢 / 🟡 / 🔴 | [Evaluación concisa basada en evidencia] |
-
-- **1.3. Benchmarking de Evaluaciones Previas y Dependencias Homólogas:**
-  * Contraste histórico con periodos anteriores y dependencias homólogas del subsistema científico (ej. contrastar INB con IFC, ICN, INCan o centros de biomedicina/neurociencias).
+- **1.1. Contexto Institucional y Síntesis de Posicionamiento:**
+  * Misión de la dependencia, volumen histórico y reciente de producción, impacto normalizado (FWCI), inserción en el decil superior (Top 10%) y principales fortalezas y tensiones estructurales detectadas.
+- **1.2. Tabla 1: Indicadores Clave de Desempeño Institucional (Semáforo Diagnóstico):**
+  * Presentar los indicadores efectivamente calculados para la institución contrastados con su referencia (media de la universidad matriz, media nacional o mundial, o pares homólogos) y su estado diagnóstico (🟢 Óptimo / Fortaleza, 🟡 Alerta preventiva, 🔴 Área de atención prioritaria).
 
 ---
 
-## 2. ANÁLISIS TRIPARTITO OBLIGATORIO DE LA PRODUCCIÓN Y FILTRO DE HIPERAUTORÍA
-
-*El aislamiento del sesgo inducido por mega-consorcios internacionales (Big Science) es un mandato metodológico estricto para medir la verdadera capacidad científica instalada y la productividad autónoma de la institución, alineado con las directrices de desambiguación y métodos de conteo de la Directriz GLOBAL (ISSI).*
-
-- **2.0. Delimitación Institucional, Snapshot de Datos y Protocolo GLOBAL (ISSI):**
-  * **Snapshot y Trazabilidad:** Declaración obligatoria de la base de datos (ClickHouse `rag.works_academic_all` / OpenAlex), identificador canónico institucional **ROR** (Research Organization Registry), fecha exacta de corte y huso horario de la consulta.
-  * **Desambiguación de Dependencias:** Declaración formal de la regla de filtrado por coincidencia insensible a mayúsculas y diacríticos en `institution_names`, especificando que el ROR identifica a la institución matriz y reportando las limitaciones toponímicas inherentes.
-  * **Métodos de Conteo (Conteo Fraccional vs. Conteo Completo):** Justificación de la ponderación de autoría (*fractional counting*, Perianes-Rodriguez et al., 2016) para reflejar la contribución institucional real frente a publicaciones con más de 20 autores de múltiples países.
-  * **Desambiguación Autoral:** Uso de ORCID y del Padrón Oficial SNII para mitigar la colisión de homónimos de investigadores hispanos.
-- **2.1. Justificación Matemática y Epistemológica del Filtro Tripartito:**
-  * Demostración analítica de por qué computar artículos de 1,000 a 3,000 autores en consorcios globales infla artificialmente el FWCI y la tasa de citación institucional, ocultando la realidad del impacto generado por el claustro propio.
-- **2.2. Diagrama de Flujo del Análisis Tripartito (Mermaid Obligatorio):**
-
-```mermaid
-graph TD
-    R_A[Régimen A: Producción Total Bruta Institucional] --> Filtro{Filtro de Hiperautoría}
-    Filtro -->|<= 20 Autores| R_B[Régimen B: Producción Autónoma e Independiente]
-    Filtro -->|> 20 Autores| R_C[Régimen C: Mega-consorcios Internacionales Big Science]
-    R_B --> Met_B[Métricas Reales: FWCI Propio, Primer Autor, Corresponding Author, Vías OA]
-    R_C --> Met_C[Métricas Diluidas: Alto FWCI inducido, Cero Liderazgo, Subordinación Autoral]
-```
-
-- **2.3. Desglose Cuantitativo y Comparativa de Impacto:**
-  * Presentar la **Tabla 2: Desglose Tripartito de la Producción Institucional**:
-
-| Régimen Analítico | Criterio de Inclusión | Volumen de Trabajos (N) | Participación (%) | Citas Totales | FWCI Promedio | % Top 10% | Tasa Primer Autor (%) | Tasa Corresp. Author (%) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Régimen A (Total Bruto)** | Todos los trabajos con filiación institucional | [N] | 100.0% | [N] | [X.XX] | [XX.X]% | [XX.X]% | [XX.X]% |
-| **Régimen B (Autónomo)** | Trabajos con $\le 20$ autores | [N] | [XX.X]% | [N] | [X.XX] | [XX.X]% | [XX.X]% | [XX.X]% |
-| **Régimen C (Mega-consorcios)** | Trabajos con $> 20$ autores | [N] | [XX.X]% | [N] | [X.XX] | [XX.X]% | [XX.X]% | [XX.X]% |
-
-- **2.4. Diagnóstico del Desbalance de Autonomía:**
-  * Cuantificación del grado de dependencia del impacto institucional frente a mega-consorcios externos versus la solidez de la producción autónoma endógena.
+## 2. MATERIALES, MÉTODO Y TRAZABILIDAD (DIRECTRIZ GLOBAL - ISSI)
+- **2.1. Fuentes de Información y Delimitación de la Producción Institucional:**
+  * Bases de datos utilizadas (`rag.works_academic_all`, `rag.works_flat`, InCites/WoS/Scopus, Padrón SNII), identificador ROR, criterios de desambiguación de la dependencia, fecha de corte y métodos de conteo (completo vs. fraccional; y desglose de hiperautoría cuando aplique).
+- **2.2. Indicadores y Metodología Neurocomputacional SOM:**
+  * Definición de los indicadores seleccionados tras la exploración y explicación del modelado de perfiles multidimensionales y trayectorias con redes autoorganizadas de Kohonen (SOM).
 
 ---
 
-## 3. ANÁLISIS MULTIDIMENSIONAL DE PERFILES DE RENDIMIENTO CON REDES SOM (KOHONEN)
-
-*Superación metodológica de los rankings unidimensionales mediante mapeo neurocomputacional en el espacio de estados (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017).*
-
-- **3.1. Fundamentación Epistemológica: Superación de la Falacia del "Pesar y Sumar":**
-  * Los rankings comerciales (ARWU, QS, THE) colapsan indicadores disímiles en un único escalar mediante ponderaciones arbitrarias, enmascarando misiones diferenciadas y castigando la diversidad académica.
-  * Modelado de cada dependencia como un vector en un espacio abstracto $\mathbb{R}^D$ definido por 8 dimensiones cardinales normalizadas: 1) Volumen, 2) FWCI Régimen B, 3) % Top 10%, 4) % Top 1%, 5) % Colaboración Internacional (derivable de `all_country_codes`), 6) % Acceso Abierto Diamante, 7) % Acceso Abierto total (`is_oa`) y 8) % en revistas núcleo/DOAJ (`is_core_journal`, `is_doaj_journal`).
-- **3.2. Parámetros de Calibración Neurocomputacional:**
-  * **Relación de Aspecto Espectral SVD:** Proporción de la retícula ajustada a $\sigma_1 / \sigma_2$ para preservar la dispersión principal de los datos.
-  * **Sobremalla Empírica:** Retícula hexagonal *flat-topped* dimensionada con $M \approx 20N\text{--}30N$ neuronas (o Big SOM $\ge 10N$), garantizando una representación cuasi-continua del espacio de estados.
-  * **Algoritmo de Aprendizaje:** Inicialización PCA sobre los primeros dos componentes principales, decrecimiento monótono del radio de vecindad ($\sigma_0 \to 1.0$) y tasa de aprendizaje ($\alpha_0 \to 0.01$).
-- **3.3. Interpretación de la Tríada Visual LabSOM:**
-  * **1. U-Matrix (Matriz de Distancias Unificadas):** Distancias euclidianas interneuronales con convención cromática canónica:
-    - *Valles Rojos:* Zonas de distancias mínimas $\rightarrow$ alta densidad de datos (núcleos de clusters homogéneos).
-    - *Crestas Amarillas:* Saltos bruscos en los pesos $\rightarrow$ barreras topológicas y fronteras entre familias de dependencias.
-  * **2. Mapas de Componentes (Component Planes):** $D$ planos alineados espacialmente con paleta divergente LabSOM:
-    - *Verde:* Desempeño inferior a la media del subsistema.
-    - *Amarillo:* Nivel promedio de referencia.
-    - *Rojo:* Desempeño sobresaliente (> media).
-    - *Diagnóstico de Compensación:* Identificación de cuadrantes donde coexisten componentes rojos y verdes (ej. alto FWCI pero baja colaboración industrial).
-  * **3. Meta-clustering en Dos Etapas (Vesanto & Alhoniemi, 2000):** Agrupamiento jerárquico aglomerativo sobre los vectores de pesos $W \in \mathbb{R}^{M \times D}$, optimizado con el coeficiente Silhouette máximo ($s^*$).
-- **3.4. Diagnóstico de Pares Comparables y Polos de Excelencia:**
-  * Presentar la **Tabla 3: Caracterización de Pares Comparables y Perfil Cualitativo en el SOM**:
-
-| Cluster SOM ($K^*$) | Dependencias / Instituciones Miembros | Perfil Cualitativo Dominante | Fortalezas Cardinales (Zonas Rojas) | Vulnerabilidades (Zonas Verdes) | Posición de la Institución Evaluada |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Cluster 1 (Polo Élite)** | [Institución A, Institución B, ...] | Alta excelencia, alto FWCI autónomo y fuerte inserción en revistas núcleo | FWCI, % Top 10%, % Top 1% | Colaboración internacional | [Pertenencia / Distancia al BMU] |
-| **Cluster 2 (Orientación Social / Diamante)** | [Institución C, Institución D, ...] | Fuerte impacto regional, liderazgo autoral y vía Diamante | % Primer Autor, OA Diamante | Presencia en revistas de corriente principal | [Pertenencia / Distancia al BMU] |
-| **Cluster 3 (Intensivo en Volumen)** | [Institución E, Institución F, ...] | Elevada masa crítica de papers con impacto normalizado medio | Volumen de producción bruta | FWCI autónomo Régimen B | [Pertenencia / Distancia al BMU] |
-| **Perfiles Singulares ($|C_k|=1$)** | [Institución Aislada] | Especialización hiperfocalizada o nicho metodológico atípico | [Indicador singular] | [Indicador deprimido] | [Pertenencia / Distancia al BMU] |
+## 3. DINÁMICA DE LA PRODUCCIÓN CIENTÍFICA Y ESTUDIO COMPARATIVO CON INSTITUCIONES HOMÓLOGAS
+- **3.1. Evolución Histórica de la Productividad y Visibilidad:**
+  * Análisis de las etapas de crecimiento de la dependencia y su participación porcentual respecto a la institución matriz, al país y a la región (incluyendo, cuando sea pertinente por la disciplina, la comparativa entre producción autónoma $\le 20$ autores y consorcios $> 20$ autores).
+- **3.2. Benchmarking con Instituciones Especializadas Homólogas:**
+  * Comparación del desempeño en volumen, impacto normalizado (FWCI), excelencia (% Top 10% / Top 1%) y colaboración frente a instituciones nacionales e internacionales de vocación y escala similares.
 
 ---
 
-## 4. BATERÍA DE INDICADORES DE LIDERAZGO E IMPACTO NORMALIZADO
-
-- **4.1. Soberanía Epistémica y Liderazgo de Autoría:**
-  * **Tasa de Primer Autor Institucional (% First Author):** Capacidad del personal de formular y ejecutar empíricamente las investigaciones.
-  * **Tasa de Autor de Correspondencia (% Corresponding Author):** Responsabilidad intelectual directa, tutoría principal, obtención de financiamiento y conducción de los proyectos.
-  * Análisis de asimetrías de liderazgo en colaboraciones internacionales (Sur Global vs. Norte Global).
-- **4.2. Visibilidad y Excelencia:**
-  * Proporción en revistas núcleo y DOAJ (`is_core_journal`, `is_doaj_journal`); los cuartiles Scimago/JCR no están en el corpus (`N/D`).
-  * Volumen y tasa de publicaciones ubicadas en el decil superior de impacto mundial (Top 10%) y en el percentil de élite (Top 1%).
-- **4.3. Especialización Temática:**
-  * Descomposición entre el Índice de Actividad ($AI$) y la participación temática ($DShareC$ vs. $CShareD$).
-  * Identificación de líneas troncales consolidadas frente a campos emergentes desatendidos.
+## 4. EVOLUCIÓN TEMÁTICA, FRENTES DE INVESTIGACIÓN Y REDES DE COLABORACIÓN
+- **4.1. Especialización y Evolución Temática ($DShareC$, $CShareD$, $AI$, $\text{F-measure}$ y Frentes):**
+  * Distribución de la producción en áreas, subcampos y frentes de investigación activos; identificación de las líneas consolidadas y de los temas emergentes a lo largo del tiempo.
+- **4.2. Estructura de la Colaboración Científica:**
+  * Redes de coautoría con otras dependencias, instituciones nacionales y socios internacionales (`network_institutions.html` / `geopolitical_dashboard.html`).
 
 ---
 
-## 5. AUDITORÍA DE LAS 6 VÍAS DE ACCESO ABIERTO Y FUGA DE CAPITAL EN APC (USD)
-
-- **5.1. Desglose Integral por las 6 Vías de Publicación:**
-  * Presentar la **Tabla 4: Auditoría de Acceso Abierto y Costos de Publicación**:
-
-| Vía de Acceso Abierto | Definición Operativa | Artículos (N) | Porcentaje (%) | Gasto Unitario Estimado (USD) | Gasto Acumulado Estimado (USD) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Diamante (Diamond)** | Sin cobro de APC a autores ni a lectores (infraestructura pública) | [N] | [XX.X]% | $0 USD | $0 USD |
-| **Dorada Comercial (Gold APC)** | Revistas 100% de acceso abierto con cobro de cuota APC al autor | [N] | [XX.X]% | $[X,XXX] USD | $[XXX,XXX] USD |
-| **Híbrida (Hybrid)** | Revistas de suscripción con cobro de APC adicional para liberar artículo | [N] | [XX.X]% | $[X,XXX] USD | $[XXX,XXX] USD |
-| **Bronce (Bronze)** | Artículos abiertos en la web editorial sin licencia formal reutilizable | [N] | [XX.X]% | $0 USD | $0 USD |
-| **Verde (Green / Repositorio)** | Autoarchivo en repositorios institucionales o servidores de preprints | [N] | [XX.X]% | $0 USD | $0 USD |
-| **Cerrada (Closed)** | Acceso restringido tras muro de pago comercial (paywall) | [N] | [XX.X]% | $0 USD | $0 USD |
-| **TOTAL** | — | **[N]** | **100.0%** | — | **$[XXX,XXX] USD** |
-
-- **5.2. Concentración Oligopólica y Fuga Financiera:**
-  * Análisis del monto transferido desde presupuestos públicos y subsidios universitarios hacia grandes corporaciones comerciales (Elsevier, Springer-Nature, Wiley, Frontiers, MDPI).
-  * Costo promedio ponderado por artículo publicado con cobro de APC.
-- **5.3. Estrategia de Transición hacia la Soberanía Diamante:**
-  * Hoja de ruta para redireccionar fondos de publicación hacia revistas institucionales y repositorios institucionales libres de cuotas.
+## 5. PERFIL MULTIDIMENSIONAL DE DESEMPEÑO Y EVOLUCIÓN EN EL SOM (KOHONEN)
+- **5.1. Posicionamiento Frente a Pares Comparables en la Tríada LabSOM:**
+  * Análisis sobre la **U-Matrix**, **Mapas de Componentes** (Verde-Amarillo-Rojo) y **Meta-clustering de Vesanto** ($K^*$ óptimo por Silhouette $s^*$), identificando el cluster de pares legítimos de la institución, sus fortalezas cardinales (zonas rojas) y sus vulnerabilidades relativas (zonas verdes).
+- **5.2. Tabla de Clusters y Evolución Temporal del Perfil Institucional (Trayectoria SOM / Longitudinal):**
+  * Tabla de caracterización de los clusters en el SOM y análisis de la trayectoria evolutiva de la propia institución a través de las ventanas temporales estudiadas (`som_dashboard.html`, `som_trajectories.html` y/o `longitudinal_som_report.md`).
 
 ---
 
-## 6. DINÁMICA DEL CLAUSTRO, PADRÓN SNII Y RIESGOS GENERACIONALES
-
-- **6.1. Estructura y Composición en el Padrón SNII:**
-  * Distribución del claustro por niveles (Candidato, Nivel 1, Nivel 2, Nivel 3 y Emérito) a partir del censo oficial de `sos_sinapsisai`.
-  * Ratio de masa crítica consolidada (Nivel 2 + Nivel 3 + Eméritos) respecto al personal en formación/consolidación (Candidato + Nivel 1).
-- **6.2. Envejecimiento de Líneas y Relevo Generacional:**
-  * Concentración de la productividad en cohortes académicas sénior frente a la tasa de incorporación y retención de talento joven.
-- **6.3. Obsolescencia Temática e Inserción en Frentes Emergentes:**
-  * Proporción de investigadores activos en frentes de investigación con aceleración cinética frente a líneas históricas en fase de estancamiento.
+## 6. DIMENSIONES DE GOBERNANZA: CLAUSTRO ACADÉMICO, ACCESO ABIERTO Y COSTOS APC (SEGÚN APLICABILIDAD)
+*(Incluir y desarrollar con profundidad las subsecciones respaldadas por los datos del estudio):*
+- **6.1. Estructura del Claustro, Productividad Autoral y Padrón SNII:**
+  * Composición por niveles del SNII, distribución de productividad de los investigadores y diagnóstico de relevo generacional.
+- **6.2. Auditoría de las 6 Vías de Acceso Abierto y Costos de Publicación en APC (USD):**
+  * Tabla y análisis de la distribución en las 6 vías OA (`diamond`, `gold`, `hybrid`, `green`, `bronze`, `closed`), gasto observado/estimado en cuotas APC comerciales (USD) y oportunidades de ahorro mediante vía Diamante y repositorios verdes.
 
 ---
 
-## 7. MATRIZ OPERATIVA DE RECOMENDACIONES DE POLÍTICA CIENTÍFICA
-
-Presentar la **Tabla 5: Matriz de Recomendaciones Accionables para los Órganos de Gobierno Institucional**:
-
-| Horizonte Temporal | Línea Estratégica | Acción Concreta | Órgano Responsable | Métrica de Verificación / Impacto |
-| :--- | :--- | :--- | :--- | :--- |
-| **Corto Plazo (1 Año)** | *Gobernanza Financiera y APC* | Regular el subsidio a cuotas APC comerciales e incentivar la vía Diamante y repositorios verdes institucionales. | Dirección / Secretaría Administrativa | Reducción del [XX]% en fuga financiera por APC en USD. |
-| **Corto Plazo (1 Año)** | *Soberanía de Autoría* | Establecer lineamientos para asegurar la autoría de correspondencia en convenios de colaboración internacional. | Consejo Técnico / Coordinación | Incremento de [X]% en la tasa de autor de correspondencia. |
-| **Mediano Plazo (3 Años)** | *Relevo Generacional* | Convocatorias de atracción de plazas dirigidas prioritariamente a frentes emergentes desatendidos. | Comisión Dictaminadora / Consejo Técnico | Incorporación de [N] investigadores en áreas de frontera tecnológica. |
-| **Mediano Plazo (3 Años)** | *Impacto Autónomo* | Fondo especial de apoyo a proyectos donde el liderazgo intelectual y experimental recaiga en la institución. | Consejo Asesor de Investigación | Aumento del FWCI en el Régimen B (Autónomo) a un mínimo de [X.XX]. |
-| **Largo Plazo (5 Años)** | *Reestructuración Multidimensional* | Reorientación estratégica de laboratorios basada en el diagnóstico de pares del SOM para converger al cluster de excelencia. | Dirección y H. Consejo Técnico | Posicionamiento del [XX]% de la producción en el Top 10% mundial. |
+## 7. CONSIDERACIONES FINALES Y MATRIZ DE RECOMENDACIONES ESTRATÉGICAS (1, 3 Y 5 AÑOS)
+- Síntesis integradora de hallazgos y **Tabla de Recomendaciones Accionables** para los órganos de dirección y cuerpos colegiados (Corto plazo: 1 año; Mediano plazo: 3 años; Largo plazo: 5 años) con indicadores verificables.
 
 ---
 
-## ANEXOS Y FUENTES AUDITABLES
-
-- **Relación de Fuentes, Catálogos y Agent Skills Orquestadas:**
-  * Base de datos OpenAlex México en ClickHouse (`rag.works_academic_all`, `rag.institutions_seed_mexico`) vía [`openalex-mexico-institutions`](../openalex-mexico-institutions/SKILL.md) y [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md).
-  * Padrón Oficial SNII 2026 e histórico vía [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
-  * Motor neurocomputacional de análisis de perfiles SOM vía [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
-  * Generador de artefactos visuales interactivos vía [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
-  * Auditoría de vías de acceso abierto y costos en APC vía [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
-- **Ficha Técnica de Trazabilidad y Auditoría Institucional:**
-  * Base de datos: OpenAlex México en ClickHouse (`rag.works_academic_all`).
-  * Identificador institucional canónico: ROR [ej. https://ror.org/01tmp8f25].
-  * Fecha de corte de la base de datos: [Día Mes Año].
-  * Fecha de corte del Padrón Oficial SNII: [Día Mes Año] vía `snii-identity-resolver`.
-  * Parámetros de consulta deterministas (CERO JOINs):
-    - Filtro institucional: `has(institution_rors, '<ROR>')`
-    - Filtro dependencia: `arrayExists(x -> positionCaseInsensitiveUTF8(x, '<Nombre Dependencia>') > 0, institution_names)`
-    - Régimen B (Autónomo): `length(author_names) <= 20`
-    - Gasto APC: sumas de `apc_paid_usd` y `apc_list_usd` agrupadas por `oa_status`.
-- **Catálogo de Material Suplementario para Auditoría:**
-  * *Script S1 (`scripts/01_extract_institutional_data.py`):* Extracción y replicación exacta de Tablas 1, 2 y 4.
-  * *Script S2 (`scripts/02_som_institutional_evaluation.py`):* Matriz $N \times D$ de pares y entrenamiento SOM reproducible.
-  * *Dataset S1 (`data/indicadores_institucionales.csv`):* Serie temporal y métricas calculadas.
-  * *Dataset S2 (`data/som_institutional_state.json`):* Pesos y clusters del SOM para inspección en KnoMap.
-  * *Protocolo Agéntico:* Ejecutable mediante la skill `template-informe-tecnico-institucional` con el manifiesto de parámetros del informe.
-- **Referencias Bibliográficas Metodológicas:**
-  * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 271–292). UNAM, IIBI.
-  * Villaseñor-García, E. A., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2017). Multiparametric characterization of scientometric performance profiles assisted by neural networks. *Scientometrics*, 110(1), 77–104.
-  * Vesanto, J., & Alhoniemi, E. (2000). Clustering of the Self-Organizing Map. *IEEE Transactions on Neural Networks*, 11(3), 586–600.
-  * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431.
-  * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
-  * Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016). Constructing bibliometric networks: A comparison between full and fractional counting. *Journal of Informetrics*, 10(4), 1178–1195.
+## ANEXOS, REFERENCIAS Y MATERIAL SUPLEMENTARIO AUDITABLE
+- **Referencias Metodológicas:** Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge (2025); Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet (2025, 2026); Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet (2024); Villaseñor-García et al. (2017); Vesanto & Alhoniemi (2000); Hicks et al. (2015).
+- **Catálogo de Artefactos en el Workspace:** Enlaces a `./corpus.parquet`, `./matrices/*.parquet`, dashboards interactivos HTML en `./reportes/` y bitácora `./reportes/exploration_log.md`.

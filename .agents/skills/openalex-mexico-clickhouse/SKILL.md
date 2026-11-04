@@ -27,13 +27,13 @@ La base de datos `rag` aloja el universo completo de investigación de México e
 * **Script CLI Canónico:** `shared_scripts/openalex_mexico_cli.py` (motor multi-comando de 1,300 líneas con validación de seguridad integrada).
 * **Parámetros de Conexión:** Servidor ClickHouse configurado en variables de entorno (`CLICKHOUSE_HOST=10.90.0.87`, `CLICKHOUSE_PORT=8124`, `CLICKHOUSE_DATABASE=rag`).
 * **Habilidades Especializadas de la Suite:**
-  * [`openalex-mexico-query-architect`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md): Validador y consultor de sentencias SQL seguras.
-  * [`openalex-mexico-aggregations`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md): Agregaciones de vías OA, APC USD y series temporales.
-  * [`openalex-mexico-works-search`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extracción de publicaciones por filtros complejos.
-  * [`openalex-mexico-author-search`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-author-search/SKILL.md): Desambiguación de investigadoras/es y nivel SNII.
-  * [`openalex-mexico-institutions`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-institutions/SKILL.md): Mapeo ROR y catálogo institucional.
-  * [`openalex-mexico-semantic-search`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-semantic-search/SKILL.md): Búsqueda semántica vectorial (embeddings nomic 768d).
-  * [`openalex-mexico-visualizer`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-visualizer/SKILL.md): Dashboards interactivos Plotly y redes PyVis.
+  * [`openalex-mexico-query-architect`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md): Validador y consultor de sentencias SQL seguras.
+  * [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md): Agregaciones de vías OA, APC USD y series temporales.
+  * [`openalex-mexico-works-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extracción de publicaciones por filtros complejos.
+  * [`openalex-mexico-author-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-author-search/SKILL.md): Desambiguación de investigadoras/es y nivel SNII.
+  * [`openalex-mexico-institutions`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-institutions/SKILL.md): Mapeo ROR y catálogo institucional.
+  * [`openalex-mexico-semantic-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-semantic-search/SKILL.md): Búsqueda semántica vectorial (embeddings nomic 768d).
+  * [`openalex-mexico-visualizer`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-visualizer/SKILL.md): Dashboards interactivos Plotly y redes PyVis.
 
 ---
 
@@ -131,7 +131,7 @@ python shared_scripts/openalex_mexico_cli.py validate-query \
 
 ## 6. Referencias Técnicas
 
-- [OpenAlex México CLI Engine](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/shared_scripts/openalex_mexico_cli.py)
-- [Query Architect (Guardián CERO JOINs)](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md)
-- [Aggregations Engine](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md)
-- [Estándar Canónico de Diseño de Skills](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/docs/estandar_diseno_skills_cientificas.md)
+- [OpenAlex México CLI Engine](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/shared_scripts/openalex_mexico_cli.py)
+- [Query Architect (Guardián CERO JOINs)](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md)
+- [Aggregations Engine](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md)
+- [Estándar Canónico de Diseño de Skills](file:///mnt/expansion/desplegados/sos-mcp-services/docs/estandar_diseno_skills_cientificas.md)

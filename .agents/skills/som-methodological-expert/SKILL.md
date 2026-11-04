@@ -28,19 +28,38 @@ Esta skill formaliza y ejecuta la metodología neurocomputacional basada en **Ma
 
 ---
 
-## 2. Dependencies y Cadena de Valor
+## 2. Dependencies y Cadena de Valor (De la Cosecha al SOM)
 
-Esta skill proporciona el núcleo neurocomputacional y metodológico para todo el pipeline de análisis dimensional:
+Esta skill proporciona el núcleo neurocomputacional y metodológico para todo el pipeline de análisis dimensional. **El SOM NO consume directamente el corpus bibliográfico crudo (`./corpus.parquet`), sino una matriz de indicadores $[N \times D]$ por entidad (`./matrices/indicadores_som.parquet`) calculada en la etapa previa:**
 
-* **Habilidades Upstream (Proveedores de Datos):**
-  * [`tlachia-metrics-handler`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Extrae matrices $[N \times D]$ desde paquetes TlachIA Metrics / OpenAlex.
-  * [`scientometrics-incites-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/scientometrics-incites-expert/SKILL.md): Extrae matrices $[N \times D]$ desde paquetes Clarivate InCites.
+* **Habilidades Upstream (Proveedores de Matrices $[N \times D]$ en el Workspace):**
+  * **Opción A (Estándar desde `./corpus.parquet` cosechado): `tlachia-metrics-engine`** (`scripts/tlachia_metrics_cli.py by-entity`): Calcula la batería completa de **más de 35 indicadores cienciométricos** por entidad (`researcher`/`author`, `institution`, `country`, `source`, `subfield`, `topic`) **sin truncar ninguna columna**, permitiendo que el agente seleccione las 4 dimensiones cardinales o cualquier combinación de dimensiones adicionales (Índices H/G/M, las 6 vías OA, gasto APC USD, índice de colaboración, etc.):
+    ```bash
+    /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py by-entity \
+      --input ./corpus.parquet \
+      --level institution \
+      --min-docs 2 \
+      --output ./matrices/indicadores_som.parquet
+    ```
+  * **Opción B (Paquetes exportados TlachIA Metrics `.zip`): `tlachia-metrics-handler`** (`extract_tlachia_som_matrix`).
+  * **Opción C (Reportes Clarivate InCites CSV): `scientometrics-incites-expert`** (`extract_incites_som_matrix`).
+* **Ejecución CLI Workspace-First de esta Skill (`scripts/som_pipeline_cli.py`):**
+  ```bash
+  # Usando todas las columnas de indicadores o escogiendo dimensiones específicas con --indicator-cols
+  /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/scripts/som_pipeline_cli.py \
+    --input ./matrices/indicadores_som.parquet \
+    --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
+    --state-out ./reports/som_state.json \
+    --html-out ./reports/som_dashboard.html \
+    --diagnosis-out ./reports/som_diagnosis.json
+  ```
 * **Habilidades Downstream (Evolución y Trayectorias):**
-  * [`som-trajectory-mapping`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Trazado de splines cúbicos intertemporales sobre el espacio latente.
-  * [`neural-longitudinal-mapping`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md): Encadenamiento Warm-Start interperiódico.
+  * `som-trajectory-mapping`: Trazado de splines cúbicos intertemporales sobre el espacio latente (`./matrices/series_cma_som.parquet`).
+  * `neural-longitudinal-mapping`: Encadenamiento Warm-Start interperiódico (`./matrices/periodos_som.parquet`).
 * **Herramientas de Software Asociadas:**
-  * [`services/knomap/tools/som_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/som_tools.py): `suggest_grid_size`, `train_som`, `evaluate_som_clusters`, `recluster_som`.
-  * [`services/knomap/tools/viz_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/viz_tools.py): `knomap_render_som_dashboard`.
+  * `scripts/som_pipeline_cli.py`: CLI autónomo que lee `.parquet`/`.csv`/`.json` del Workspace.
+  * `services/knomap/tools/som_tools.py`: `suggest_grid_size`, `train_som`, `evaluate_som_clusters`, `recluster_som`.
+  * `services/knomap/tools/viz_tools.py`: `knomap_render_som_dashboard`.
 
 ---
 
@@ -232,7 +251,7 @@ Invocar `knomap-som-engine -> train_som` con:
 * `iterations`: 100–200 para batch.
 * `clustering_algorithm`: `"kmeans"` o `"hierarchical"`.
 * `n_clusters`: Valor inicial preliminar.
-* `output_state_path`: (Opcional pero recomendado para el dashboard) Ruta de archivo JSON donde persistir el estado (ej. `/tmp/som_state.json` o `./reports/som_state.json`).
+* `output_state_path`: (Opcional pero recomendado para el dashboard) Ruta de archivo JSON dentro del Workspace donde persistir el estado (ej. `./reports/som_state.json`).
 * `indicator_names`: (Opcional) Nombres de las variables/columnas para los planos de componentes en el dashboard.
 
 ### 3. Calibración del K Óptimo

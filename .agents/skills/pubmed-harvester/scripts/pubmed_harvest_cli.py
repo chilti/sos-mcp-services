@@ -157,32 +157,48 @@ def fetch_pubmed_summaries(
                 has_pmc = bool(pmcid)
                 oa_status = "green" if has_pmc else "closed"
 
+                journal_str = doc.get("fulljournalname") or doc.get("source") or ""
                 record = {
                     "id": f"pmid:{pmid}",
-                    "doi": doi,
+                    "doi": doi or "",
                     "pmid": pmid,
                     "pmcid": pmcid,
                     "title": doc.get("title", ""),
                     "abstract": "",
+                    "year": pub_year,
                     "publication_year": pub_year,
                     "publication_date": pubdate,
-                    "journal_name": doc.get("fulljournalname") or doc.get("source"),
+                    "doc_type": "article",
+                    "type": "article",
+                    "language": "en",
+                    "source_title": journal_str,
+                    "journal_name": journal_str,
                     "issn": doc.get("issn"),
                     "publisher": None,
-                    "cited_by_count": 0,  # PubMed no incluye citas acumuladas en esummary
+                    "citations": 0,
+                    "cited_by_count": 0,
                     "is_oa": has_pmc,
                     "oa_status": oa_status,
+                    "apc_list_usd": 0.0,
                     "apc_paid_usd": 0.0,
+                    "authors": "; ".join(authors),
                     "author_names": authors,
                     "author_ids": [],
-                    "affiliations": [],
+                    "affiliations": "",
+                    "country_codes": "",
                     "countries": [],
+                    "keywords_author": "",
+                    "keywords_plus": "",
                     "keywords": [],
                     "mesh_terms": [],
                     "topics": [],
                     "fwci": None,
-                    "is_top_10": 0,
+                    "percentile": None,
+                    "is_top_10": False,
+                    "is_top_1": False,
+                    "referenced_works": [],
                     "references": [],
+                    "source_db": "PubMed",
                     "source_harvester": "pubmed"
                 }
                 all_records.append(record)

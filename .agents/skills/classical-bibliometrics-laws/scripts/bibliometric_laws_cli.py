@@ -56,7 +56,9 @@ def load_corpus_data(filepath: str) -> List[Dict[str, Any]]:
     if lower.endswith(".json"):
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("records", data) if isinstance(data, dict) else data
+            if isinstance(data, dict):
+                return data.get("records") or data.get("works") or data.get("data") or []
+            return data
     return []
 
 
@@ -72,8 +74,13 @@ def cmd_lotka(args):
 
     author_papers = defaultdict(float)
     for r in records:
-        raw_auth = r.get("authors") or r.get("Authors") or r.get("AU") or ""
-        authors = [a.strip() for a in str(raw_auth).split(";") if a.strip()]
+        raw_auth = r.get("authors") or r.get("author_names") or r.get("Authors") or r.get("AU") or ""
+        if hasattr(raw_auth, "tolist"):
+            raw_auth = raw_auth.tolist()
+        if isinstance(raw_auth, list):
+            authors = [str(a).strip() for a in raw_auth if str(a).strip()]
+        else:
+            authors = [a.strip() for a in str(raw_auth).split(";") if a.strip()]
         k = len(authors)
         if k == 0:
             continue
@@ -193,7 +200,7 @@ def cmd_bradford(args):
     source_counts = Counter()
 
     for r in records:
-        src = (r.get("source_title") or r.get("Source title") or r.get("SO") or "").strip()
+        src = str(r.get("source_title") or r.get("journal_name") or r.get("Source title") or r.get("SO") or r.get("source_id") or r.get("topic") or "").strip()
         if src:
             source_counts[src] += 1
 
@@ -274,20 +281,41 @@ def cmd_price_index(args):
     records = load_corpus_data(input_path)
     import re
 
+    id_to_year = {}
+    for r in records:
+        rid = str(r.get("id") or "").strip()
+        yr_v = r.get("year") or r.get("publication_year") or r.get("Year") or r.get("PY")
+        if rid and yr_v is not None:
+            try:
+                id_to_year[rid] = int(str(yr_v)[:4])
+                if "/" in rid:
+                    id_to_year[rid.rsplit("/", 1)[-1]] = int(str(yr_v)[:4])
+            except (ValueError, TypeError):
+                pass
+
     ref_ages = []
     recent_refs = 0
     total_refs = 0
 
     for r in records:
-        doc_yr_raw = r.get("year") or r.get("Year") or r.get("PY") or ""
+        doc_yr_raw = r.get("year") or r.get("publication_year") or r.get("Year") or r.get("PY") or ""
         try:
             doc_yr = int(str(doc_yr_raw)[:4])
         except (ValueError, TypeError):
             continue
 
-        raw_refs = r.get("references") or r.get("References") or r.get("CR") or ""
-        # Match 4-digit years in references string
+        raw_refs = r.get("referenced_works") if r.get("referenced_works") is not None else (r.get("references") or r.get("References") or r.get("CR") or "")
+        if hasattr(raw_refs, "tolist"):
+            raw_refs = raw_refs.tolist()
         found_years = [int(y) for y in re.findall(r"\b(19\d\d|20\d\d)\b", str(raw_refs))]
+        if not found_years and isinstance(raw_refs, list):
+            for ref_id in raw_refs:
+                s_id = str(ref_id).strip()
+                short_id = s_id.rsplit("/", 1)[-1] if "/" in s_id else s_id
+                if s_id in id_to_year:
+                    found_years.append(id_to_year[s_id])
+                elif short_id in id_to_year:
+                    found_years.append(id_to_year[short_id])
         for ref_yr in found_years:
             if ref_yr <= doc_yr:
                 age = doc_yr - ref_yr
@@ -327,7 +355,7 @@ def cmd_growth(args):
     annual_counts = Counter()
 
     for r in records:
-        yr_raw = r.get("year") or r.get("Year") or r.get("PY") or ""
+        yr_raw = r.get("year") or r.get("publication_year") or r.get("Year") or r.get("PY") or ""
         try:
             yr = int(str(yr_raw)[:4])
             if 1900 <= yr <= 2030:

@@ -65,9 +65,23 @@ def extract_doc_year(row: Dict[str, Any]) -> Optional[int]:
 
 def extract_references(row: Dict[str, Any]) -> List[str]:
     """Extracts reference identifiers from normalized or raw bibliographic records."""
-    raw_refs = row.get("references") or row.get("referenced_works") or row.get("CR") or []
+    raw_refs = None
+    for k in ("referenced_works", "references", "CR"):
+        val = row.get(k)
+        if val is not None:
+            if hasattr(val, "tolist"):
+                val = val.tolist()
+            if isinstance(val, list) and len(val) > 0:
+                raw_refs = val
+                break
+            elif isinstance(val, str) and val.strip():
+                raw_refs = val
+                break
+    if raw_refs is None:
+        return []
     if isinstance(raw_refs, list):
         return [str(r).strip() for r in raw_refs if str(r).strip()]
+    return [r.strip() for r in str(raw_refs).replace("|", ";").split(";") if r.strip()]
 def parse_wos_plaintext(filepath: str) -> List[Dict[str, Any]]:
     """Parses Web of Science plain text export files (savedrecs.txt)."""
     records = []
@@ -237,9 +251,29 @@ def load_corpus_items(filepath: str, unit: str) -> List[Dict[str, Any]]:
     lower = filepath.lower()
     docs = []
 
+    def _is_non_empty(v: Any) -> bool:
+        if v is None:
+            return False
+        if hasattr(v, "tolist"):
+            v = v.tolist()
+        if isinstance(v, (list, tuple, set)):
+            return len(v) > 0
+        if isinstance(v, float) and math.isnan(v):
+            return False
+        return bool(str(v).strip())
+
+    def _first_non_empty(row: Dict[str, Any], keys: List[str]) -> Any:
+        for k in keys:
+            val = row.get(k)
+            if _is_non_empty(val):
+                return val.tolist() if hasattr(val, "tolist") else val
+        return None
+
     def to_item_list(raw_val: Any) -> List[str]:
-        if not raw_val:
+        if not _is_non_empty(raw_val):
             return []
+        if hasattr(raw_val, "tolist"):
+            raw_val = raw_val.tolist()
         if isinstance(raw_val, list):
             res = []
             for elem in raw_val:
@@ -254,15 +288,11 @@ def load_corpus_items(filepath: str, unit: str) -> List[Dict[str, Any]]:
 
     def get_items(row: Dict[str, Any], u: str) -> List[str]:
         if u == "keywords":
-            val = row.get("keywords_author") or row.get("keywords") or row.get("DE")
-            if not val:
-                val = row.get("keywords_plus") or row.get("ID") or row.get("concepts")
+            val = _first_non_empty(row, ["keywords_author", "keywords", "DE", "keywords_plus", "ID", "concepts"])
             return list(set(i for i in to_item_list(val) if i))
 
         elif u == "authors":
-            val = row.get("authors") or row.get("Authors") or row.get("AU")
-            if not val:
-                val = row.get("authorships")
+            val = _first_non_empty(row, ["authors", "author_names", "raw_author_names", "Authors", "AU", "authorships"])
             if isinstance(val, list):
                 res = []
                 for elem in val:
@@ -277,8 +307,8 @@ def load_corpus_items(filepath: str, unit: str) -> List[Dict[str, Any]]:
             return list(set(i for i in to_item_list(val) if i))
 
         elif u == "institutions":
-            val = row.get("affiliations") or row.get("Affiliations") or row.get("C1") or row.get("institutions")
-            if not val and isinstance(row.get("authorships"), list):
+            val = _first_non_empty(row, ["affiliations", "institution_names", "Affiliations", "C1", "institutions"])
+            if not _is_non_empty(val) and isinstance(row.get("authorships"), list):
                 res = []
                 for elem in row["authorships"]:
                     if isinstance(elem, dict):
@@ -291,18 +321,21 @@ def load_corpus_items(filepath: str, unit: str) -> List[Dict[str, Any]]:
             return list(set(i for i in to_item_list(val) if i))
 
         elif u == "countries":
-            val = row.get("affiliations") or row.get("Affiliations") or row.get("countries")
+            cc_val = _first_non_empty(row, ["country_codes", "all_country_codes", "countries", "country_code"])
+            if _is_non_empty(cc_val):
+                return list(set(i.upper() for i in to_item_list(cc_val) if len(i) >= 2))
+            val = _first_non_empty(row, ["affiliations", "Affiliations"])
             if isinstance(val, list):
-                return list(set(str(c).strip().lower() for c in val if c))
-            parts = [p.split(",")[-1].strip().lower() for p in str(val).split(";") if p.strip()]
-            return list(set(p for p in parts if len(p) > 2))
+                return list(set(str(c).strip().upper() for c in val if c))
+            parts = [p.split(",")[-1].strip().upper() for p in str(val or "").split(";") if p.strip()]
+            return list(set(p for p in parts if len(p) >= 2))
 
         elif u == "sources":
-            val = row.get("source_title") or row.get("journal") or row.get("SO")
-            if not val and isinstance(row.get("primary_location"), dict):
+            val = _first_non_empty(row, ["source_title", "journal_name", "journal", "SO", "source_id"])
+            if not _is_non_empty(val) and isinstance(row.get("primary_location"), dict):
                 src = row["primary_location"].get("source") or {}
                 val = src.get("display_name") or src.get("name")
-            return [str(val).strip()] if val and str(val).strip() else []
+            return [str(val).strip()] if _is_non_empty(val) else []
 
         return []
 

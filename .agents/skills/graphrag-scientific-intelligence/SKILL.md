@@ -1,14 +1,17 @@
 ---
 name: graphrag-scientific-intelligence
-description: Experto en consultas híbridas GraphRAG cruzando el Grafo de Conocimiento Neo4j, búsqueda vectorial en Qdrant y el Padrón Oficial SNII.
+description: Consultas híbridas GraphRAG combinando búsqueda semántica vectorial de 768 dimensiones (Nomic), exploración de redes de coautoría/citación y verificación en el Padrón Oficial SNII.
 ---
 
-# Skill: GraphRAG Scientific Intelligence
+# GraphRAG Scientific Intelligence
 
-## 1. Propósito y Activación
-Se activa para responder preguntas complejas sobre investigadores, colaboraciones institucionales y proyectos de la UNAM y México.
+Esta skill articula consultas híbridas **GraphRAG** (recuperación aumentada por grafos de conocimiento y vectores densos) sobre la infraestructura científica del ecosistema.
 
-## 2. Protocolo de Razonamiento Híbrido
-1. **Búsqueda Vectorial:** `sinapsisai-graphrag-engine -> search_scientific_papers_semantic`.
-2. **Exploración de Grafo:** `sinapsisai-graphrag-engine -> query_knowledge_graph_cypher` para navegar relaciones `[:COAUTHORED_WITH]`, `[:AFFILIATED_WITH]`, `[:ALIGNED_WITH_SDG]`.
-3. **Validación SNII:** `sinapsisai-graphrag-engine -> resolve_snii_identity` y `get_researcher_profile` para confirmar nivel y vigencia oficial.
+## 1. Flujo Operativo en el Ecosistema (Workspace-First)
+
+1. **Recuperación Semántica Vectorial (768d Nomic):**
+   - Delega en `openalex-mexico-semantic-search` (`openalex_mexico_cli.py semantic-search`) para recuperar obras y perfiles por similitud coseno conceptual sin depender de coincidencia léxica exacta.
+2. **Resolución de Identidad y Padrón SNII:**
+   - Delega en `snii-identity-resolver` (`snii_resolver_cli.py`) y `openalex-mexico-author-search` para vincular cada nodo de autor con su nivel SNII, ORCID y ROR institucional.
+3. **Construcción del Subgrafo Relacional en el Workspace:**
+   - Una vez exportado el corpus afín a `./corpus.parquet`, delega en `bibliometric-network-analyst` (`biblio_network_cli.py`) y `topics-research-fronts-intelligence` (`build_bibliometric_fronts.py`) para extraer la estructura comunitaria Leiden, centralidades de intermediación (*betweenness*) y puentes estructurales entre grupos de investigación.

@@ -17,28 +17,48 @@ La metodología está fundamentada y validada en:
 > **Jiménez-Andrade, J. L. (2023).** *Métodos y aplicaciones de la red neuronal SOM para el análisis temporal de datos multidimensionales* (Tesis doctoral). Universidad Nacional Autónoma de México.
 
 ### Complementariedad con el Mapeo Neurolongitudinal
-* **Mapeo Neurolongitudinal ([`neural-longitudinal-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)):** Genera una secuencia discreta de mapas espacialmente encadenados (Warm-Start). Es óptimo para comparar **sistemas masivos de muchas entidades simultáneas** a través de pocas ventanas o periodos (e.g. 3 a 5 décadas o quinquenios).
-* **Mapeo de Trayectorias ([`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)):** Modela la trayectoria anual continua mediante **curvas suaves en el espacio de estados** sobre un único mapa de alta resolución, permitiendo examinar puntos de inflexión y dinámicas detalladas de una entidad o un conjunto selecto de competidores/pares.
+* **Mapeo Neurolongitudinal ([`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)):** Genera una secuencia discreta de mapas espacialmente encadenados (Warm-Start). Es óptimo para comparar **sistemas masivos de muchas entidades simultáneas** a través de pocas ventanas o periodos (e.g. 3 a 5 décadas o quinquenios).
+* **Mapeo de Trayectorias ([`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)):** Modela la trayectoria anual continua mediante **curvas suaves en el espacio de estados** sobre un único mapa de alta resolución, permitiendo examinar puntos de inflexión y dinámicas detalladas de una entidad o un conjunto selecto de competidores/pares.
 
 ---
 
-## 2. Dependencies y Cadena de Valor
+## 2. Dependencies y Cadena de Valor (De la Cosecha al SOM)
 
-Esta skill orquesta la evolución temporal en el espacio latente y depende de la siguiente arquitectura:
+Esta skill orquesta la evolución temporal continua en el espacio latente y opera sobre una matriz longitudinal de series anuales por entidad suavizada con Media Móvil Centrada (CMA) en el Workspace (`./matrices/series_cma_som.parquet`):
 
-* **Habilidades Upstream (Extracción y Soporte Matemático):**
-  * [`scientometrics-incites-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/scientometrics-incites-expert/SKILL.md): Extrae matrices de series anuales de InCites con suavizado ECMA (`get_incites_temporal_evolution`).
-  * [`tlachia-metrics-handler`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Extrae series de tiempo multivariadas anuales desde paquetes TlachIA Metrics.
-  * [`som-methodological-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Provee la calibración espectral SVD, el dimensionamiento continuo ($20N\text{--}30N$) y las reglas cromáticas LabSOM.
+* **Habilidades Upstream (Generación de Series Longitudinales Anuales en el Workspace):**
+  * **Opción A (Estándar desde `./corpus.parquet` cosechado): `tlachia-metrics-engine`** (`scripts/tlachia_metrics_cli.py annual-series --level ... --cma-window 3`): Calcula año por año los **más de 35 indicadores cienciométricos sin truncar columnas** para cada entidad y aplica el suavizado de Media Móvil Centrada (CMA de 3 o 5 años):
+    ```bash
+    /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py annual-series \
+      --input ./corpus.parquet \
+      --level institution \
+      --min-docs 2 \
+      --cma-window 3 \
+      --output ./matrices/series_cma_som.parquet
+    ```
+  * **Opción B (Paquetes TlachIA Metrics `.zip`): `tlachia-metrics-handler`**.
+  * **Opción C (Series anuales Clarivate InCites): `scientometrics-incites-expert`** (`get_incites_temporal_evolution`).
+  * `som-methodological-expert`: Provee la calibración espectral SVD, el dimensionamiento continuo ($20N\text{--}30N$) y las reglas cromáticas LabSOM.
+* **Ejecución CLI Workspace-First de esta Skill (`scripts/som_trajectory_cli.py`):**
+  ```bash
+  # Entrena sobre el universo completo de entidades y traza splines para hasta 5 entidades focales
+  /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/scripts/som_trajectory_cli.py \
+    --input ./matrices/series_cma_som.parquet \
+    --top-entities 5 \
+    --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
+    --html-out ./reports/som_trajectories.html \
+    --json-out ./reports/som_trajectories.json
+  ```
 * **Herramientas de Software Asociadas:**
-  * [`services/knomap/tools/viz_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/viz_tools.py): `knomap_render_som_dashboard` (renderizado SVG de splines Catmull-Rom sobre malla hexagonal).
-  * [`services/knomap/tools/som_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/som_tools.py): Entrenamiento de la red y proyección de coordenadas BMU.
+  * `scripts/som_trajectory_cli.py`: CLI autónomo para proyectar trayectorias continuas desde `.parquet`/`.csv`/`.json`.
+  * `services/knomap/tools/viz_tools.py`: `knomap_render_som_dashboard` (renderizado SVG de splines Catmull-Rom sobre malla hexagonal).
+  * `services/knomap/tools/som_tools.py`: Entrenamiento de la red y proyección de coordenadas BMU.
 
 ---
 
 ## 3. Reutilización de `som-methodological-expert`
 
-El Mapeo de Trayectorias **reutiliza directamente** los pilares metodológicos de [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md):
+El Mapeo de Trayectorias **reutiliza directamente** los pilares metodológicos de [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md):
 1. **Espacio de Estados Multidimensional:** Cada observación temporal de una entidad es un vector $x_t \in \mathbb{R}^n$ definido por los mismos $n$ indicadores normalizados (CNCI/FWCI, Top 1%, Top 10%, Q1, Average Percentile, colaboraciones).
 2. **Dimensionamiento y Geometría de Malla:** Relación de aspecto espectral SVD ($\sigma_1 / \sigma_2$), topología hexagonal y sobremalla continua ($20N\text{--}30N$ o Big SOM $10N$).
 3. **El Lienzo de la Tríada Visual LabSOM:** Las trayectorias se trazan superpuestas sobre:
@@ -70,7 +90,7 @@ En **KnoMap** se extendió la formulación original (pensada inicialmente para u
 ```
 
 ### Mapeo Normal de Etiquetas vs. Trazado de Splines para Trayectorias
-* **Mapeo Normal de Etiquetas:** En [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) y [`neural-longitudinal-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md), las etiquetas se proyectan de forma estática sobre sus respectivas neuronas ganadoras (BMU) en el plano.
+* **Mapeo Normal de Etiquetas:** En [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) y [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md), las etiquetas se proyectan de forma estática sobre sus respectivas neuronas ganadoras (BMU) en el plano.
 * **Trazado de Splines (Trayectorias):** En esta skill, además de las etiquetas puntuales, **se mapean splines continuos (Catmull-Rom)** que conectan la secuencia intertemporal de neuronas ganadoras para cada entidad a lo largo de los años, complementados con waypoints circulares y flechas de dirección.
 * **Regla de Legibilidad para Matrices de Entrenamiento Masivas:**
   Si la matriz con la que se entrena el SOM es muy grande (decenas o cientos de entidades incluidas para garantizar que la red represente con fidelidad todo el espacio de estados), **se debe procurar dibujar una cantidad razonable de etiquetas estáticas** (e.g. limitando el número de etiquetas por celda a 1 o 2, o seleccionando únicamente las entidades más sobresalientes del corpus) para que se puedan leer con claridad en el mapa sin empalmarse.

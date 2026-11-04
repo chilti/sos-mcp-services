@@ -456,9 +456,9 @@ def render_knomap_som_dashboard(
         svg_id="svg-cluster-map"
     )
 
-    # 2. Generar la Rejilla de Component Maps (Intermedia)
+    # 2. Generar la Rejilla de Component Maps (Intermedia) - sin truncar indicadores
     component_cards = []
-    for f_idx, ind_name in enumerate(indicators[:6]):
+    for f_idx, ind_name in enumerate(indicators):
         comp_values = [weights[i][f_idx] for i in range(min(total_neurons, len(weights)))] if weights else [0.5]*total_neurons
         min_v = float(min(comp_values))
         max_v = float(max(comp_values))

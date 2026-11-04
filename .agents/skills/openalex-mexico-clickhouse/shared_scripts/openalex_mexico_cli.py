@@ -549,7 +549,11 @@ def cmd_search_works(args):
     sql = f"""
     SELECT id, title, doi, any(publication_year), max(cited_by_count), any(oa_status), any(is_oa),
            any(fwci), any(percentile), any(is_top_10), any(is_top_1), any(apc_paid_usd),
-           any(author_names), any(institution_names), any(institution_rors), any(topic), any(subfield)
+           any(author_names), any(institution_names), any(institution_rors), any(topic), any(subfield),
+           any(field), any(domain), any(type), any(language), any(source_id), any(source_type),
+           any(apc_list_usd), any(is_doaj_indexed), any(has_repository_fulltext),
+           any(keywords), any(sdgs), any(all_country_codes), any(country_code),
+           JSONExtract(any(raw_data), 'referenced_works', 'Array(String)')
     FROM rag.works_academic_all
     WHERE {where_sql}
     GROUP BY id, title, doi
@@ -560,12 +564,21 @@ def cmd_search_works(args):
     res = client.query(sql)
     works = []
     for row in res.result_rows:
+        pub_year = row[3]
+        cites = row[4] or 0
+        auth_list = list(row[12] or [])
+        inst_list = list(row[13] or [])
+        kw_list = list(row[26] or [])
+        cc_list = list(row[28] or ([row[29]] if row[29] else []))
+        ref_list = list(row[30] or [])
         works.append({
             "id": row[0],
             "title": row[1],
             "doi": row[2],
-            "publication_year": row[3],
-            "cited_by_count": row[4],
+            "publication_year": pub_year,
+            "year": pub_year,
+            "cited_by_count": cites,
+            "citations": cites,
             "oa_status": row[5],
             "is_oa": bool(row[6] == "1" or row[6] == 1 or str(row[6]).lower() == "true"),
             "fwci": round(row[7], 3) if row[7] is not None else None,
@@ -573,35 +586,70 @@ def cmd_search_works(args):
             "is_top_10": bool(row[9] == 1),
             "is_top_1": bool(row[10] == 1),
             "apc_paid_usd": round(row[11], 2) if row[11] is not None else 0.0,
-            "raw_author_names": row[12],
-            "institution_names": row[13],
-            "institution_rors": row[14],
+            "raw_author_names": auth_list,
+            "author_names": auth_list,
+            "authors": "; ".join(str(a) for a in auth_list if a),
+            "institution_names": inst_list,
+            "affiliations": "; ".join(str(i) for i in inst_list if i),
+            "institution_rors": list(row[14] or []),
             "topic": row[15],
-            "subfield": row[16]
+            "subfield": row[16],
+            "field": row[17],
+            "domain": row[18],
+            "type": row[19] or "article",
+            "doc_type": row[19] or "article",
+            "language": row[20] or "en",
+            "source_id": row[21] or "",
+            "source_title": row[21] or "",
+            "source_type": row[22] or "",
+            "apc_list_usd": round(row[23], 2) if row[23] is not None else 0.0,
+            "is_doaj_indexed": bool(row[24] == 1),
+            "has_repository_fulltext": bool(row[25] == 1),
+            "keywords": kw_list,
+            "keywords_author": "; ".join(str(k) for k in kw_list if k),
+            "keywords_plus": row[15] or "",
+            "sdgs": list(row[27] or []),
+            "all_country_codes": cc_list,
+            "country_codes": "; ".join(str(c) for c in cc_list if c),
+            "country_code": row[29] or "MX",
+            "referenced_works": ref_list,
+            "source_db": "OpenAlex-Mexico-ClickHouse"
         })
 
     # Desambiguar y resolver autores de México vs internacionales
     resolve_authors_for_works(works, client)
 
-    output_data = {
-        "filters": {
-            "query": args.query,
-            "author_name": args.author_name,
-            "institution_name": args.institution_name,
-            "institution_ror": args.institution_ror,
-            "year_range": f"{args.year_min}-{args.year_max}",
-            "oa_status": args.oa_status,
-            "is_top_10": args.is_top_10,
-            "topic": args.topic
-        },
-        "limit": limit,
-        "total_returned": len(works),
-        "works": works
-    }
-
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=2, ensure_ascii=False)
+    ext = os.path.splitext(args.output)[1].lower()
+    if ext in (".parquet", ".csv"):
+        import pandas as pd
+        df = pd.DataFrame(works)
+        if ext == ".parquet":
+            df.to_parquet(args.output, index=False)
+        else:
+            for col in df.columns:
+                if df[col].apply(lambda x: isinstance(x, (list, dict))).any():
+                    df[col] = df[col].apply(lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else ("; ".join(map(str, x)) if isinstance(x, list) else x))
+            df.to_csv(args.output, index=False)
+    else:
+        output_data = {
+            "filters": {
+                "query": args.query,
+                "author_name": args.author_name,
+                "institution_name": args.institution_name,
+                "institution_ror": args.institution_ror,
+                "year_range": f"{args.year_min}-{args.year_max}",
+                "oa_status": args.oa_status,
+                "is_top_10": args.is_top_10,
+                "topic": args.topic
+            },
+            "limit": limit,
+            "total_returned": len(works),
+            "works": works,
+            "records": works
+        }
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     print(f"Búsqueda de publicaciones en México completada: {len(works)} trabajos guardados en {args.output}")
     sys.exit(0)

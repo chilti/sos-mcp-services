@@ -1,227 +1,121 @@
 ---
 name: template-radar-frentes-investigacion
 description: >-
-  Cartografía cienciométrica de frentes de investigación emergentes, radar tecnológico y linajes aluviales AMI (Topics v5.0). Orquesta el flujo de 6 fases delegando en las Agent Skills especializadas del stack: 1) Detección de frentes y linajes AMI (research-fronts-detection-expert, topics-research-fronts-intelligence), 2) Delimitación y revisión profunda (bibliometric-search-strategist, deep-literature-researcher), 3) Leyes cinéticas y afinidad Salton (classical-bibliometrics-laws, geopolitical-collaboration-analyst), 4) Cartografía topológica SOM (som-methodological-expert), 5) Alineación ODS 1-17 (sdg-impact-intelligence), y 6) Visualizaciones y roadmap prospectivo (openalex-mexico-visualizer).
+  Cartografía cienciométrica de frentes de investigación emergentes, radar tecnológico, evolución temática y linajes aluviales AMI. Opera bajo un protocolo en 2 etapas: I) Exploración en el workspace mediante el menú de Agent Skills (detección multimodal de frentes por acoplamiento bibliográfico, co-citación, citación directa o Topics Macro/Meso/Micro; lectura de artículos núcleo; motor de 42+ indicadores; cinéticas de crecimiento; afinidad geopolítica; tríada SOM estática/trayectorias/longitudinal y alineación ODS), y II) Curaduría científica para seleccionar la representación de red y el subconjunto de técnicas que mejor revelen la estructura y evolución de los frentes.
 ---
 
-# Plantilla Maestra: Reporte de Inteligencia Científica, Frentes de Investigación, Radar Tecnológico y Cartografía Topológica SOM
-### *Especializada en mapeo temático multimodal (Topics v5.0, Linajes AMI, Coautoría Salton, Redes SOM y Alineación con ODS)*
+# Plantilla Maestra: Reporte de Inteligencia Científica, Radar de Frentes de Investigación y Cartografía Topológica SOM
+### *Inspirada en el mapeo multimodal de frentes de investigación, evolución temática y análisis SOM (estilo Polaritones / Topics & Research Fronts Intelligence)*
 
-Esta plantilla está diseñada para que un **agente único** en LibreChat / `agentic-data-stack` o entornos de automatización elabore un **REPORTE DE INTELIGENCIA CIENTÍFICA Y RADAR TECNOLÓGICO** de alto valor prospectivo para vicerrectorías de investigación, observatorios tecnológicos, agencias de financiamiento (SECIHTI, CONAHCYT, NSF, Horizon Europe) y comités de planeación estratégica.
+Esta plantilla guía la elaboración de un **REPORTE DE INTELIGENCIA CIENTÍFICA Y RADAR DE FRENTES DE INVESTIGACIÓN** de alto valor prospectivo para grupos de investigación, vicerrectorías, observatorios tecnológicos y agencias de financiamiento.
 
-Incorpora la **metodología neurocomputacional de Mapas Autoorganizados de Kohonen (SOM)** (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017) para proyectar la topología del paisaje científico y clasificar los frentes de investigación según sus perfiles multidimensionales de maduración, impacto normalizado y soberanía geopolítica.
-
----
-
-## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
-
-Esta plantilla opera como una **meta-habilidad orquestadora** de inteligencia prospectiva. Para garantizar rigor conceptual y metodológico, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**.
-
-El protocolo canónico de 6 fases se orquesta como sigue:
-
-1. **Fase 1: Detección Multimodal de Frentes, Taxonomía y Linajes Aluviales AMI:**
-   - **Agent Skills Orquestadas:** [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) y [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md).
-   - **Propósito y Directivas:**
-     * Extraer los frentes temáticos activos de Topics v5.0, identificando palabras clave de frontera, clusters de alta densidad y métricas de aceleración temprana.
-     * Reconstruir la genealogía histórica y los linajes aluviales AMI (Alluvial Mutation Index), documentando eventos de escisión, fusión y surgimiento a través de ventanas temporales.
-     * Navegar y estructurar la jerarquía taxonómica multinivel: Domain $\to$ Field $\to$ Subfield $\to$ Topic.
-   - **Artefactos Producidos:** Tabla 1 (Cuadrante de Frentes de Investigación) y Diagrama Taxonómico Multinivel Mermaid.
-
-2. **Fase 2: Delimitación de Campo, Cosecha Columnar y Revisión Profunda:**
-   - **Agent Skills Orquestadas:** [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) y [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md).
-   - **Propósito y Directivas:**
-     * Delimitar el campo mediante el enfoque multi-etapa de Huang, Schiebel & Porter (2011) en bloques conceptuales (*building blocks*).
-     * Transpilar la estrategia a ClickHouse SQL columnar sobre `rag.works_academic_all` bajo la regla inviolable de **CERO JOINs**, auditando la ecuación bajo la directriz **GLOBAL (ISSI)**.
-     * Ejecutar el protocolo de *Citation Snowballing* backward/forward (Wohlin, 2014) con el **Filtro de Densidad Núcleo de Glänzel et al. (2009)** ($k \ge 2$) para aislar los documentos fundacionales del frente sin ruido espurio.
-   - **Artefactos Producidos:** Ecuaciones de búsqueda auditadas bajo directriz GLOBAL y benchmark de literatura previa.
-
-3. **Fase 3: Dinámica Longitudinal, Cinéticas Price y Cartografía Geopolítica de Salton:**
-   - **Agent Skills Orquestadas:** [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md) y [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md).
-   - **Propósito y Directivas:**
-     * Ajustar los modelos de crecimiento exponencial y logístico de Price: tasa anual $\alpha$, tiempo de duplicación $t_d = \frac{\ln(2)}{\alpha}$, $R^2$ y p-valores en ventanas históricas vs. recientes.
-     * Construir la matriz de coautoría internacional normalizada con el **Coseno de Salton** ($S_{ij} = \frac{C_{ij}}{\sqrt{C_i C_j}}$) y códigos ISO-3166-1 alpha-3.
-     * Evaluar la soberanía epistémica y la asimetría geopolítica Norte-Sur (% primer autor y autor de correspondencia).
-   - **Artefactos Producidos:** Tabla 2 (Dinámica de Crecimiento Cinético y Duplicación) y Tabla 3 (Matriz de Cooperación Bilateral y Soberanía Epistémica).
-
-4. **Fase 4: Cartografía Topológica Multidimensional con Redes SOM (Kohonen):**
-   - **Agent Skill Orquestada:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
-   - **Propósito y Directivas:**
-     * Construir la matriz multidimensional donde cada frente o topic es un vector caracterizado por: 1) Tasa de aceleración $\alpha$, 2) Tiempo de duplicación $t_d$, 3) FWCI promedio, 4) Volumen de publicaciones, 5) Coautoría internacional, 6) % Acceso Abierto Diamante, y 7) Grado de alineación con ODS.
-     * Dimensionar la retícula hexagonal mediante la relación de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla $20N\text{--}30N$ con inicialización PCA.
-     * Generar la **Tríada Visual LabSOM**: U-Matrix roja/amarilla (barreras topológicas y valles densos), Mapas de Componentes Verde-Amarillo-Rojo (trade-offs multivariados) y agrupamiento aglomerativo en dos etapas de Vesanto & Alhoniemi con Silhouette ($s^*$).
-   - **Artefactos Producidos:** Tabla 4 (Clasificación Topológica de Clusters Temáticos en el SOM) y estado neuronal persistido (`topics_som_state.json`).
-
-5. **Fase 5: Mapeo de Alineación e Impacto en Objetivos de Desarrollo Sostenible (ODS 1–17):**
-   - **Agent Skill Orquestada:** [`sdg-impact-intelligence`](/home/jlja/.gemini/config/skills/sdg-impact-intelligence/SKILL.md).
-   - **Propósito y Directivas:**
-     * Analizar la intersección temática con la Agenda 2030 de la ONU mediante las etiquetas oficiales `sdg_ids` en ClickHouse.
-     * Cuantificar el porcentaje de producción del frente vinculado a cada ODS, el impacto normalizado (FWCI) por objetivo y las tasas de coautoría internacional asociadas.
-   - **Artefactos Producidos:** Tabla 5 (Distribución Temática por ODS Relevantes).
-
-6. **Fase 6: Artefactos Visuales Interactivos, Roadmap Prospectivo y Material Suplementario:**
-   - **Agent Skill Orquestada:** [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
-   - **Propósito y Directivas:**
-     * Generar visualizaciones interactivas autónomas HTML (sunburst taxonómico multinivel, dinámicas de frentes, matrices de cuadrantes y diagramas de Sankey geopolíticos).
-     * Elaborar la Hoja de Ruta Tecnológica a 1, 3 y 5 años con recomendaciones operativas para consejos de ciencia y tecnología.
-     * Empaquetar en `./supplementary/`:
-       - `Script S1: 01_extract_topics_data.py`: Cosecha determinista de Topics en ClickHouse sin JOINs.
-       - `Script S2: 02_topics_som_mapping.py`: Matriz multidimensional de frentes, cálculo de Salton y llamada a `train_som` con semilla fija (`seed=42`).
-       - `Dataset S1: topics_metadata.csv`: Métricas cuantitativas completas de los frentes.
-       - `Dataset S2: topics_som_state.json`: Topología de la variedad temática.
-   - **Artefactos Producidos:** Visualizaciones interactivas en HTML y catálogo suplementario para auditoría.
+Siguiendo el principio de **exploración y curaduría humana**, la plantilla presenta al agente el **menú completo de Agent Skills** para explorar la estructura intelectual y temporal del campo en el workspace (`./corpus.parquet`), le permite **comparar distintas estrategias de detección de frentes** (acoplamiento bibliográfico, co-citación, citación directa, co-ocurrencia o taxonomías Topics Macro/Meso/Micro) y distintas configuraciones del **SOM**, y le instruye **descartar aquellas técnicas que produzcan particiones ruidosas o redundantes**, construyendo el reporte alrededor de los resultados con mayor poder explicativo y combinando la cartografía cuantitativa con la revisión sustantiva de los artículos núcleo de cada frente.
 
 ---
 
-## Disponibilidad de Datos y Reglas Anti-Fabricación (Verificadas contra el Corpus y las Herramientas)
+## Etapa I: Menú de Agent Skills para Exploración de Frentes (*Fase de Laboratorio*)
 
-**Columnas reales de `rag.works_academic_all`** (usar solo estas; no inventar nombres): `publication_year`, `cited_by_count`, `is_oa`, `oa_status` (valores: `closed`, `green`, `diamond`, `gold`, `bronze`, `hybrid`), `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`, `counts_by_year`.
+El agente opera bajo el principio **Workspace-First** (`./corpus.parquet` $\to$ `./matrices/*.parquet` $\to$ `./reportes/`) y dispone del siguiente menú de skills:
 
-1. **Número de autores:** no existe columna `authors_count`; usar `length(author_names)`.
-2. **APC:** no existe `apc_usd`; usar `apc_paid_usd` (pagado) y `apc_list_usd` (precio de lista), indicando cuál se reporta.
-3. **Primer autor y autor de correspondencia:** NO son columnas; solo existen dentro del JSON de `raw_data`. Si no se extraen de `raw_data` (consulta costosa, acotada a una sola entidad y sin JOINs), reportar `N/D (no disponible en el corpus)` en las celdas correspondientes y consignarlo como limitación. Nunca estimarlos ni completarlos con cifras plausibles.
-4. **Cuartiles Q1/Q2 y colaboración con industria:** no existen en el corpus. No incluirlos como indicador calculado; si se mencionan, marcar `N/D`. Como proxies disponibles: `is_core_journal`, `is_doaj_journal`, `is_top_10`, `is_top_1`.
-5. **Dependencias dentro de una institución (ej. Instituto de Neurobiología dentro de la UNAM):** el ROR solo identifica a la institución matriz. Para aislar una dependencia filtrar por `institution_names` con coincidencia insensible a mayúsculas y diacríticos, y declarar que el filtro es aproximado y puede subcontar variantes toponímicas.
-6. **Coseno de Salton:** el índice que devuelve `get_geopolitical_collaboration_matrix` es una aproximación (usa un denominador proxy). Recalcular $S_{ij} = C_{ij}/\sqrt{C_i C_j}$ a partir de los conteos de coautoría ($C_{ij}$, $C_i$, $C_j$) y reportar el valor recalculado; si no es posible, rotular el índice como *aproximado*.
-7. **Detección de quiebres (CUSUM / Pettitt):** no existe herramienta para ello. Calcularlos a partir de la serie anual extraída (declarando método y estadístico), o acotar los periodos con `analyze_scientific_growth_phases`; no atribuir a una herramienta resultados que no produce. La partición modular disponible es Louvain (`detect_louvain_communities`), no Leiden.
-8. **Modo contingencia (`status: "fallback"`):** `train_som`, `evaluate_som_clusters` y `recluster_som` devuelven valores sintéticos (error de cuantización fijo, clusters y BMU ficticios) cuando el motor no está disponible. Si algún resultado trae `status: "fallback"`, NO usarlo para conclusiones: informar que el modelado SOM no pudo ejecutarse y limitar el análisis a lo no-SOM.
-9. **Persistencia y Dashboard del SOM:** `train_som` cuenta con el parámetro `output_state_path` (ej. `output_state_path="/tmp/som_state.json"`) e `indicator_names`. Para generar el dashboard interactivo oficial con `knomap_render_som_dashboard`, se debe indicar `output_state_path` al invocar `train_som` y pasar esa misma ruta a `knomap_render_som_dashboard(som_state_path=...)`. Si el motor no está disponible, la herramienta devuelve `status: "error"` con la causa raíz; nunca inventar métricas ni volcar matrices numéricas completas de pesos en el cuerpo del texto.
-10. **Matriz de entrada del SOM:** construirla solo con indicadores realmente calculados y estandarizados (z-score); las dimensiones `N/D` se excluyen del vector, no se rellenan.
-
----
-
-## Reglas Editoriales Estrictas
-
-- **LENGUAJE MODERADO Y SOBRIO (PROHIBICIÓN ABSOLUTA DE SUPERLATIVOS):** Emplear terminología cienciométrica formal, objetiva y fundamentada en distribuciones empíricas. Queda estrictamente prohibido el uso de hipérboles mercadotécnicas (*"revolucionario"*, *"sin precedentes"*, *"extraordinario"*, *"asombroso"*, *"pionero"*).
-- **ZERO-SCAFFOLDING LEAKAGE:** Excluir referencias internas a herramientas computacionales, prompts o tokens del chat.
-- **TABLAS ESTRUCTURADAS OBLIGATORIAS:** Presentar las Tablas 1, 2, 3, 4 y 5 íntegramente en Markdown en el cuerpo del texto.
-
----
-
-# [Título del Reporte: Radar Cienciométrico, Cartografía Topológica SOM e Inteligencia Prospectiva en [Dominio / Frente Temático]: Mapeo de Frentes Emergentes, Linajes de Conocimiento y Alineación Estratégica]
-
-## 1. RESUMEN EJECUTIVO Y RADAR DE ACELERACIÓN TEMÁTICA
-
-- **1.1. Síntesis Estratégica del Dominio:**
-  * Diagnóstico global del ritmo de crecimiento, masa crítica de publicaciones, dispersión geográfica y grado de madurez del frente tecnológico o científico.
-  * **Trazabilidad Metodológica GLOBAL (ISSI):** Declaración de la fuente de datos (OpenAlex / Topics v5.0), snapshot temporal con fecha y huso horario exacto de corte, criterios de delimitación temática multi-etapa y métricas de normalización relacional (Coseno de Salton para afinidad geopolítica y Association Strength para co-ocurrencia).
-- **1.2. Tabla 1: Cuadrante de Frentes de Investigación (Research Fronts v5.0):**
-
-| Frente de Investigación / Topic ID | Denominación Canónica del Frente | Fase del Ciclo de Vida | Tasa Crecimiento Anual ($\alpha$) | Tiempo Duplicación ($t_d$) | FWCI Promedio | Volumen Trabajos | Polo Geopolítico Líder (% Liderazgo) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Topic [XXXXX]** | [Frente A: ej. Polaritones y Condensados Cuánticos] | Emergente / Acelerado | [X.XX]% | [X.XX] años | [X.XX] | [N] | [País A] ([XX]%) |
-| **Topic [YYYYY]** | [Frente B: ej. Guías de Onda Plasmónicas] | Consolidado / Maduro | [X.XX]% | [X.XX] años | [X.XX] | [N] | [País B] ([XX]%) |
-| **Topic [ZZZZZ]** | [Frente C: ej. Resonadores Clásicos de Cavidad] | En declive / Residual | [X.XX]% | [X.XX] años | [X.XX] | [N] | [País C] ([XX]%) |
+1. **Delimitación y Cosecha del Corpus (`./corpus.parquet`):**
+   - [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md): Delimitación de campo multi-etapa (Huang, Schiebel & Porter, 2011), auditoría GLOBAL (ISSI) y transpilación SQL a ClickHouse (`rag.works_flat` para estudios globales o `rag.works_academic_all` para estudios enfocados en México, con **CERO JOINs**).
+   - [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) (global `rag.works_flat`), [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) (nacional `rag.works_academic_all`), o cosechadores [`openalex-harvester`](../openalex-harvester/SKILL.md), [`scopus-harvester`](../scopus-harvester/SKILL.md), [`pubmed-harvester`](../pubmed-harvester/SKILL.md), [`arxiv-harvester`](../arxiv-harvester/SKILL.md).
+2. **Detección Multimodal de Frentes y Linajes Longitudinales (Explorar y Comparar):**
+   - [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md) y [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md):
+     * Permite probar diferentes modalidades de red sobre `./corpus.parquet`: **acoplamiento bibliográfico** (óptimo para detectar frentes emergentes y activos), **co-citación** (óptimo para escuelas teóricas fundacionales), **citación directa** o **taxonomía nativa de OpenAlex Topics** (`domain` $\to$ `field` $\to$ `subfield` $\to$ `topic`).
+     * Partición comunitaria mediante algoritmo **Leiden (CPM / Modularity)** y rastreo intertemporal mediante **Información Mutua Ajustada (AMI)** para clasificar eventos evolutivos (*Persistencia*, *Fusión/Merge*, *Escisión/Split*, *Génesis*) y generar diagramas aluviales interactivos (`alluvial_lineages.html`).
+   - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Redes de co-ocurrencia conceptual, coautoría y acoplamiento con normalización *Association Strength* (VOSviewer / Force Graph).
+3. **Inspección Sustantiva de Artículos Seminales y Núcleo (*Core Papers* por Frente):**
+   - [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) y lectura directa de `./reportes/corpus_with_fronts.parquet`: Identificar los artículos de mayor impacto, centralidad o densidad ($k \ge 2$, Glänzel et al., 2009) dentro de cada frente detectado para sintetizar qué problemas científicos, arquitecturas o fenómenos investiga realmente cada cluster.
+4. **Motor de Indicadores Multidimensionales y Cartografía SOM (Estático, Trayectorias y Longitudinal):**
+   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Genera en `./matrices/` los **42+ indicadores sin truncar columnas** agregados por frente/topic, institución o país (`by-entity`), series anuales con CMA (`annual-series --cma-window 3`) y ventanas por periodos (`period-series`).
+   - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Proyección topológica SOM de los frentes, Topics o países/instituciones líderes eligiendo el subconjunto de indicadores más informativo (`--indicator-cols`), U-Matrix, Mapas de Componentes y meta-clustering de Vesanto con Silhouette ($s^*$).
+   - [`som-trajectory-mapping`](../som-trajectory-mapping/SKILL.md) y [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md): Evolución temporal de los frentes o actores líderes mediante órbitas con splines cúbicos ($\le 5$ entidades) o encadenamiento intertemporal Warm-Start ($\Delta W$).
+5. **Módulos Complementarios de Cinética, Geopolítica, Acceso Abierto y ODS:**
+   - [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md): Cinética de crecimiento exponencial/logístico de Price ($\alpha, t_d$), Lotka, Bradford e Índice de Price.
+   - [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md): Matriz de colaboración internacional (Coseno de Salton $S_{ij}$) y liderazgo por país/bloque.
+   - [`open-access-monitor`](../open-access-monitor/SKILL.md), [`sdg-impact-intelligence`](../sdg-impact-intelligence/SKILL.md) y [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
 
 ---
 
-## 2. ESTRUCTURA TAXONÓMICA MULTINIVEL Y CONVERGENCIA DISCIPLINAR
+## Etapa II: Criterios de Curaduría y Selección de Técnicas
 
-- **2.1. Desglose Jerárquico (Domain $\to$ Field $\to$ Subfield $\to$ Topic):**
-  * Caracterización de los campos y subcampos disciplinarios que convergen en el área analizada.
-- **2.2. Diagrama de Convergencia Taxonómica (Mermaid Obligatorio):**
+Antes de redactar el reporte, el agente evalúa los artefactos generados en `./reportes/` y aplica las siguientes reglas:
 
-```mermaid
-graph TD
-    Domain[Dominio General: Physical Sciences] --> Field1[Campo 1: Physics and Astronomy]
-    Domain --> Field2[Campo 2: Materials Science]
-    Field1 --> Sub1[Subcampo A: Condensed Matter Physics]
-    Field2 --> Sub2[Subcampo B: Electronic, Optical and Magnetic Materials]
-    Sub1 --> Top1[Topic Principal: Polariton Condensation]
-    Sub2 --> Top1
-    Top1 --> Front[Frente de Investigación Emergente: Microcavidades y Metamateriales]
-```
+1. **Elección del Método Ganador de Detección de Frentes:**
+   - Si el agente probó acoplamiento bibliográfico, co-citación y/o agrupación por Topics de OpenAlex, debe evaluar cuál partición presenta mejor modularidad ($Q$), cobertura no trivial del corpus y diferenciación temática clara. La técnica con mejor señal encabeza el reporte; si ambas se complementan (como en el estudio de *Polaritons*, donde la evolución Macro/Meso/Micro de Topics se complementa con los frentes de acoplamiento bibliográfico), se articulan en secciones sucesivas.
+2. **Selección de Dimensiones y Variante del SOM:**
+   - Escoger de `./matrices/` los indicadores que mejor discriminen la naturaleza de los frentes o actores (ej. volumen, FWCI, % Top 10%, citas/doc, índice H/G, % colaboración internacional, año promedio/recencia o vía OA) verificando el coeficiente Silhouette ($s^*$).
+   - Si el horizonte temporal o el tamaño de muestra por ventana no justifica las 3 variantes SOM al mismo tiempo, conservar la variante (Estática, Trayectorias o Longitudinal Warm-Start) que muestre con mayor nitidez la diferenciación y maduración de los frentes.
+3. **Módulos Condicionales (ODS, APC, Geopolítica, Leyes):**
+   - Incluir análisis de ODS (`sdg-impact-intelligence`) o de costos APC (`open-access-monitor`) únicamente cuando exista señal empírica relevante en el corpus o sea parte del encargo del usuario. Nunca rellenar tablas con ceros o `N/D` por cumplir un formato fijo.
+4. **Bitácora de Exploración (`./reportes/exploration_log.md`):**
+   - Registrar en `./reportes/exploration_log.md` qué métodos y parámetros se probaron y por qué se eligieron los que integran el reporte final.
 
 ---
 
-## 3. DINÁMICA LONGITUDINAL, LINAJES AMI Y DIFERENCIACIÓN TEMÁTICA
+## Disponibilidad de Datos y Reglas Anti-Fabricación
 
-- **3.1. Trayectoria Histórica y Linajes Aluviales:**
-  * Análisis de linajes de conocimiento: cómo frentes históricos se bifurcaron (*escisión*) o cómo disciplinas dispares convergieron (*fusión*) para dar lugar al frente actual.
-- **3.2. Tabla 2: Dinámica de Crecimiento Cinético y Tiempos de Duplicación:**
-
-| Periodo Analítico | Volumen Trabajos | Tasa de Aceleración ($\alpha$) | Tiempo Duplicación ($t_d$) | Coeficiente $R^2$ | P-valor Modelo |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Ventana Histórica (T-10 a T-5)** | [N] | [X.XXX] | [X.XX] años | [0.XXX] | [0.XXX] |
-| **Ventana Reciente (T-5 a Actual)** | [N] | [X.XXX] | [X.XX] años | [0.XXX] | [0.XXX] |
+1. **Tablas reales en ClickHouse (`rag.works_flat` mundial y `rag.works_academic_all` México):** Usar únicamente columnas verificadas (`publication_year`, `cited_by_count`, `is_oa`, `oa_status`, `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `keywords`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `referenced_works`).
+2. **Tablas adaptadas a indicadores reales:** Diseñar las columnas de cada tabla con las métricas efectivamente calculadas en `./matrices/` y `./reportes/`. Prohibido imprimir columnas vacías con `N/D`.
+3. **Indicadores de Especialización ($AI$, $\text{F-measure}$, $DShareC$, $CShareD$):** Aplicar los criterios de contexto analítico de Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet (2026, *Journal of Informetrics*).
+4. **Lenguaje sobrio y cero filtración de andamiaje (*Zero-Scaffolding Leakage*):** Prohibición absoluta de superlativos (*"revolucionario"*, *"sin precedentes"*, *"espectacular"*). No mencionar comandos CLI ni prompts en la narrativa principal.
 
 ---
 
-## 4. CARTOGRAFÍA GEOPOLÍTICA DE COLABORACIÓN Y MATRIZ DE SALTON
+# Estructura Modular del Reporte de Radar de Frentes
 
-- **4.1. Afinidad Bilateral y Bloques Regionales:**
-  * Identificación de los ejes de colaboración más densos mediante el Coseno de Salton ($S_{ij}$).
-  * Benchmarking por bloques geopolíticos (América Latina, Unión Europea, Norteamérica, Asia-Pacífico).
-- **4.2. Tabla 3: Matriz de Cooperación Bilateral y Soberanía Epistémica:**
+# [Título del Reporte: Radar Cienciométrico, Evolución de Frentes de Investigación y Cartografía Topológica SOM en [Dominio / Tema], [Año_i – Año_f]]
 
-| Par de Países ($i - j$) | Publicaciones Conjuntas ($C_{ij}$) | Coseno de Salton ($S_{ij}$) | FWCI Conjunto | Ratio Primer Autor País $i$ vs País $j$ | Tasa de Autor Corresp. Institucional |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| [País A – País B] | [N] | [0.XXX] | [X.XX] | [XX]% vs [XX]% | [XX.X]% |
-| [País A – País C] | [N] | [0.XXX] | [X.XX] | [XX]% vs [XX]% | [XX.X]% |
+## 1. RESUMEN EJECUTIVO Y PANORAMA DEL DOMINIO
+- **1.1. Diagnóstico Global y Trazabilidad Metodológica (Directriz GLOBAL - ISSI):**
+  * Síntesis de la magnitud del corpus ($N$ documentos, citas, FWCI, % Top 10%, ritmo de crecimiento anual y tiempo de duplicación $t_d$), declarando la fuente de datos (`rag.works_flat` / `rag.works_academic_all` / otras), fecha de corte, estrategia de delimitación y método de detección de frentes seleccionado tras la fase exploratoria.
+- **1.2. Tabla 1: Cuadrante de Frentes de Investigación Identificados:**
+  * Presentar los frentes principales detectados con sus métricas reales calculadas (ej. ID del Frente, Denominación Temática, Volumen de Documentos, Citas Totales / Citas por Doc, FWCI o Impacto, Año Medio / Fase de Madurez y Términos o Autores/Instituciones Núcleo).
 
 ---
 
-## 5. CARTOGRAFÍA TOPOLÓGICA MULTIDIMENSIONAL CON REDES SOM (KOHONEN)
-
-*Mapeo neurocomputacional continuo del paisaje temático para clasificar frentes de investigación sin reduccionismos unidimensionales (Carrillo-Calvet et al., 2025).*
-
-- **5.1. Arquitectura de Malla y Calibración SVD:**
-  * Dimensionamiento con relación de aspecto espectral $\sigma_1 / \sigma_2$, sobremalla continua hexagonal $20N-30N$, inicialización PCA y partición en dos etapas con coeficiente Silhouette máximo ($s^*$).
-- **5.2. Interpretación de la Tríada Visual LabSOM:**
-  * **U-Matrix:** Identificación de barreras topológicas (crestas amarillas) entre subdominios teóricos y valles densos (rojo) donde convergen frentes consolidados.
-  * **Mapas de Componentes:** Gradientes espaciales (Verde < Media < Rojo) revelando el trade-off entre velocidad cinética ($\alpha$), citación normalizada (FWCI) y adopción en acceso abierto diamante.
-- **5.3. Tabla 4: Clasificación Topológica de Clusters Temáticos en el SOM:**
-
-| Cluster SOM ($K^*$) | Frentes de Investigación Agrupados | Perfil Multidimensional Dominante | Componentes Sobresalientes (Rojo) | Vulnerabilidades (Verde) | ODS Predominante Vinculado |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Cluster 1 (Frontera de Ruptura)** | [Frente A, Frente D, ...] | Alta aceleración cinética, alto FWCI y tracción global | Tasa $\alpha$, FWCI, Top 10% | Baja adopción regional Sur Global | ODS 9 (Industria / Innovación) |
-| **Cluster 2 (Consolidados / Maduros)** | [Frente B, Frente E, ...] | Elevado volumen acumulado, baja duplicación y alta citación | Volumen, Citas acumuladas | Tasa de aceleración reciente | ODS 7 (Energía Asequible) |
-| **Cluster 3 (Nicho Regional / Diamante)** | [Frente C, Frente F, ...] | Enfoque en problemáticas locales, liderazgo autoral y OA Diamante | OA Diamante, Coautoría nacional (N/D si no se calcula primer autor) | Presencia en revistas núcleo | ODS 3 / ODS 13 (Salud / Clima) |
+## 2. ARQUITECTURA TAXONÓMICA Y REDES CONCEPTUALES DEL CAMPO
+- **2.1. Convergencia Disciplinar (Macro / Meso / Micro):**
+  * Distribución de la producción en dominios, campos, subcampos y topics, complementada con un diagrama **Mermaid** de la arquitectura temática real del corpus.
+- **2.2. Estructura de la Red de Conocimiento:**
+  * Análisis de la red de acoplamiento bibliográfico, co-citación o co-ocurrencia de conceptos (`network_keywords.html`, `fronts_summary.csv`), destacando los puentes interdisciplinarios y la cohesión modular ($Q$).
 
 ---
 
-## 6. ALINEACIÓN CON OBJETIVOS DE DESARROLLO SOSTENIBLE (ODS 1–17)
-
-- **6.1. Mapeo de Contribución a la Agenda 2030 de la ONU:**
-  * Cuantificación del porcentaje de la producción del frente vinculado a los 17 ODS.
-- **6.2. Tabla 5: Distribución Temática por ODS Relevantes:**
-
-| ODS de la ONU | Denominación del Objetivo | Publicaciones Vinculadas (N) | Porcentaje del Frente (%) | FWCI Promedio en el ODS | Coautoría Internacional (%) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **ODS [X]** | [Nombre del ODS: ej. ODS 7 Energía Asequible] | [N] | [XX.X]% | [X.XX] | [XX.X]% |
-| **ODS [Y]** | [Nombre del ODS: ej. ODS 9 Industria e Innovación] | [N] | [XX.X]% | [X.XX] | [XX.X]% |
+## 3. ANÁLISIS PROFUNDO DE LOS FRENTES DE INVESTIGACIÓN Y LINAJES LONGITUDINALES (AMI)
+- **3.1. Caracterización Sustantiva de Cada Frente Activo (Cienciometría + Revisión de Literatura):**
+  * Para cada uno de los frentes principales identificados en la Tabla 1, presentar una subsección analítica que explique:
+    1. *El problema científico o tecnológico central que resuelve el frente.*
+    2. *Los hallazgos, metodologías o arquitecturas propuestas en sus artículos núcleo más citados/centrales dentro del corpus.*
+    3. *Su perfil de impacto, velocidad de crecimiento e instituciones/países líderes.*
+- **3.2. Dinámica Evolutiva y Linajes Aluviales (AMI):**
+  * Análisis de las transiciones intertemporales entre ventanas (`alluvial_lineages.html`, `alluvial_events.csv`): qué frentes muestran **Persistencia** (hilo conductor consolidado), cuáles experimentaron **Escisión (*Split*)** hacia nuevas sublíneas especializadas, cuáles surgieron por **Fusión (*Merge*)** de comunidades previas y cuáles representan **Génesis** recientes.
 
 ---
 
-## 7. IMPLICACIONES ESTRATÉGICAS Y HOJA DE RUTA PROSPECTIVA (ROADMAP)
-
-- **7.1. Oportunidades de Liderazgo Científico:**
-  * Identificación de nichos temáticos desatendidos con alto potencial de impacto epistémico y social, y baja saturación de competidores hegemónicos.
-- **7.2. Hoja de Ruta Tecnológica para Órganos de Decisión:**
-  * Directrices operativas a 1, 3 y 5 años para comités de evaluación y fondos sectoriales para fomentar la inserción soberana en frentes emergentes.
+## 4. CARTOGRAFÍA TOPOLÓGICA MULTIDIMENSIONAL CON REDES SOM (KOHONEN)
+- **4.1. Posicionamiento Multidimensional en la Tríada LabSOM:**
+  * Interpretación de la **U-Matrix**, **Mapas de Componentes** (en las dimensiones seleccionadas de las 42 disponibles) y **Meta-clustering de Vesanto** ($K^*$ óptimo por Silhouette $s^*$), clasificando los frentes, países o instituciones líderes sin el reduccionismo de rankings escalares.
+- **4.2. Tabla de Clusters en el SOM y Evolución Temporal (Trayectorias CMA+Splines y/o Longitudinal Warm-Start):**
+  * Presentar la tabla de caracterización de los clusters del SOM (Fortalezas en zonas rojas, vulnerabilidades en zonas verdes y miembros representativos) y discutir la evolución dinámica observada en las trayectorias (`som_trajectories.html`) o en el mapeo longitudinal (`longitudinal_som_report.md`).
 
 ---
 
-## ANEXOS Y FUENTES AUDITABLES
+## 5. DINÁMICA GEOPOLÍTICA, ESPECIALIZACIÓN Y DIMENSIONES COMPLEMENTARIAS (SEGÚN SEÑAL EMPÍRICA)
+*(Incluir las subsecciones que hayan arrojado hallazgos significativos durante la exploración):*
+- **5.1. Geopolítica de la Colaboración y Especialización ($CShareD$, $DShareC$, Salton):**
+  * Polos nacionales e institucionales líderes, corredores bilaterales de mayor afinidad de Salton (`geopolitical_dashboard.html`) y patrones de especialización temática.
+- **5.2. (Condicional) Canales de Publicación, Vías de Acceso Abierto / APC y Alineación con ODS:**
+  * Distribución por vías de Acceso Abierto (ej. peso de preprints/vía Verde vs. Gold APC y vía Diamante) y/o contribución a los Objetivos de Desarrollo Sostenible cuando exista señal relevante en el corpus.
 
-- **Ficha de Trazabilidad Prospectiva y Agent Skills Orquestadas:**
-  * Catálogo de frentes y linajes aluviales AMI vía [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) y [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md).
-  * Delimitación de campo y revisión profunda vía [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) y [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md).
-  * Cinéticas de Price y afinidad Salton vía [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md) y [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md).
-  * Cartografía topológica neurocomputacional vía [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
-  * Monitoreo de alineación ODS vía [`sdg-impact-intelligence`](/home/jlja/.gemini/config/skills/sdg-impact-intelligence/SKILL.md).
-  * Artefactos visuales ejecutivos vía [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
-  * Inventario de Topic IDs OpenAlex analizados: [Lista canónica de IDs primarios].
-  * Fecha de corte del corpus: [Día Mes Año].
-  * Parámetros de partición y linajes AMI: umbrales de aceleración ($\alpha$) y ventanas temporales analizadas.
-  * Catálogo de Material Suplementario:
-    - *Script S1 (`supplementary/01_extract_topics_data.py`):* Extracción de producción y citas por Topic.
-    - *Script S2 (`supplementary/02_topics_som_mapping.py`):* Construcción de la matriz y proyección SOM.
-    - *Dataset S1 (`supplementary/topics_metadata.csv`):* Métricas cinéticas y de impacto de los frentes.
-    - *Dataset S2 (`supplementary/topics_som_state.json`):* Pesos y topología de la variedad temática.
-    - *Protocolo Agéntico:* Ejecutable mediante la skill `template-radar-frentes-investigacion` con el catálogo de Topic IDs.
-- **Referencias metodológicas:**
-  * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
-  * Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025). Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. UNAM, IIBI.
-  * Huang, C., Schiebel, E., & Porter, A. L. (2011). A multi-stage approach to mapping emerging technologies: the case of DNA sequencing technology. *Scientometrics*, 87(2), 241–260.
-  * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
-  * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431.
+---
+
+## 6. CONCLUSIONES E IMPLICACIONES PROSPECTIVAS (ROADMAP)
+- Identificación de oportunidades de investigación de frontera (frentes con alta aceleración o alto impacto emergente y nichos abiertos a la colaboración) y hoja de ruta estratégica a corto y mediano plazo.
+
+---
+
+## ANEXOS, REFERENCIAS Y MATERIAL SUPLEMENTARIO AUDITABLE
+- **Referencias Bibliográficas:** Trabajos seminales del corpus discutidos en la Sección 3 y referencias metodológicas (Carrillo-Calvet et al., 2025; Jiménez-Andrade et al., 2024, 2025, 2026; Ruiz-Sánchez et al., 2025; Villaseñor-García et al., 2017; Traag et al., 2019; Huang et al., 2011).
+- **Catálogo de Artefactos en el Workspace:** Tabla con enlaces a `./corpus.parquet`, `./matrices/*.parquet`, `./reportes/fronts_summary.csv`, `./reportes/alluvial_lineages.html`, `./reportes/som_dashboard.html`, `./reportes/som_trajectories.html` y `./reportes/exploration_log.md`.

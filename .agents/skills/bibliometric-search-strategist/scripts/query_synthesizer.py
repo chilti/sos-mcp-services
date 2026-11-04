@@ -202,8 +202,8 @@ class QueryTranspiler:
 
         return query
 
-    def to_clickhouse_sql(self) -> str:
-        """Genera SQL optimizado para rag.works_academic_all con CERO JOINs."""
+    def to_clickhouse_sql(self, table_override: str = None) -> str:
+        """Genera SQL optimizado para rag.works_flat (global) o rag.works_academic_all (México) con CERO JOINs."""
         where_conditions = []
 
         for block in self.blocks:
@@ -237,6 +237,7 @@ class QueryTranspiler:
             where_conditions.append(f"type IN ({dt_str})")
 
         countries = self.filters.get("countries", [])
+        is_mexico_only = (len(countries) == 1 and countries[0] in ("Mexico", "MX")) or self.filters.get("scope") == "mexico"
         if "Mexico" in countries or "MX" in countries:
             where_conditions.append("(country_code = 'MX' OR has(all_country_codes, 'MX'))")
 
@@ -244,22 +245,51 @@ class QueryTranspiler:
         if oa_status:
             where_conditions.append(f"oa_status = '{oa_status.lower()}'")
 
+        target_table = table_override or self.filters.get("table") or ("rag.works_academic_all" if is_mexico_only else "rag.works_flat")
+        ref_expr = "referenced_works" if "works_flat" in target_table else "JSONExtract(raw_data, 'referenced_works', 'Array(String)') AS referenced_works"
+
         sql = "-- Consulta generada automáticamente por Bibliometric Search Strategist\n"
-        sql += "-- Tabla canónica: rag.works_academic_all | Regla: CERO JOINS\n"
+        sql += f"-- Tabla canónica: {target_table} | Regla: CERO JOINS\n"
         sql += "SELECT\n"
         sql += "    id,\n"
         sql += "    doi,\n"
         sql += "    title,\n"
         sql += "    publication_year,\n"
+        sql += "    publication_year AS year,\n"
         sql += "    type,\n"
+        sql += "    type AS doc_type,\n"
+        sql += "    language,\n"
         sql += "    oa_status,\n"
+        sql += "    is_oa,\n"
         sql += "    cited_by_count,\n"
+        sql += "    cited_by_count AS citations,\n"
         sql += "    fwci,\n"
+        sql += "    percentile,\n"
+        sql += "    is_top_10,\n"
+        sql += "    is_top_1,\n"
+        sql += "    apc_paid_usd,\n"
+        sql += "    apc_list_usd,\n"
+        sql += "    is_doaj_indexed,\n"
+        sql += "    has_repository_fulltext,\n"
+        sql += "    source_id AS source_title,\n"
+        sql += "    source_type,\n"
         sql += "    author_names,\n"
+        sql += "    arrayStringConcat(author_names, '; ') AS authors,\n"
         sql += "    institution_names,\n"
+        sql += "    arrayStringConcat(institution_names, '; ') AS affiliations,\n"
+        sql += "    institution_rors,\n"
+        sql += "    all_country_codes,\n"
+        sql += "    arrayStringConcat(all_country_codes, '; ') AS country_codes,\n"
+        sql += "    country_code,\n"
         sql += "    topic,\n"
-        sql += "    keywords\n"
-        sql += "FROM rag.works_academic_all\n"
+        sql += "    subfield,\n"
+        sql += "    field,\n"
+        sql += "    domain,\n"
+        sql += "    keywords,\n"
+        sql += "    arrayStringConcat(keywords, '; ') AS keywords_author,\n"
+        sql += "    sdgs,\n"
+        sql += f"    {ref_expr}\n"
+        sql += f"FROM {target_table}\n"
         sql += "WHERE\n  " + "\n  AND ".join(where_conditions) + "\n"
         sql += "ORDER BY cited_by_count DESC\n"
         sql += "LIMIT 5000\n"

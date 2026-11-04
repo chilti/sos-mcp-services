@@ -178,7 +178,7 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
         None
     )
     period_col = args.period_col or next(
-        (c for c in fieldnames if c.lower() in ["year", "period", "anio", "periodo", "fecha", "time", "publication_year"]),
+        (c for c in fieldnames if c.lower() in ["period", "year", "anio", "periodo", "fecha", "time", "publication_year"]),
         None
     )
 
@@ -186,16 +186,30 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
         sys.stderr.write(f"Error: Could not identify entity column ({entity_col}) or period column ({period_col}). Specify via --entity-col and --period-col.\n")
         sys.exit(1)
 
+    excluded_meta_cols = {
+        entity_col, period_col, "entity", "period", "year", "publication_year",
+        "start_year", "end_year", "first_year", "last_year", "level", "country",
+        "country_code", "is_global_south", "id", "ror"
+    }
     if args.indicator_cols:
         indicators = [c.strip() for c in args.indicator_cols.split(",") if c.strip() in fieldnames]
     else:
-        indicators = [c for c in fieldnames if c not in [entity_col, period_col]]
+        indicators = [c for c in fieldnames if c not in excluded_meta_cols and c.lower() not in excluded_meta_cols]
 
     valid_indicators = []
     sample_rows = rows[:200]
     for ind in indicators:
-        can_float = any(r.get(ind) is not None and str(r.get(ind)).strip() != "" for r in sample_rows)
-        if can_float:
+        has_valid_num = False
+        for r in sample_rows:
+            val = r.get(ind)
+            if val is not None and str(val).strip() != "":
+                try:
+                    float(val)
+                    has_valid_num = True
+                    break
+                except (ValueError, TypeError):
+                    pass
+        if has_valid_num:
             valid_indicators.append(ind)
     indicators = valid_indicators
 
@@ -859,7 +873,7 @@ def main():
 
     # Subcommand: report
     p_rep = subparsers.add_parser("report", help="Generate publication-ready markdown report")
-    p_rep.add_argument("--analysis", required=True, help="Path to dynamics_analysis.json")
+    p_rep.add_argument("--analysis", "--input", "-i", dest="analysis", required=True, help="Path to dynamics_analysis.json")
     p_rep.add_argument("--mode", choices=["knomap_internal", "external_mcp"], default="external_mcp", help="Report mode")
     p_rep.add_argument("--output", required=True, help="Path to write report.md")
     p_rep.set_defaults(func=cmd_report)

@@ -177,3 +177,4 @@ Cuando una investigadora o investigador solicita identificar o analizar frentes 
 14. **Traag, V. A., Waltman, L., & van Eck, N. J. (2019).** From Louvain to Leiden: guaranteeing well-connected communities. *Scientific Reports*, 9(1), 5233. https://doi.org/10.1038/s41598-019-41695-x
 15. **Van Eck, N. J., & Waltman, L. (2009).** How to normalize cooccurrence data? An analysis of some well-known similarity measures. *Journal of the American Society for Information Science and Technology*, 60(8), 1635–1651. https://doi.org/10.1002/asi.21075
 16. **Waltman, L., & van Eck, N. J. (2012).** A new approach to modularity-based community detection for large-scale networks. *Scientometrics*, 94(3), 1181–1198. https://doi.org/10.1007/s11192-012-0707-4
+

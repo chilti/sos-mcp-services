@@ -24,20 +24,29 @@ Esta skill implementa y orquesta la metodología científica de **Mapeo Neurolon
 
 ---
 
-## 2. Dependencies y Cadena de Valor
+## 2. Dependencies y Cadena de Valor (De la Cosecha al SOM)
 
-Esta skill implementa el encadenamiento intertemporal neurocomputacional y se articula con la siguiente arquitectura:
+Esta skill implementa el encadenamiento intertemporal neurocomputacional Warm-Start y opera sobre secuencias de matrices por periodos (`./matrices/periodos_som.parquet`):
 
-* **Habilidades Upstream (Extracción y Soporte Metodológico):**
-  * [`tlachia-metrics-handler`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Extrae secuencias de matrices por periodos consecutivos (`02_Periodos`) desde paquetes TlachIA Metrics.
-  * [`scientometrics-incites-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/scientometrics-incites-expert/SKILL.md): Extrae matrices históricas y por ventanas quinquenales desde reportes Clarivate InCites.
-  * [`som-methodological-expert`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): **Hereda y reutiliza integralmente** la base matemática y visual:
+* **Habilidades Upstream (Extracción de Matrices por Periodos en el Workspace):**
+  * **Opción A (Estándar desde `./corpus.parquet` cosechado): `tlachia-metrics-engine`** (`scripts/tlachia_metrics_cli.py period-series --level ...`): Calcula los **más de 35 indicadores cienciométricos sin truncar columnas** para cada entidad a través de ventanas o periodos consecutivos:
+    ```bash
+    /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py period-series \
+      --input ./corpus.parquet \
+      --periods "2020-2022,2023-2026" \
+      --level institution \
+      --min-docs 2 \
+      --output ./matrices/periodos_som.parquet
+    ```
+  * **Opción B (Paquetes TlachIA Metrics `.zip`): `tlachia-metrics-handler`** (`02_Periodos`).
+  * **Opción C (Reportes Clarivate InCites): `scientometrics-incites-expert`**.
+  * `som-methodological-expert`: **Hereda y reutiliza integralmente** la base matemática y visual:
     1. **Ratio de Aspecto Espectral SVD:** Proporción $\text{cols}/\text{rows} \approx \sigma_1 / \sigma_2$ calculada sobre la matriz agregada de perfiles.
     2. **Dimensionamiento de Malla:** Topología hexagonal y sobremalla empírica ($M \approx 20N\text{--}30N$ o Big SOM $10N$) para desplegar resolución topológica continua.
     3. **Tríada Visual LabSOM:** U-Matrix roja/amarilla, Mapas de Componentes divergentes amarillo-rojo/verde y Meta-clustering de Vesanto.
 * **Habilidades Complementarias y Downstream:**
-  * [`som-trajectory-mapping`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Técnica complementaria para trayectorias continuas anuales de pocas entidades clave mediante splines.
-  * [`services/knomap/tools/viz_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/viz_tools.py): `knomap_render_som_dashboard` para generar el artefacto HTML por cada corte temporal.
+  * `som-trajectory-mapping`: Técnica complementaria para trayectorias continuas anuales de pocas entidades clave mediante splines.
+  * `services/knomap/tools/viz_tools.py`: `knomap_render_som_dashboard` para generar el artefacto HTML por cada corte temporal.
 * **Regla de Legibilidad para Matrices Grandes:**
   * Si la matriz de entrenamiento de la serie temporal es grande ($N > 40$ entidades), se debe procurar **dibujar una cantidad razonable y legible de etiquetas** (priorizando el núcleo persistente o limitando a 1 o 2 etiquetas por celda).
 
@@ -97,7 +106,7 @@ Al interpretar y reportar la secuencia temporal, el agente estructura su diagnó
 
 ### 4. Nivel Micro: Desplazamientos, Perfiles Singulares y Diagnóstico de Maduración
 * **Desplazamiento Euclidiano en la Retícula:** $\Delta d_i = \| \text{BMU}_i^{(t)} - \text{BMU}_i^{(t-1)} \|_2$.
-* **Perfiles Singulares / Atípicos ($|C_k| = 1$):** Entidades que se aíslan completamente en un cluster individual debido a volúmenes masivos o citación desproporcionada (ejemplo: *Clinical Medicine* en México). **Recomendación metodológica:** Tratar como perfil atípico y analizarlo en detalle mediante la técnica de **Mapeo de Trayectorias** ([`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)).
+* **Perfiles Singulares / Atípicos ($|C_k| = 1$):** Entidades que se aíslan completamente en un cluster individual debido a volúmenes masivos o citación desproporcionada (ejemplo: *Clinical Medicine* en México). **Recomendación metodológica:** Tratar como perfil atípico y analizarlo en detalle mediante la técnica de **Mapeo de Trayectorias** ([`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)).
 * **Resolución de Paradojas Métricas (Métricas No Acotadas vs. Acotadas):**
   * *La Paradoja CNCI vs. Average Percentile:* Si una entidad exhibe un CNCI muy alto (e.g. $> 1.8$, duplicando la media mundial) pero un *Average Percentile* modesto (e.g. $36$ frente a la media mundial de $50$), el diagnóstico cienciométrico indica que **el impacto está inflado por un número reducido de artículos atípicos hipercitados (*Black Swans* o colaboraciones masivas en salud)**, mientras que el grueso de la producción tiene citación baja.
 * **Indicador de Maduración Comunitaria:**

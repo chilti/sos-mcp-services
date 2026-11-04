@@ -72,3 +72,4 @@ En la base de datos columnar global `rag.works_flat` (464.8M de registros), los 
 | **Diagrama Sunburst de Concentración Temática** | **Jerarquía OpenAlex (Domain $\to$ Field $\to$ Subfield $\to$ Topic)** | Estructura multinivel 100% precalculada y compatible con Plotly `go.Sunburst`. |
 | **Delimitación de un Frente de Investigación Emergente Específico (micro-frente)** | **Acoplamiento Bibliográfico Contemporáneo Ad-Hoc** | Granularidad fina. Los Topics de OpenAlex agrupan ~50 a 200 papers por año; el acoplamiento ad-hoc permite aislar clusters específicos de 10 a 30 artículos de frontera. |
 | **Evolución Temporal de un Tema Multidisciplinar** | **Híbrido: Filtrado por Subfield/Topic + Linajes AMI** | Se extrae la literatura del subcampo y se rastrean las bifurcaciones y fusiones anuales con la métrica AMI. |
+

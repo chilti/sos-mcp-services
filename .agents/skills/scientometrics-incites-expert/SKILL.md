@@ -13,8 +13,8 @@ Esta skill se activa cuando el usuario proporciona datos, reportes tabulares o p
 2. **Extraer Matrices Multidimensionales para el SOM:** Extraer perfiles numéricos limpios $[N \times D]$ de entidades específicas discriminando entre:
    * **Ventana Reciente (5 años, e.g. 2021–2025):** Para diagnóstico de coyuntura y desempeño actual.
    * **Histórico Completo (`Whole`, e.g. 1980–2025):** Para caracterización acumulada de la trayectoria histórica.
-   * Envío directo de matrices a [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) y [`neural-longitudinal-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md).
-3. **Modelar Series Anuales y Trayectorias PathSOM:** Extraer series anuales (*Trend*) aplicando suavizado exponencial centrado (ECMA-3 / ECMA-5) para rastrear la órbita evolutiva de universidades o países en [`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
+   * Envío directo de matrices a [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) y [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md).
+3. **Modelar Series Anuales y Trayectorias PathSOM:** Extraer series anuales (*Trend*) aplicando suavizado exponencial centrado (ECMA-3 / ECMA-5) para rastrear la órbita evolutiva de universidades o países en [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
 4. **Calcular la Matriz de Crecimiento Estratégico (Strategic Growth Matrix):** Calcular tasas de crecimiento anual compuesto (CAGR %) frente a volumen actual para clasificar entidades en 4 cuadrantes analíticos (*Star Leaders*, *Emerging Stars*, *Established Giants*, *Low Priority*).
 
 ---
@@ -24,14 +24,14 @@ Esta skill se activa cuando el usuario proporciona datos, reportes tabulares o p
 Esta skill actúa como el puente de ingesta y normalización de InCites hacia el modelado neurocomputacional del ecosistema UNAM:
 
 * **Habilidades Downstream (Consumidores de Datos):**
-  * [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Recibe la matriz limpia $[N \times D]$ para calibración espectral SVD, dimensionamiento de sobremalla hexagonal y entrenamiento del SOM.
-  * [`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Recibe las series temporales anuales suavizadas con ECMA para generar el trazado de trayectorias con splines continuas (máximo 5 entidades simultáneas).
-  * [`neural-longitudinal-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md): Recibe secuencias de cortes intertemporales para el encadenamiento Warm-Start.
+  * [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Recibe la matriz limpia $[N \times D]$ para calibración espectral SVD, dimensionamiento de sobremalla hexagonal y entrenamiento del SOM.
+  * [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Recibe las series temporales anuales suavizadas con ECMA para generar el trazado de trayectorias con splines continuas (máximo 5 entidades simultáneas).
+  * [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md): Recibe secuencias de cortes intertemporales para el encadenamiento Warm-Start.
 * **Habilidades Complementarias:**
-  * [`tlachia-metrics-handler`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Equivalente canónico para paquetes exportados desde TlachIA Metrics / OpenAlex.
+  * [`tlachia-metrics-handler`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Equivalente canónico para paquetes exportados desde TlachIA Metrics / OpenAlex.
 * **Herramientas de Software Asociadas:**
   * [`incites_parser.py`](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/incites_parser.py): Motor de parsing de InCites en KnoMap.
-  * [`services/knomap/tools/incites_tools.py`](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/incites_tools.py): Herramientas MCP expuestas al agente.
+  * [`services/knomap/tools/incites_tools.py`](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py): Herramientas MCP expuestas al agente.
 
 ---
 
@@ -172,7 +172,7 @@ get_incites_unit_matrix(
 
 Una vez obtenida la matriz `data` y las etiquetas `labels`:
 
-1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para calcular el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
+1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para calcular el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
 2. **Entrenar SOM:** Invocar `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
 3. **Optimizar Clusters:** Invocar `knomap-som-engine -> evaluate_som_clusters` para calibrar el $K$ óptimo vía Silhouette Score.
 4. **Interpretar Resultados:** Analizar la U-Matrix y los mapas de componentes para identificar grupos de pares comparables y fortalezas diferenciadas.
@@ -193,7 +193,7 @@ get_incites_temporal_evolution(
 ```
 
 * **Respuesta:** Devuelve las series de tiempo anualizadas con suavizado centrado para cada indicador.
-* **Integración:** Transferir a [`som-trajectory-mapping`](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md) respetando la **Regla de Oro de KnoMap (máximo 5 entidades simultáneas)** para evitar la saturación visual de splines.
+* **Integración:** Transferir a [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md) respetando la **Regla de Oro de KnoMap (máximo 5 entidades simultáneas)** para evitar la saturación visual de splines.
 
 ### Paso 5: Calcular la Matriz de Crecimiento Estratégico (Strategic Growth Matrix)
 
@@ -320,10 +320,10 @@ El `CNCI` es una media aritmética sin cota superior. Un solo mega-artículo mul
 
 ## 8. Referencias Técnicas
 
-- [SOM Methodological Expert](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
-- [SOM Trajectory Mapping](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
-- [Neural Longitudinal Mapping](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)
-- [TlachIA Metrics Handler](file:///C:/Users/jlja/Documents/Proyectos/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md)
+- [SOM Methodological Expert](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
+- [SOM Trajectory Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
+- [Neural Longitudinal Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)
+- [TlachIA Metrics Handler](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md)
 - [KnoMap Engine InCites Parser](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/incites_parser.py)
 - [KnoMap Frontend InCites Explorer](file:///c:/Users/jlja/Documents/Proyectos/knomap/frontend/src/components/InCitesExplorer.tsx)
-- [InCites Tools en sos-mcp-services](file:///c:/Users/jlja/Documents/Proyectos/sos-mcp-services/services/knomap/tools/incites_tools.py)
+- [InCites Tools en sos-mcp-services](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py)
