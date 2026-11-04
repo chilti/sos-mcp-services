@@ -107,19 +107,21 @@ class QueryTranspiler:
 
     def __init__(self, spec: Dict[str, Any]):
         self.spec = spec
-        self.facets = spec.get("facets", [])
+        # Soporta 'blocks' (preferido en cienciometría) y 'facets' (retrocompatibilidad)
+        self.blocks = spec.get("blocks", spec.get("facets", []))
+        self.facets = self.blocks
         self.filters = spec.get("filters", {})
         self.title = spec.get("project_title", "Estrategia Bibliométrica")
 
     def to_wos(self) -> str:
-        facet_clauses = []
-        for facet in self.facets:
-            terms = facet.get("terms", [])
+        block_clauses = []
+        for block in self.blocks:
+            terms = block.get("terms", [])
             wos_terms = [f'"{t}"' if " " in t and not t.startswith('"') else t for t in terms]
             clause = " OR ".join(wos_terms)
-            facet_clauses.append(f"TS=({clause})")
+            block_clauses.append(f"TS=({clause})")
 
-        query = "\n  AND ".join(facet_clauses)
+        query = "\n  AND ".join(block_clauses)
 
         # Filtros
         filter_parts = []
@@ -142,14 +144,14 @@ class QueryTranspiler:
         return query
 
     def to_scopus(self) -> str:
-        facet_clauses = []
-        for facet in self.facets:
-            terms = facet.get("terms", [])
+        block_clauses = []
+        for block in self.blocks:
+            terms = block.get("terms", [])
             scopus_terms = [f'"{t}"' if " " in t and not t.startswith('"') else t for t in terms]
             clause = " OR ".join(scopus_terms)
-            facet_clauses.append(f"TITLE-ABS-KEY({clause})")
+            block_clauses.append(f"TITLE-ABS-KEY({clause})")
 
-        query = "\n  AND ".join(facet_clauses)
+        query = "\n  AND ".join(block_clauses)
 
         filter_parts = []
         y_start = self.filters.get("year_start")
@@ -171,17 +173,17 @@ class QueryTranspiler:
         return query
 
     def to_pubmed(self) -> str:
-        facet_clauses = []
-        for facet in self.facets:
-            terms = facet.get("terms", [])
-            mesh_terms = facet.get("mesh", [])
+        block_clauses = []
+        for block in self.blocks:
+            terms = block.get("terms", [])
+            mesh_terms = block.get("mesh", [])
             tiab_terms = [f'"{t}"[tiab]' if " " in t and not t.startswith('"') else f'{t}[tiab]' for t in terms]
             mesh_clauses = [f'"{m}"[mesh]' for m in mesh_terms]
-            all_facet_terms = tiab_terms + mesh_clauses
-            clause = " OR ".join(all_facet_terms)
-            facet_clauses.append(f"({clause})")
+            all_block_terms = tiab_terms + mesh_clauses
+            clause = " OR ".join(all_block_terms)
+            block_clauses.append(f"({clause})")
 
-        query = "\n  AND ".join(facet_clauses)
+        query = "\n  AND ".join(block_clauses)
 
         filter_parts = []
         y_start = self.filters.get("year_start")
@@ -204,21 +206,21 @@ class QueryTranspiler:
         """Genera SQL optimizado para rag.works_academic_all con CERO JOINs."""
         where_conditions = []
 
-        for facet in self.facets:
-            terms = facet.get("terms", [])
-            topics = facet.get("topics", [])
-            facet_subs = []
+        for block in self.blocks:
+            terms = block.get("terms", [])
+            topics = block.get("topics", [])
+            block_subs = []
 
             for t in terms:
                 clean_term = t.replace("'", "\\'").replace("*", "")
-                facet_subs.append(f"positionCaseInsensitiveUTF8(title, '{clean_term}') > 0")
-                facet_subs.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_term}') > 0, keywords)")
+                block_subs.append(f"positionCaseInsensitiveUTF8(title, '{clean_term}') > 0")
+                block_subs.append(f"arrayExists(x -> positionCaseInsensitiveUTF8(x, '{clean_term}') > 0, keywords)")
 
             for top in topics:
                 clean_top = top.replace("'", "\\'")
-                facet_subs.append(f"positionCaseInsensitiveUTF8(topic, '{clean_top}') > 0")
+                block_subs.append(f"positionCaseInsensitiveUTF8(topic, '{clean_top}') > 0")
 
-            clause = "(\n      " + "\n      OR ".join(facet_subs) + "\n    )"
+            clause = "(\n      " + "\n      OR ".join(block_subs) + "\n    )"
             where_conditions.append(clause)
 
         # Filtros
@@ -276,16 +278,16 @@ class QueryTranspiler:
         md += "## Lista de Verificación de Delimitación y Recolección de Datos\n\n"
         md += "| Dimensión GLOBAL | Ítem de Auditoría | Estado | Especificación Metodológica |\n"
         md += "|---|---|:---:|---|\n"
-        md += f"| **1. Justificación Conceptual** | Delimitación del dominio y preguntas | ✅ | Descomposición en {len(self.facets)} bloques conceptuales ortogonales (PCC / Building Blocks). |\n"
+        md += f"| **1. Justificación Conceptual** | Delimitación del dominio y preguntas | ✅ | Descomposición en {len(self.blocks)} bloques conceptuales ortogonales (Building Blocks). |\n"
         md += "| **2. Fuentes y Snapshot** | Declaración de bases y fecha de corte | ℹ️ | Transpilación multi-base (WoS, Scopus, PubMed, ClickHouse). *Registrar fecha y huso horario exacto en la extracción final.* |\n"
         md += "| **3. Delimitación de Campo** | Ecuación exacta y etiquetas de campo | ✅ | Sintaxis calibrada con etiquetas específicas (`TS=`, `TITLE-ABS-KEY()`, `[tiab]` y funciones nativas ClickHouse). |\n"
         md += "| **4. Selección de Descriptores** | Vocabularios controlados y sinónimos | ✅ | Integración multi-esquema: MeSH, Topics de OpenAlex y vocabulario técnico no controlado. |\n"
         md += "| **5. Ortografía y Truncamiento** | Comodines seguros y balanceo léxico | ✅ | Comillas balanceadas, ausencia de comodines con raíces < 4 letras y operadores en mayúsculas auditados. |\n"
         md += f"| **6. Filtros y Límites** | Ventana temporal y tipos de documento | ✅ | Rango temporal: {y_start}–{y_end}; Tipologías admitidas: `{doc_types}`. |\n"
         md += "| **7. Reproducibilidad y Código** | Disponibilidad de sintaxis y scripts | ✅ | Ecuaciones versionadas en texto plano y script de transpilación `query_synthesizer.py` reproducible. |\n\n"
-        md += "### Estructura de Facetas Conceptuales:\n"
-        for i, f in enumerate(self.facets, 1):
-            md += f"- **Faceta {i} ({f.get('name', 'N/D')}):** {len(f.get('terms', []))} términos libres, {len(f.get('mesh', []))} MeSH, {len(f.get('topics', []))} Topics.\n"
+        md += "### Estructura de Bloques Conceptuales (Building Blocks):\n"
+        for i, b in enumerate(self.blocks, 1):
+            md += f"- **Bloque {i} ({b.get('name', 'N/D')}):** {len(b.get('terms', []))} términos libres, {len(b.get('mesh', []))} MeSH, {len(b.get('topics', []))} Topics.\n"
         return md
 
 

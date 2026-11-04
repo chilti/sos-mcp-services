@@ -135,7 +135,7 @@ CLI autónomo para validación sintáctica, transpilación multi-base y auditor�
 ```json
 {
   "project_title": "Inferencia Causal en Modelos Masivos de Lenguaje",
-  "facets": [
+  "blocks": [
     {
       "name": "Teoría Causal",
       "terms": ["causal inference", "structural causal model*", "counterfactual reasoning"],
@@ -161,7 +161,7 @@ CLI autónomo para validación sintáctica, transpilación multi-base y auditor�
 
 ## 6. Flujo de Trabajo Integrado con el Ecosistema
 
-1. **Delimitación Inicial:** Diseñar facetas y transpilar consultas con `bibliometric-search-strategist`.
+1. **Delimitación Inicial:** Diseñar bloques conceptuales (*building blocks*) y transpilar consultas con `bibliometric-search-strategist`.
 2. **Auditoría de Calidad:** Generar y revisar el reporte `global_audit.md`.
 3. **Cosecha Masiva:** Extraer datos globales con [`openalex-harvester`](../openalex-harvester/SKILL.md) o producción mexicana con [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md).
 4. **Revisión y Snowballing:** Enlazar con [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) para ejecutar la revisión profunda y el filtro de densidad de citaciones.
@@ -172,6 +172,8 @@ CLI autónomo para validación sintáctica, transpilación multi-base y auditor�
 ## 7. Referencias Bibliográficas
 
 * Glänzel, W., Schlemmer, B., & Du Plessis, B. (2009). A hybrid approach for addressing the problem of "field delineation" in scientometric studies. *Scientometrics*, 79(1), 3–17. https://doi.org/10.1007/s11192-009-0401-7
+* Harter, S. P. (1986). *Online Information Retrieval: Concepts, Principles, and Techniques*. Academic Press.
+* Hawkins, D. T., & Wagers, R. (1982). Online bibliographic search strategy, analysis. *Online Review*, 6(2), 93–119. https://doi.org/10.1108/eb024099
 * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431. https://doi.org/10.1038/520429a
 * Huang, C., Schiebel, E., & Porter, A. L. (2011). A multi-stage approach to mapping emerging technologies: the case of DNA sequencing technology. *Scientometrics*, 87(2), 241–260. https://doi.org/10.1007/s11192-011-0341-9
 * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
