@@ -27,6 +27,8 @@ Antes de redactar el policy brief, debes cosechar los datos cuantitativos median
    - Destacar los dilemas centrales: fuga en cuotas APC comerciales en USD vs. inversión en revistas Diamante públicas; hiperautoría pasiva vs. liderazgo intelectual de correspondencia; concentración centralizada vs. descentralización territorial.
 5. **Brevedad, Claridad y Contundencia:**
    - Longitud objetivo: 2 a 4 páginas. Estructura modular ejecutiva con viñetas analíticas y tablas de acción inmediata.
+6. **Trazabilidad y Verificación Técnica:**
+   - Registrar la ficha técnica con fecha de corte de los datos, identificadores ROR y parámetros de los clusters para que el cuerpo de asesores técnicos de SECIHTI o rectoría pueda replicar las cifras mediante un script Python ligero (`scripts/verify_brief_metrics.py`).
 
 ---
 
@@ -132,6 +134,9 @@ Presentar la **Tabla 3: Matriz de Recomendaciones Accionables para Decisores**:
 
 ## FUENTES Y METADATOS AUDITABLES
 
-- Clúster ClickHouse OpenAlex México (`rag.works_academic_all`, filtro ROR).
-- Padrón Oficial SNII vía `sos_sinapsisai`.
-- Metodología neurocomputacional: Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
+- **Ficha Técnica y Trazabilidad para Cuerpos Asesores:**
+  * Base de datos: OpenAlex México en ClickHouse (`rag.works_academic_all`, fecha de corte: [Día Mes Año]).
+  * Padrón Oficial SNII vía `sos_sinapsisai` (corte: [Día Mes Año]).
+  * Identificadores ROR consultados: [Lista canónica].
+  * Verificación independiente: Las cifras de la Tabla 1 y los clusters de la Tabla 2 son auditables mediante el script reproducible `scripts/verify_brief_metrics.py` o re-ejecutando la skill `template-policy-brief-gobernanza` con los parámetros indicados.
+- **Metodología neurocomputacional:** Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.

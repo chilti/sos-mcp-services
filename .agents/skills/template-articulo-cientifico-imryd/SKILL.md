@@ -38,6 +38,12 @@ Antes de redactar el artículo, debes cosechar los datos cuantitativos mediante 
    - **Panel Interactivo:** Invocar `knomap_render_som_dashboard` o renderizar la Tríada Visual LabSOM.
 6. **Detección de Quiebres Estructurales:**
    - Estimar el punto de cambio de régimen temporal $\tau$ con CUSUM / Pettitt calculado sobre la serie anual extraída (no hay herramienta dedicada; declarar método y p-valor) o acotarlo con `analyze_scientific_growth_phases`.
+7. **Empaquetado de Material Suplementario y Protocolo de Reproducibilidad (Obligatorio Q1):**
+   - Para garantizar la reproducibilidad computacional y agéntica de grado Q1, el agente DEBE generar en el directorio de trabajo (o subcarpeta `./supplementary/`):
+     * `01_corpus_extraction.py`: Script Python autónomo con la consulta SQL columnar en ClickHouse, fecha de corte y parámetros exactos de filtrado.
+     * `02_laws_and_som_modeling.py`: Script Python con el cálculo de leyes cinéticas (Price, Lotka), Coseno de Salton, medias móviles centradas y la invocación de `train_som(output_state_path="supplementary/som_state.json", indicator_names=[...])` con semilla fija (`seed=42`).
+     * `som_state.json`: Archivo JSON persistido con los vectores de pesos, U-Matrix, asignaciones BMU y clusters.
+     * `reproducibility_manifest.json`: Ficha técnica de ejecución con prompts, skill utilizada, versión de librerías y semillas deterministas.
 
 ---
 
@@ -224,3 +230,32 @@ graph TD
 5. **Price, D. J. de S. (1963).** *Little Science, Big Science*. Columbia University Press.
 6. **Lotka, A. J. (1926).** The frequency distribution of scientific productivity. *Journal of the Washington Academy of Sciences*, 16(12), 317–323.
 7. **Salton, G., & McGill, M. J. (1983).** *Introduction to Modern Information Retrieval*. McGraw-Hill.
+
+---
+
+## DECLARACIONES Y DISPONIBILIDAD DE DATOS Y CÓDIGO (DATA & CODE AVAILABILITY STATEMENTS)
+
+- **Declaración de Disponibilidad de Datos (Data Availability Statement):**
+  * Los datos bibliográficos primarios provienen de OpenAlex y el clúster analítico ClickHouse de la UNAM (`rag.works_academic_all`). El conjunto de datos procesado con los identificadores canónicos de trabajos (OpenAlex IDs, DOIs), métricas normalizadas de impacto y asignaciones temáticas se encuentra disponible en formato abierto en el Material Suplementario (`Dataset S1: corpus_metadata.csv`). Fecha de corte del corpus: [Día Mes Año].
+- **Declaración de Disponibilidad de Código y Protocolo de Agente (Code and Agentic Protocol Availability):**
+  * Todo el código analítico utilizado para replicar este estudio es de código abierto y completamente auditable.
+  * **Ejecución Humana / Clásica:** Los scripts en Python (`Script S1: 01_corpus_extraction.py` y `Script S2: 02_laws_and_som_modeling.py`) no dependen de entornos propietarios y pueden ejecutarse de forma independiente con Python $\ge 3.10$ utilizando librerías científicas estándar (`clickhouse-connect`, `numpy`, `scipy`, `torch`).
+  * **Ejecución Agéntica (Re-ejecución por Pares mediante IA):** Cualquier investigadora o investigador puede reproducir el estudio en su totalidad proporcionando a un agente de IA la skill canónica `template-articulo-cientifico-imryd` junto con el archivo `reproducibility_manifest.json`, que especifica los parámetros exactos de extracción, rangos temporales y semillas deterministas (`random_state = 42`).
+- **Entorno Computacional y Semillas de Aleatoriedad:**
+  * Entorno: Python 3.10+, PyTorch SOM Solver [CUDA/CPU].
+  * Semilla fija: `random_state = 42` para inicializaciones SVD/PCA y partición de clusters de Vesanto & Alhoniemi.
+
+---
+
+## ÍNDICE DE MATERIAL SUPLEMENTARIO (SUPPLEMENTARY MATERIAL INDEX)
+
+Presentar la **Tabla S1: Catálogo de Material Suplementario para Reproducibilidad**:
+
+| Identificador | Tipo de Artefacto | Nombre del Archivo | Descripción del Contenido | Formato |
+| :--- | :--- | :--- | :--- | :--- |
+| **Script S1** | Código Fuente | `01_corpus_extraction.py` | Consulta SQL columnar determinista en ClickHouse bajo regla de CERO JOINs | Python (.py) |
+| **Script S2** | Código Fuente | `02_laws_and_som_modeling.py` | Ajuste de leyes cinéticas (Price, Lotka), Coseno de Salton y trayectorias SOM con splines cúbicos | Python (.py) |
+| **Dataset S1** | Datos Tabulares | `corpus_metadata.csv` | Metadatos normalizados de trabajos (DOI, año, citas, FWCI, vías OA, países) | CSV / Parquet |
+| **Dataset S2** | Estado Neuronal | `som_state.json` | Vectores de pesos $W$, U-Matrix, asignaciones BMU y membresía de clusters | JSON |
+| **Figura S1** | Artefacto Visual | `som_dashboard.html` | Dashboard interactivo oficial KnoMap con Tríada LabSOM y planos de componentes | HTML interactivo |
+| **Manifiesto S1**| Parámetros Agente | `reproducibility_manifest.json` | Ficha técnica de ejecución con prompts, skill, versiones de paquetes y semillas | JSON |

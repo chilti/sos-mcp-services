@@ -43,6 +43,11 @@ Antes de redactar el informe, debes cosechar los datos cuantitativos mediante la
      [html_content retornado por la herramienta]
      :::
      ```
+8. **Empaquetado de Material Suplementario y Trazabilidad Institucional:**
+   - Para que el informe sea auditable por órganos de gobierno (Consejo Técnico, Dirección, Comisiones Dictaminadoras), el agente DEBE generar en `./scripts/` o `./supplementary/`:
+     * `01_extract_institutional_data.py`: Script con las sentencias SQL exactas sobre ClickHouse (ROR institucional, filtro de dependencia, partición tripartita $\le 20$ autores y cálculo de APC en USD).
+     * `02_som_institutional_evaluation.py`: Script con la matriz de pares comparables y llamada a `train_som(output_state_path="supplementary/som_state.json", indicator_names=[...])` con semilla fija.
+     * `som_institutional_state.json`: Estado persistido del SOM institucional.
 
 ---
 
@@ -234,6 +239,22 @@ Presentar la **Tabla 5: Matriz de Recomendaciones Accionables para los Órganos 
   * Base de datos OpenAlex México en ClickHouse (Filtro institucional ROR).
   * Padrón Oficial SNII 2026 y Padrón Histórico 1984–2026 vía `sos_sinapsisai`.
   * Motor analítico de perfiles neurocomputacionales SOM vía `sos_knomap`.
+- **Ficha Técnica de Trazabilidad y Auditoría Institucional:**
+  * Base de datos: OpenAlex México en ClickHouse (`rag.works_academic_all`).
+  * Identificador institucional canónico: ROR [ej. https://ror.org/01tmp8f25].
+  * Fecha de corte de la base de datos: [Día Mes Año].
+  * Fecha de corte del Padrón Oficial SNII: [Día Mes Año] vía `sos_sinapsisai`.
+  * Parámetros de consulta deterministas (CERO JOINs):
+    - Filtro institucional: `has(institution_rors, '<ROR>')`
+    - Filtro dependencia: `arrayExists(x -> positionCaseInsensitiveUTF8(x, '<Nombre Dependencia>') > 0, institution_names)`
+    - Régimen B (Autónomo): `length(author_names) <= 20`
+    - Gasto APC: sumas de `apc_paid_usd` y `apc_list_usd` agrupadas por `oa_status`.
+- **Catálogo de Material Suplementario para Auditoría:**
+  * *Script S1 (`scripts/01_extract_institutional_data.py`):* Extracción y replicación exacta de Tablas 1, 2 y 4.
+  * *Script S2 (`scripts/02_som_institutional_evaluation.py`):* Matriz $N \times D$ de pares y entrenamiento SOM reproducible.
+  * *Dataset S1 (`data/indicadores_institucionales.csv`):* Serie temporal y métricas calculadas.
+  * *Dataset S2 (`data/som_institutional_state.json`):* Pesos y clusters del SOM para inspección en KnoMap.
+  * *Protocolo Agéntico:* Ejecutable mediante la skill `template-informe-tecnico-institucional` con el manifiesto de parámetros del informe.
 - **Referencias Bibliográficas Metodológicas:**
   * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 271–292). UNAM, IIBI.
   * Villaseñor-García, E. A., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2017). Multiparametric characterization of scientometric performance profiles assisted by neural networks. *Scientometrics*, 110(1), 77–104.

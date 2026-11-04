@@ -40,6 +40,11 @@ Antes de redactar el reporte, debes cosechar los datos cuantitativos mediante la
      [html_content retornado por la herramienta]
      :::
      ```
+7. **Empaquetado de Material Suplementario y Trazabilidad de Frentes:**
+   - Para que el radar sea reproducible por observatorios tecnológicos u otros agentes, el agente DEBE generar en `./supplementary/`:
+     * `01_extract_topics_data.py`: Script con los Topic IDs de OpenAlex cosechados, fecha de corte y consultas a `ClickHouse-OpenAlex`.
+     * `02_topics_som_mapping.py`: Script con la matriz multidimensional de frentes, cálculo de Coseno de Salton y llamada a `train_som(output_state_path="supplementary/topics_som_state.json", indicator_names=[...])` con semilla fija (`seed=42`).
+     * `topics_som_state.json`: Estado persistido del SOM temático.
 
 ---
 
@@ -173,7 +178,16 @@ graph TD
 
 ## ANEXOS Y FUENTES AUDITABLES
 
-- Relación de metadatos de Topics, identificadores OpenAlex y parámetros del modelo de partición modular.
-- Referencias metodológicas:
+- **Ficha de Trazabilidad Prospectiva y Disponibilidad de Código:**
+  * Inventario de Topic IDs OpenAlex analizados: [Lista canónica de IDs primarios].
+  * Fecha de corte del corpus: [Día Mes Año].
+  * Parámetros de partición y linajes AMI: umbrales de aceleración ($lpha$) y ventanas temporales analizadas.
+  * Catálogo de Material Suplementario:
+    - *Script S1 (`supplementary/01_extract_topics_data.py`):* Extracción de producción y citas por Topic.
+    - *Script S2 (`supplementary/02_topics_som_mapping.py`):* Construcción de la matriz y proyección SOM.
+    - *Dataset S1 (`supplementary/topics_metadata.csv`):* Métricas cinéticas y de impacto de los frentes.
+    - *Dataset S2 (`supplementary/topics_som_state.json`):* Pesos y topología de la variedad temática.
+    - *Protocolo Agéntico:* Ejecutable mediante la skill `template-radar-frentes-investigacion` con el catálogo de Topic IDs.
+- **Referencias metodológicas:**
   * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
   * Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025). Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. UNAM, IIBI.
