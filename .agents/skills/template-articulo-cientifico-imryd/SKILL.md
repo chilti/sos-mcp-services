@@ -1,7 +1,7 @@
 ---
 name: template-articulo-cientifico-imryd
 description: >-
-  Redacción de manuscritos científicos de investigación original con estructura canónica IMRyD para someter a revistas Q1/Q2 en Cienciometría y Science of Science (estilo Polaritones / Frentes de Investigación). Guía al agente en el protocolo canónico de 6 fases: 1) Marco teórico de metaciencia y variedades semánticas, 2) Tabla Comparativa de Literatura Previa y Gap Analysis, 3) Formalizaciones matemáticas (Price, Lotka, Salton, Grafo Causal Mermaid y Mapeo de Trayectorias con Redes SOM mediante Splines Cúbicos Paramétricos y Medias Móviles Centradas), 4) Resultados cuantitativos empíricos con Tabla 1 (Cinéticas y Leyes), Tabla 2 (Canales y OA) y Tabla 3 (Cronología de Trayectorias SOM y quiebres tau), 5) Discusión sobre paradojas Goodhart, asimetrías geopolíticas y fuga en APC, y 6) Referencias APA 7ª con DOIs auditables.
+  Redacción de manuscritos científicos de investigación original con estructura canónica IMRyD para someter a revistas Q1/Q2 en Cienciometría y Science of Science (estilo Polaritones / Frentes de Investigación). Orquesta el flujo de 8 fases delegando en las Agent Skills especializadas del stack: 1) Delimitación y frentes (bibliometric-search-strategist, research-fronts-detection-expert), 2) Estado del arte y benchmark (deep-literature-researcher), 3) Cosecha columnar CERO JOINs (openalex-mexico-clickhouse / openalex-harvester), 4) Leyes cinéticas Price y Lotka (classical-bibliometrics-laws), 5) Afinidad Salton y redes (geopolitical-collaboration-analyst, bibliometric-network-analyst), 6) Mapeo de trayectorias SOM (som-methodological-expert, som-trajectory-mapping), 7) Auditoría OA y APC (open-access-monitor), y 8) Material suplementario reproducible y manifiesto de ejecución.
 ---
 
 # Plantilla Maestra: Artículo Científico de Investigación Original (Formato IMRyD - Journal Q1)
@@ -13,37 +13,80 @@ Integra como pilar metodológico distintivo el **Mapeo de Trayectorias en el Esp
 
 ---
 
-## Directivas Operativas para el Agente (Protocolo MCP Real)
+## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
 
-Antes de redactar el artículo, debes cosechar los datos cuantitativos mediante las herramientas MCP disponibles:
+Esta plantilla opera como una **meta-habilidad orquestadora** de alto nivel. Para garantizar el rigor metodológico, la reproducibilidad y la ausencia de alucinación, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**. Las herramientas MCP y los scripts canónicos constituyen el sustrato técnico que cada habilidad ejecuta y audita internamente.
 
-1. **Delimitación del Frente de Investigación y Linajes AMI:**
-   - Invocar `sos_topics`:
-     * `detect_research_fronts_multimodal`: Identificar frentes temáticos de alta densidad, clusters y palabras clave de frontera.
-     * `track_front_evolution_longitudinal`: Rastrear bifurcaciones, fusiones y linajes aluviales a lo largo de ventanas cronológicas.
-2. **Cosecha Columnar y Series Temporales Anualizadas (CERO JOINs):**
-   - Consultar `ClickHouse-OpenAlex` (`rag.works_academic_all`) o invocar `sos_openalex` (`openalex_search_works`, `openalex_aggregate_mexico`) para extraer series anuales completas de publicaciones, citas acumuladas, coautorías internacionales y vías de acceso abierto.
-3. **Modelado Cinético y Validación de Leyes Bibliométricas (`sos_plmetrix`):**
-   - Invocar `sos_plmetrix`:
-     * `analyze_scientific_growth_phases`: Ajustar el modelo de Price, calcular la tasa exponencial $\alpha$, bondad $R^2$ y tiempo de duplicación $t_d = \frac{\ln(2)}{\alpha}$.
-     * `analyze_lotka_law`: Ajustar la distribución de productividad científica con conteo fraccionado y completo, reportando el exponente $\alpha_{Lotka}$ y la prueba Kolmogorov-Smirnov.
-     * `analyze_bradford_law` y `analyze_price_index`: Cuantificar la dispersión en zonas de Bradford y el índice de obsolescencia.
-4. **Afinidad Bilateral y Cartografía Geopolítica:**
-   - Invocar `sos_topics` (`get_geopolitical_collaboration_matrix`) o `sos_knomap` para construir matrices de coautoría internacional normalizadas con Coseno de Salton ($S_{ij} = \frac{C_{ij}}{\sqrt{C_i C_j}}$) y partición modular Louvain (`detect_louvain_communities`).
-5. **Mapeo de Trayectorias Multidimensionales en el Espacio de Estados SOM (`sos_knomap`):**
-   - **Preprocesamiento:** Suavizar las series anuales multidimensionales mediante Medias Móviles Centradas (*Centered Moving Averages*) de semiancho $s=2$ para eliminar fluctuaciones estocásticas sin introducir retraso de fase.
-   - **Dimensionamiento y Entrenamiento:** Invocar `suggest_grid_size` para obtener el ratio espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla $20N-30N$; invocar `train_som` con topología hexagonal e inicialización PCA.
-   - **Interpolación Continua con Splines Cúbicos Paramétricos:** Calcular las trayectorias $u(t), v(t)$ en la retícula asegurando continuidad $C^2$.
-   - **Regla de Legibilidad Visual:** Muestreo completo durante el entrenamiento; visualización selectiva con un máximo de 5 entidades/países simultáneos en el mapa para evitar espagueti visual.
-   - **Panel Interactivo:** Invocar `knomap_render_som_dashboard` o renderizar la Tríada Visual LabSOM.
-6. **Detección de Quiebres Estructurales:**
-   - Estimar el punto de cambio de régimen temporal $\tau$ con CUSUM / Pettitt calculado sobre la serie anual extraída (no hay herramienta dedicada; declarar método y p-valor) o acotarlo con `analyze_scientific_growth_phases`.
-7. **Empaquetado de Material Suplementario y Protocolo de Reproducibilidad (Obligatorio Q1):**
-   - Para garantizar la reproducibilidad computacional y agéntica de grado Q1, el agente DEBE generar en el directorio de trabajo (o subcarpeta `./supplementary/`):
-     * `01_corpus_extraction.py`: Script Python autónomo con la consulta SQL columnar en ClickHouse, fecha de corte y parámetros exactos de filtrado.
-     * `02_laws_and_som_modeling.py`: Script Python con el cálculo de leyes cinéticas (Price, Lotka), Coseno de Salton, medias móviles centradas y la invocación de `train_som(output_state_path="supplementary/som_state.json", indicator_names=[...])` con semilla fija (`seed=42`).
-     * `som_state.json`: Archivo JSON persistido con los vectores de pesos, U-Matrix, asignaciones BMU y clusters.
-     * `reproducibility_manifest.json`: Ficha técnica de ejecución con prompts, skill utilizada, versión de librerías y semillas deterministas.
+El protocolo canónico de 8 fases se orquesta como sigue:
+
+1. **Fase 1: Delimitación de Campo, Ecuaciones de Búsqueda y Frentes de Investigación:**
+   - **Agent Skills Orquestadas:** [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) y [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md).
+   - **Propósito y Directivas:**
+     * Delimitar el campo mediante el marco multi-etapa de Huang, Schiebel & Porter (2011) en bloques conceptuales (*building blocks*).
+     * Transpilar la estrategia a sintaxis nativa multi-base (WoS, Scopus, PubMed y ClickHouse SQL con funciones de array sin JOINs).
+     * Auditar rigurosamente la estrategia bajo la directriz **GLOBAL (ISSI)** (sustituyendo directrices biomédicas como PRESS 2015).
+     * Extraer los frentes temáticos activos de Topics v5.0 e identificar linajes aluviales AMI (bifurcaciones, fusiones y linajes históricos).
+   - **Artefactos Producidos:** Ecuaciones de búsqueda auditadas, matriz de bloques conceptuales (`search_blocks.json`) y reporte de auditoría GLOBAL (`global_audit.md`).
+
+2. **Fase 2: Revisión Sistemática del Estado del Arte y Matriz de Evidencia:**
+   - **Agent Skill Orquestada:** [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md).
+   - **Propósito y Directivas:**
+     * Conducir la revisión de literatura siguiendo el marco de 5 fases de Zupic & Čater (2015) y Aria & Cuccurullo (2017), bajo los estándares metodológicos PRIBA 2022 (Koo & Lin) y PRISMA 2020.
+     * Ejecutar el procedimiento de *Citation Snowballing* backward y forward (Wohlin, 2014) partiendo de semillas canónicas y aplicando el **Filtro de Densidad Núcleo de Glänzel et al. (2009)** ($k \ge 2$) para suprimir el ruido marginal.
+     * Resolver y normalizar preprints de arXiv (`10.48550/arXiv.xxxx.xxxxx`) y literatura indexada.
+   - **Artefactos Producidos:** Tabla Comparativa de Literatura Previa (Benchmark), matriz de extracción de evidencia y diagramas de flujo PRISMA/PRIBA.
+
+3. **Fase 3: Cosecha Columnar y Series Temporales Anualizadas (CERO JOINs):**
+   - **Agent Skills Orquestadas:** [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) o [`openalex-harvester`](../openalex-harvester/SKILL.md) (según el alcance nacional o global).
+   - **Propósito y Directivas:**
+     * Ejecutar consultas de alto rendimiento columnar sobre la base de datos OpenAlex (`rag.works_academic_all`) bajo la regla inviolable de **CERO JOINs**, empleando funciones nativas de arrays (`has`, `arrayExists`, `splitByChar`).
+     * Extraer series anuales completas de volumen de producción, citas acumuladas, FWCI, percentiles, decil superior (Top 10%), modalidades de acceso abierto y coautorías internacionales.
+   - **Artefactos Producidos:** Dataset del corpus procesado (`corpus_metadata.csv` / Parquet) y script de extracción determinista (`01_corpus_extraction.py`).
+
+4. **Fase 4: Modelado Cinético y Validación Empírica de Leyes Bibliométricas:**
+   - **Agent Skill Orquestada:** [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md).
+   - **Propósito y Directivas:**
+     * Ajustar la **Ley de Crecimiento Exponencial de Price**: calcular la tasa exponencial $\alpha$, bondad de ajuste $R^2$ y tiempo de duplicación $t_d = \frac{\ln(2)}{\alpha}$.
+     * Ajustar la **Distribución de Productividad de Lotka**: implementar conteo fraccionado y completo (*fractional vs. full counting*, Perianes-Rodriguez et al., 2016), estimando el exponente $\alpha_{Lotka}$ y la prueba de Kolmogorov-Smirnov (KS).
+     * Cuantificar la dispersión en zonas concéntricas de Bradford (formulación continua de Egghe) y estimar la tasa de obsolescencia con el Índice de Price.
+     * Localizar quiebres estructurales y changepoints ($\tau$) mediante CUSUM / Pettitt sobre la serie extraída.
+   - **Artefactos Producidos:** Tabla 1 de parámetros cinéticos y leyes, y script de ajuste matemático.
+
+5. **Fase 5: Cartografía Geopolítica de Cooperación y Redes Científicas:**
+   - **Agent Skills Orquestadas:** [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md) y [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md).
+   - **Propósito y Directivas:**
+     * Construir la matriz de coautoría internacional normalizada con el **Coseno de Salton** ($S_{ij} = \frac{C_{ij}}{\sqrt{C_i C_j}}$) y códigos de país ISO-3166-1 alpha-3.
+     * Evaluar la soberanía epistémica y la división internacional del trabajo científico (% primer autor y autor de correspondencia por país o bloque).
+     * Construir y particionar redes de colaboración y acoplamiento bibliográfico mediante normalización por *Association Strength* y algoritmos de partición modular (Leiden / Louvain).
+   - **Artefactos Producidos:** Matrices de afinidad bilateral, Tabla 2 de dinámica de canales y métricas de red.
+
+6. **Fase 6: Mapeo de Trayectorias en el Espacio de Estados con Redes SOM:**
+   - **Agent Skills Orquestadas:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md) y [`som-trajectory-mapping`](../som-trajectory-mapping/SKILL.md).
+   - **Propósito y Directivas:**
+     * **Preprocesamiento:** Suavizar las trayectorias longitudinales multivariadas con **Medias Móviles Centradas** (*Centered Moving Averages*) de semiancho $s=2$ para erradicar el ruido estocástico sin introducir retraso de fase temporal.
+     * **Topología y Calibración Neurocomputacional:** Calcular el ratio de aspecto espectral SVD ($\sigma_1 / \sigma_2$) para la retícula hexagonal *flat-topped*, sobremalla continua $20N\text{--}30N$ e inicialización PCA.
+     * **Trazado Continuo con Splines Cúbicos Paramétricos:** Resolver los sistemas de splines para las coordenadas $(u(t), v(t))$ asegurando continuidad de curvatura $C^2$.
+     * **Regla de Legibilidad Visual LabSOM:** Muestreo completo en entrenamiento; visualización selectiva de un máximo de 5 entidades simultáneas en la trayectoria para preservar la interpretabilidad.
+     * **Tríada Visual LabSOM y Meta-clustering:** Generar la U-Matrix roja/amarilla, mapas de componentes divergentes Verde-Amarillo-Rojo y partición aglomerativa en dos etapas de Vesanto & Alhoniemi con Silhouette máximo ($s^*$).
+   - **Artefactos Producidos:** Tabla 3 de cronología de trayectorias y transiciones de fase, estado neuronal persistido (`som_state.json`) y dashboard interactivo LabSOM (`som_dashboard.html`).
+
+7. **Fase 7: Auditoría de Acceso Abierto y Fuga de Capital en APC:**
+   - **Agent Skill Orquestada:** [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
+   - **Propósito y Directivas:**
+     * Auditar la distribución de la producción en las 6 vías canónicas de Acceso Abierto (Diamante, Gold APC, Híbrida, Bronce, Verde, Cerrada).
+     * Cuantificar el gasto comercial en APC en USD (usando `apc_paid_usd` y `apc_list_usd`), identificando la fuga de presupuestos públicos hacia editoriales oligopólicas comerciales frente al Acceso Abierto Diamante público.
+   - **Artefactos Producidos:** Sección de discusión financiera y desglose de canales de publicación.
+
+8. **Fase 8: Empaquetado de Material Suplementario y Protocolo de Reproducibilidad Dual (Obligatorio Q1):**
+   - **Propósito y Directivas:**
+     * Asegurar el cumplimiento de los estándares de reproducibilidad de grado Q1 mediante el protocolo dual (humano y agéntico).
+     * Generar en `./supplementary/` (o directorio de trabajo):
+       * `Script S1: 01_corpus_extraction.py`: Extracción SQL columnar en ClickHouse bajo regla de CERO JOINs.
+       * `Script S2: 02_laws_and_som_modeling.py`: Cálculo de leyes (Price, Lotka), Coseno de Salton, medias móviles centradas y entrenamiento SOM con semilla fija (`seed=42`).
+       * `Dataset S1: corpus_metadata.csv`: Metadatos tabulares auditables.
+       * `Dataset S2: som_state.json`: Pesos sinápticos, U-Matrix, BMUs y clusters.
+       * `Figura S1: som_dashboard.html`: Visualizador interactivo oficial LabSOM.
+       * `Manifiesto S1: reproducibility_manifest.json`: Ficha técnica de ejecución con prompts, skills orquestadas, versiones de librerías y semillas deterministas.
 
 ---
 

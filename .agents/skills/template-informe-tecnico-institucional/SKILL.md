@@ -1,7 +1,7 @@
 ---
 name: template-informe-tecnico-institucional
 description: >-
-  Elaboración de informes técnicos de evaluación institucional cienciométrica de máxima autoridad (estilo Instituto de Neurobiología / INB UNAM, ICN, INCan). Guía al agente en el protocolo canónico de 7 fases: 1) Semáforo Institucional (Tabla 1), 2) Análisis Tripartito aislando hiperautoría (Régimen A Total vs Régimen B Autónomo <=20 autores vs Régimen C Mega-consorcios con Diagrama Mermaid y Tabla 2), 3) Análisis Multidimensional con Redes SOM (malla hexagonal SVD, sobremalla 20N-30N, Tríada Visual LabSOM y Tabla 3 de Pares Comparables), 4) Indicadores de Liderazgo (% Primer Autor, % Corresponding Author), 5) Auditoría de 6 vías OA y fuga APC USD (Tabla 4), 6) Dinámica del Claustro y Padrón SNII, y 7) Matriz de Recomendaciones a 1, 3 y 5 años (Tabla 5).
+  Elaboración de informes técnicos de evaluación institucional cienciométrica de máxima autoridad (estilo Instituto de Neurobiología / INB UNAM, ICN, INCan). Orquesta el flujo de 7 fases delegando en las Agent Skills especializadas del stack: 1) Identidad institucional y catálogo ROR (openalex-mexico-institutions), 2) Censo del claustro SNII (snii-identity-resolver, infotlachia-scholar-intelligence), 3) Producción y filtro tripartito <=20 autores (openalex-mexico-works-search, openalex-mexico-aggregations), 4) Auditoría OA y fuga APC USD (open-access-monitor), 5) Diagnóstico multidimensional SOM y pares comparables (som-methodological-expert), 6) Artefactos visuales ejecutivos (openalex-mexico-visualizer), y 7) Recomendaciones de gobernanza a 1, 3 y 5 años con material suplementario reproducible.
 ---
 
 # Plantilla Maestra: Informe Técnico de Evaluación Institucional, Gobernanza Científica y Diagnóstico Multidimensional SOM
@@ -13,41 +13,68 @@ Integra rigurosamente el **marco neurocomputacional de análisis multidimensiona
 
 ---
 
-## Directivas Operativas para el Agente (Protocolo MCP Real)
+## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
 
-Antes de redactar el informe, debes cosechar los datos cuantitativos mediante las herramientas MCP disponibles:
+Esta plantilla opera como una **meta-habilidad orquestadora** de evaluación institucional. Para garantizar la máxima trazabilidad, neutralidad y precisión, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**.
 
-1. **Identidad Institucional y Catálogo ROR:**
-   - Invocar `sos_openalex` (`openalex_get_institution`) o consultar en `ClickHouse-OpenAlex` sobre `rag.institutions_seed_mexico` para resolver el código canónico ROR (ej. UNAM: `https://ror.org/01tmp8f25`) y variantes de la dependencia (ej. *Instituto de Neurobiología*, *Campus Juriquilla*).
-2. **Censo del Claustro y Padrón Oficial SNII:**
-   - Invocar `sos_sinapsisai` (`query_snii_census_overview`, `resolve_snii_identity`) para cuantificar la masa crítica del personal académico por niveles (Candidato, 1, 2, 3, Emérito), antigüedad y áreas de conocimiento.
-3. **Producción e Impacto Normalizado (CERO JOINs):**
-   - Invocar `sos_openalex` (`openalex_search_works`, `openalex_aggregate_mexico`) o consultar `rag.works_academic_all` en `ClickHouse-OpenAlex` filtrando con `has(institution_rors, 'https://ror.org/01tmp8f25')`. Extraer series anuales de publicaciones, citas, FWCI y artículos en el decil Top 10%.
-4. **Filtro de Hiperautoría Tripartito Obligatorio:**
-   - Desagregar la producción mediante `length(author_names)` (no existe columna `authors_count`):
-     * *Régimen A (Total Bruto):* Todo el volumen institucional sin filtro.
-     * *Régimen B (Producción Autónoma):* Trabajos con $\le 20$ autores.
-     * *Régimen C (Mega-consorcios):* Trabajos con $> 20$ autores (Big Science).
-5. **Auditoría de Acceso Abierto y Fuga en APC:**
-   - Filtrar por `oa_status` en las 6 vías canónicas: Diamante (*diamond*), Gold APC (*gold*), Híbrida (*hybrid*), Bronce (*bronze*), Verde (*green*) y Cerrada (*closed*). Computar el gasto estimado en cuotas APC comerciales en USD a partir de `apc_paid_usd` y `apc_list_usd`.
-6. **Modelado Multidimensional con Redes Neuronales SOM (`sos_knomap`):**
-   - Invocar `sos_knomap`:
-     * `suggest_grid_size`: Obtener el ratio de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y la sobremalla óptima ($20N-30N$).
-     * `train_som`: Entrenar sobre la matriz normalizada de instituciones homólogas con topología hexagonal, inicialización PCA y convergencia batch.
-     * `evaluate_som_clusters`: Evaluar la partición en dos etapas (Vesanto & Alhoniemi, 2000) mediante el coeficiente Silhouette ($s$).
-     * `knomap_render_som_dashboard`: Renderizar el panel interactivo oficial con la Tríada Visual LabSOM.
-7. **Generación de Artefactos para el Panel Lateral de LibreChat:**
-   - Cuando uses las herramientas nativas de visualización de `sos_openalex` (`openalex_plot_timeseries`, `openalex_plot_oa_donut`, `openalex_plot_top_ranking`, `openalex_plot_quadrant_matrix`, etc.), envuelve el HTML dentro del bloque de artefacto:
-     ```markdown
-     :::artifact{identifier="grafica-institucional" type="text/html" title="Título de la Gráfica"}
-     [html_content retornado por la herramienta]
-     :::
-     ```
-8. **Empaquetado de Material Suplementario y Trazabilidad Institucional:**
-   - Para que el informe sea auditable por órganos de gobierno (Consejo Técnico, Dirección, Comisiones Dictaminadoras), el agente DEBE generar en `./scripts/` o `./supplementary/`:
-     * `01_extract_institutional_data.py`: Script con las sentencias SQL exactas sobre ClickHouse (ROR institucional, filtro de dependencia, partición tripartita $\le 20$ autores y cálculo de APC en USD).
-     * `02_som_institutional_evaluation.py`: Script con la matriz de pares comparables y llamada a `train_som(output_state_path="supplementary/som_state.json", indicator_names=[...])` con semilla fija.
-     * `som_institutional_state.json`: Estado persistido del SOM institucional.
+El protocolo canónico de 7 fases se orquesta como sigue:
+
+1. **Fase 1: Identidad Institucional, Catálogo ROR y Desambiguación de Dependencias:**
+   - **Agent Skill Orquestada:** [`openalex-mexico-institutions`](../openalex-mexico-institutions/SKILL.md).
+   - **Propósito y Directivas:**
+     * Resolver el código canónico ROR oficial de la institución (ej. UNAM: `https://ror.org/01tmp8f25`, Cinvestav: `https://ror.org/05cb51e40`) en el catálogo canónico (`rag.institutions_seed_mexico`).
+     * Resolver acrónimos y aislar dependencias académicas o centros foráneos (ej. *Instituto de Neurobiología*, *Campus Juriquilla*) mediante filtrado de subcadenas insensible a mayúsculas y acentos sobre `institution_names`.
+   - **Artefactos Producidos:** Ficha de identidad institucional ROR y parámetros de acotamiento toponímico.
+
+2. **Fase 2: Censo del Claustro Académico y Padrón Oficial SNII:**
+   - **Agent Skills Orquestadas:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
+   - **Propósito y Directivas:**
+     * Cuantificar la masa crítica del personal académico adscrito a la dependencia desagregado por niveles en el SNII (Candidato, Nivel 1, Nivel 2, Nivel 3 y Emérito).
+     * Evaluar la estructura por áreas del conocimiento, calcular el ratio de masa crítica consolidada (N2 + N3 + Eméritos) vs. personal novel (Candidato + N1) y diagnosticar riesgos de envejecimiento del claustro y relevo generacional.
+   - **Artefactos Producidos:** Censo demográfico del claustro y métricas de consolidación académica.
+
+3. **Fase 3: Producción Científica, Filtro Tripartito y Métricas de Impacto (CERO JOINs):**
+   - **Agent Skills Orquestadas:** [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md) y [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
+   - **Propósito y Directivas:**
+     * Extraer y agregar la producción institucional completa en ClickHouse (`rag.works_academic_all`) bajo la regla inviolable de **CERO JOINs**, filtrando por `has(institution_rors, '<ROR>')`.
+     * **Filtro de Hiperautoría Tripartito Obligatorio:** Aislar rigurosamente el impacto de mega-consorcios internacionales mediante `length(author_names)`:
+       - *Régimen A (Total Bruto):* Volumen global sin filtros de autoría.
+       - *Régimen B (Producción Autónoma):* Publicaciones con $\le 20$ autores (reflejo fiel de la capacidad propia instalada).
+       - *Régimen C (Mega-consorcios Big Science):* Publicaciones con $> 20$ autores.
+     * Calcular volumen anual, citas totales, FWCI normalizado, porcentaje de publicaciones en el decil de élite (Top 10%) y percentil promedio para cada régimen.
+   - **Artefactos Producidos:** Tabla 1 (Semáforo Institucional) y Tabla 2 (Desglose Tripartito de Producción e Impacto).
+
+4. **Fase 4: Auditoría de las 6 Vías de Acceso Abierto y Fuga de Capital en APC Comercial:**
+   - **Agent Skill Orquestada:** [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
+   - **Propósito y Directivas:**
+     * Auditar el corpus institucional según las 6 vías canónicas de publicación: Diamante (*diamond*), Gold APC (*gold*), Híbrida (*hybrid*), Bronce (*bronze*), Verde (*green*) y Cerrada (*closed*).
+     * Cuantificar con exactitud el gasto estimado en cuotas comerciales APC en USD a partir de `apc_paid_usd` y `apc_list_usd`, evidenciando el costo de oportunidad y la transferencia de recursos universitarios hacia corporaciones comerciales (Elsevier, Springer, Wiley, MDPI, Frontiers).
+   - **Artefactos Producidos:** Tabla 4 (Auditoría de Acceso Abierto y Costos de Publicación en USD).
+
+5. **Fase 5: Diagnóstico Multidimensional y Pares Comparables con Redes SOM (Kohonen):**
+   - **Agent Skill Orquestada:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+   - **Propósito y Directivas:**
+     * Superar la falacia de los rankings lineales escalares (*pesar y sumar*) modelando a la institución en un espacio multivariado $\mathbb{R}^D$ de 8 dimensiones normalizadas frente a su universo de instituciones homólogas.
+     * Dimensionar la retícula hexagonal mediante la relación de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla continua $20N\text{--}30N$ con inicialización PCA.
+     * Generar la **Tríada Visual LabSOM**: U-Matrix roja/amarilla (barreras topológicas y valles densos), Mapas de Componentes Verde-Amarillo-Rojo (fortalezas cardinales y áreas deprimidas) y partición aglomerativa en dos etapas de Vesanto & Alhoniemi optimizada con Silhouette ($s^*$).
+     * Identificar el Best Matching Unit (BMU) de la institución y caracterizar su cluster de **pares comparables legítimos**, evaluándola exclusivamente contra dependencias con misiones afines.
+   - **Artefactos Producidos:** Tabla 3 (Caracterización de Pares Comparables y Perfil Cualitativo en el SOM) y archivo de estado persistido (`som_institutional_state.json`).
+
+6. **Fase 6: Generación de Artefactos Visuales Interactivos:**
+   - **Agent Skill Orquestada:** [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
+   - **Propósito y Directivas:**
+     * Generar visualizaciones interactivas autónomas en HTML con Plotly.js (donas de acceso abierto, series temporales duales de producción y citas, gráficos de barras de rankings y matrices de cuadrantes).
+     * Guardar los artefactos en `./reports/` o `./supplementary/` y presentarlos listos para auditoría ejecutiva.
+   - **Artefactos Producidos:** Gráficas interactivas (`oa_donut.html`, `timeseries.html`, `quadrant_matrix.html`).
+
+7. **Fase 7: Gobernanza, Recomendaciones Estratégicas y Material Suplementario Auditable:**
+   - **Propósito y Directivas:**
+     * Elaborar la Tabla 5 con recomendaciones de política científica orientadas a la alta dirección a horizontes de 1, 3 y 5 años.
+     * Para garantizar la completa auditabilidad ante Consejos Técnicos, Comisiones Dictaminadoras y Órganos de Gobierno, empaquetar en `./scripts/` o `./supplementary/`:
+       * `Script S1: 01_extract_institutional_data.py`: Sentencias SQL deterministas en ClickHouse con ROR institucional, filtro tripartito ($\le 20$ aut) y sumatorias APC.
+       * `Script S2: 02_som_institutional_evaluation.py`: Matriz $N \times D$ de pares y entrenamiento SOM reproducible con semilla fija.
+       * `Dataset S1: data/indicadores_institucionales.csv`: Datos consolidados.
+       * `Dataset S2: data/som_institutional_state.json`: Membresía de clusters y pesos sinápticos.
 
 ---
 
@@ -240,15 +267,17 @@ Presentar la **Tabla 5: Matriz de Recomendaciones Accionables para los Órganos 
 
 ## ANEXOS Y FUENTES AUDITABLES
 
-- **Relación de Fuentes y Catálogos Consultados:**
-  * Base de datos OpenAlex México en ClickHouse (Filtro institucional ROR).
-  * Padrón Oficial SNII 2026 y Padrón Histórico 1984–2026 vía `sos_sinapsisai`.
-  * Motor analítico de perfiles neurocomputacionales SOM vía `sos_knomap`.
+- **Relación de Fuentes, Catálogos y Agent Skills Orquestadas:**
+  * Base de datos OpenAlex México en ClickHouse (`rag.works_academic_all`, `rag.institutions_seed_mexico`) vía [`openalex-mexico-institutions`](../openalex-mexico-institutions/SKILL.md) y [`openalex-mexico-works-search`](../openalex-mexico-works-search/SKILL.md).
+  * Padrón Oficial SNII 2026 e histórico vía [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
+  * Motor neurocomputacional de análisis de perfiles SOM vía [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+  * Generador de artefactos visuales interactivos vía [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
+  * Auditoría de vías de acceso abierto y costos en APC vía [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
 - **Ficha Técnica de Trazabilidad y Auditoría Institucional:**
   * Base de datos: OpenAlex México en ClickHouse (`rag.works_academic_all`).
   * Identificador institucional canónico: ROR [ej. https://ror.org/01tmp8f25].
   * Fecha de corte de la base de datos: [Día Mes Año].
-  * Fecha de corte del Padrón Oficial SNII: [Día Mes Año] vía `sos_sinapsisai`.
+  * Fecha de corte del Padrón Oficial SNII: [Día Mes Año] vía `snii-identity-resolver`.
   * Parámetros de consulta deterministas (CERO JOINs):
     - Filtro institucional: `has(institution_rors, '<ROR>')`
     - Filtro dependencia: `arrayExists(x -> positionCaseInsensitiveUTF8(x, '<Nombre Dependencia>') > 0, institution_names)`

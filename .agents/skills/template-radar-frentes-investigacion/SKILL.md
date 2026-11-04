@@ -1,7 +1,7 @@
 ---
 name: template-radar-frentes-investigacion
 description: >-
-  Cartografía cienciométrica de frentes de investigación emergentes, radar tecnológico y linajes aluviales AMI (Topics v5.0). Guía al agente en el protocolo canónico de 6 fases: 1) Radar de aceleración temática y Cuadrante de Frentes (Tabla 1), 2) Estructura taxonómica multinivel (Domain -> Field -> Subfield -> Topic con Diagrama Mermaid), 3) Dinámica longitudinal y cinéticas Price (Tabla 2), 4) Cartografía geopolítica bilateral de Salton (Tabla 3), 5) Cartografía Topológica Multidimensional con Redes SOM (malla hexagonal, Tríada Visual LabSOM y Tabla 4 de Clusters Temáticos), y 6) Alineación con los 17 ODS (Tabla 5) y Roadmap prospectivo.
+  Cartografía cienciométrica de frentes de investigación emergentes, radar tecnológico y linajes aluviales AMI (Topics v5.0). Orquesta el flujo de 6 fases delegando en las Agent Skills especializadas del stack: 1) Detección de frentes y linajes AMI (research-fronts-detection-expert, topics-research-fronts-intelligence), 2) Delimitación y revisión profunda (bibliometric-search-strategist, deep-literature-researcher), 3) Leyes cinéticas y afinidad Salton (classical-bibliometrics-laws, geopolitical-collaboration-analyst), 4) Cartografía topológica SOM (som-methodological-expert), 5) Alineación ODS 1-17 (sdg-impact-intelligence), y 6) Visualizaciones y roadmap prospectivo (openalex-mexico-visualizer).
 ---
 
 # Plantilla Maestra: Reporte de Inteligencia Científica, Frentes de Investigación, Radar Tecnológico y Cartografía Topológica SOM
@@ -13,38 +13,62 @@ Incorpora la **metodología neurocomputacional de Mapas Autoorganizados de Kohon
 
 ---
 
-## Directivas Operativas para el Agente (Protocolo MCP Real)
+## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
 
-Antes de redactar el reporte, debes cosechar los datos cuantitativos mediante las herramientas MCP disponibles:
+Esta plantilla opera como una **meta-habilidad orquestadora** de inteligencia prospectiva. Para garantizar rigor conceptual y metodológico, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**.
 
-1. **Detección de Frentes y Linajes Aluviales AMI (`sos_topics`):**
-   - Invocar `sos_topics`:
-     * `detect_research_fronts_multimodal`: Extraer los frentes activos, identificación de clusters, palabras clave y métricas de aceleración.
-     * `track_front_evolution_longitudinal(subfield_name)`: Reconstruir los linajes aluviales históricos, transiciones temporales (escisión, fusión, surgimiento).
-2. **Jerarquía Taxonómica Multinivel y Cosecha (CERO JOINs):**
-   - Navegar la jerarquía canónica: Domain $\to$ Field $\to$ Subfield $\to$ Topic.
-   - Consultar `rag.works_academic_all` en `ClickHouse-OpenAlex` filtrando por campos temáticos nativos (`subfield`, `topic`) para extraer publicaciones, FWCI y distribución temporal sin usar JOINs.
-3. **Cartografía Geopolítica de Cooperación Bilateral:**
-   - Invocar `sos_topics` (`get_geopolitical_collaboration_matrix`) para obtener matrices de coautoría internacional normalizadas con Coseno de Salton ($S_{ij} = \frac{C_{ij}}{\sqrt{C_i C_j}}$) y ratios de soberanía epistémica (% primer autor país $i$ vs $j$).
-4. **Modelado Topológico Multidimensional con Redes SOM (`sos_knomap`):**
-   - Construir una matriz donde cada frente de investigación o topic sea un vector multidimensional definido por: 1) Tasa de aceleración anual $\alpha$, 2) Tiempo de duplicación $t_d$, 3) FWCI promedio, 4) Volumen de producción, 5) Coautoría internacional, 6) % Acceso Abierto Diamante, y 7) Grado de alineación a ODS.
-   - Invocar `suggest_grid_size` para obtener el ratio espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla hexagonal continua.
-   - Invocar `train_som` y `evaluate_som_clusters` para identificar los clusters temáticos en dos etapas con Silhouette ($s^*$).
-   - Invocar `knomap_render_som_dashboard` o renderizar la Tríada Visual LabSOM (U-Matrix roja/amarilla y Mapas de Componentes Verde-Amarillo-Rojo).
-5. **Alineación con Objetivos de Desarrollo Sostenible (ODS 1–17):**
-   - Invocar `sos_topics` (`get_sdg_impact_matrix`) o `sos_openalex` (`openalex_plot_sdg_grid`) para mapear la contribución a la Agenda 2030 de la ONU.
-6. **Artefactos Visuales Nativos en LibreChat:**
-   - Invocar `openalex_plot_sunburst`, `openalex_plot_topic_dynamics`, o `openalex_plot_geopolitical_sankey` y envolver el resultado con:
-     ```markdown
-     :::artifact{identifier="radar-frentes" type="text/html" title="Título de la Visualización"}
-     [html_content retornado por la herramienta]
-     :::
-     ```
-7. **Empaquetado de Material Suplementario y Trazabilidad de Frentes:**
-   - Para que el radar sea reproducible por observatorios tecnológicos u otros agentes, el agente DEBE generar en `./supplementary/`:
-     * `01_extract_topics_data.py`: Script con los Topic IDs de OpenAlex cosechados, fecha de corte y consultas a `ClickHouse-OpenAlex`.
-     * `02_topics_som_mapping.py`: Script con la matriz multidimensional de frentes, cálculo de Coseno de Salton y llamada a `train_som(output_state_path="supplementary/topics_som_state.json", indicator_names=[...])` con semilla fija (`seed=42`).
-     * `topics_som_state.json`: Estado persistido del SOM temático.
+El protocolo canónico de 6 fases se orquesta como sigue:
+
+1. **Fase 1: Detección Multimodal de Frentes, Taxonomía y Linajes Aluviales AMI:**
+   - **Agent Skills Orquestadas:** [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) y [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md).
+   - **Propósito y Directivas:**
+     * Extraer los frentes temáticos activos de Topics v5.0, identificando palabras clave de frontera, clusters de alta densidad y métricas de aceleración temprana.
+     * Reconstruir la genealogía histórica y los linajes aluviales AMI (Alluvial Mutation Index), documentando eventos de escisión, fusión y surgimiento a través de ventanas temporales.
+     * Navegar y estructurar la jerarquía taxonómica multinivel: Domain $\to$ Field $\to$ Subfield $\to$ Topic.
+   - **Artefactos Producidos:** Tabla 1 (Cuadrante de Frentes de Investigación) y Diagrama Taxonómico Multinivel Mermaid.
+
+2. **Fase 2: Delimitación de Campo, Cosecha Columnar y Revisión Profunda:**
+   - **Agent Skills Orquestadas:** [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) y [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md).
+   - **Propósito y Directivas:**
+     * Delimitar el campo mediante el enfoque multi-etapa de Huang, Schiebel & Porter (2011) en bloques conceptuales (*building blocks*).
+     * Transpilar la estrategia a ClickHouse SQL columnar sobre `rag.works_academic_all` bajo la regla inviolable de **CERO JOINs**, auditando la ecuación bajo la directriz **GLOBAL (ISSI)**.
+     * Ejecutar el protocolo de *Citation Snowballing* backward/forward (Wohlin, 2014) con el **Filtro de Densidad Núcleo de Glänzel et al. (2009)** ($k \ge 2$) para aislar los documentos fundacionales del frente sin ruido espurio.
+   - **Artefactos Producidos:** Ecuaciones de búsqueda auditadas bajo directriz GLOBAL y benchmark de literatura previa.
+
+3. **Fase 3: Dinámica Longitudinal, Cinéticas Price y Cartografía Geopolítica de Salton:**
+   - **Agent Skills Orquestadas:** [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md) y [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md).
+   - **Propósito y Directivas:**
+     * Ajustar los modelos de crecimiento exponencial y logístico de Price: tasa anual $\alpha$, tiempo de duplicación $t_d = \frac{\ln(2)}{\alpha}$, $R^2$ y p-valores en ventanas históricas vs. recientes.
+     * Construir la matriz de coautoría internacional normalizada con el **Coseno de Salton** ($S_{ij} = \frac{C_{ij}}{\sqrt{C_i C_j}}$) y códigos ISO-3166-1 alpha-3.
+     * Evaluar la soberanía epistémica y la asimetría geopolítica Norte-Sur (% primer autor y autor de correspondencia).
+   - **Artefactos Producidos:** Tabla 2 (Dinámica de Crecimiento Cinético y Duplicación) y Tabla 3 (Matriz de Cooperación Bilateral y Soberanía Epistémica).
+
+4. **Fase 4: Cartografía Topológica Multidimensional con Redes SOM (Kohonen):**
+   - **Agent Skill Orquestada:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+   - **Propósito y Directivas:**
+     * Construir la matriz multidimensional donde cada frente o topic es un vector caracterizado por: 1) Tasa de aceleración $\alpha$, 2) Tiempo de duplicación $t_d$, 3) FWCI promedio, 4) Volumen de publicaciones, 5) Coautoría internacional, 6) % Acceso Abierto Diamante, y 7) Grado de alineación con ODS.
+     * Dimensionar la retícula hexagonal mediante la relación de aspecto espectral SVD ($\sigma_1 / \sigma_2$) y sobremalla $20N\text{--}30N$ con inicialización PCA.
+     * Generar la **Tríada Visual LabSOM**: U-Matrix roja/amarilla (barreras topológicas y valles densos), Mapas de Componentes Verde-Amarillo-Rojo (trade-offs multivariados) y agrupamiento aglomerativo en dos etapas de Vesanto & Alhoniemi con Silhouette ($s^*$).
+   - **Artefactos Producidos:** Tabla 4 (Clasificación Topológica de Clusters Temáticos en el SOM) y estado neuronal persistido (`topics_som_state.json`).
+
+5. **Fase 5: Mapeo de Alineación e Impacto en Objetivos de Desarrollo Sostenible (ODS 1–17):**
+   - **Agent Skill Orquestada:** [`sdg-impact-intelligence`](/home/jlja/.gemini/config/skills/sdg-impact-intelligence/SKILL.md).
+   - **Propósito y Directivas:**
+     * Analizar la intersección temática con la Agenda 2030 de la ONU mediante las etiquetas oficiales `sdg_ids` en ClickHouse.
+     * Cuantificar el porcentaje de producción del frente vinculado a cada ODS, el impacto normalizado (FWCI) por objetivo y las tasas de coautoría internacional asociadas.
+   - **Artefactos Producidos:** Tabla 5 (Distribución Temática por ODS Relevantes).
+
+6. **Fase 6: Artefactos Visuales Interactivos, Roadmap Prospectivo y Material Suplementario:**
+   - **Agent Skill Orquestada:** [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
+   - **Propósito y Directivas:**
+     * Generar visualizaciones interactivas autónomas HTML (sunburst taxonómico multinivel, dinámicas de frentes, matrices de cuadrantes y diagramas de Sankey geopolíticos).
+     * Elaborar la Hoja de Ruta Tecnológica a 1, 3 y 5 años con recomendaciones operativas para consejos de ciencia y tecnología.
+     * Empaquetar en `./supplementary/`:
+       - `Script S1: 01_extract_topics_data.py`: Cosecha determinista de Topics en ClickHouse sin JOINs.
+       - `Script S2: 02_topics_som_mapping.py`: Matriz multidimensional de frentes, cálculo de Salton y llamada a `train_som` con semilla fija (`seed=42`).
+       - `Dataset S1: topics_metadata.csv`: Métricas cuantitativas completas de los frentes.
+       - `Dataset S2: topics_som_state.json`: Topología de la variedad temática.
+   - **Artefactos Producidos:** Visualizaciones interactivas en HTML y catálogo suplementario para auditoría.
 
 ---
 
@@ -179,10 +203,16 @@ graph TD
 
 ## ANEXOS Y FUENTES AUDITABLES
 
-- **Ficha de Trazabilidad Prospectiva y Disponibilidad de Código:**
+- **Ficha de Trazabilidad Prospectiva y Agent Skills Orquestadas:**
+  * Catálogo de frentes y linajes aluviales AMI vía [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) y [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md).
+  * Delimitación de campo y revisión profunda vía [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) y [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md).
+  * Cinéticas de Price y afinidad Salton vía [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md) y [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md).
+  * Cartografía topológica neurocomputacional vía [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+  * Monitoreo de alineación ODS vía [`sdg-impact-intelligence`](/home/jlja/.gemini/config/skills/sdg-impact-intelligence/SKILL.md).
+  * Artefactos visuales ejecutivos vía [`openalex-mexico-visualizer`](../openalex-mexico-visualizer/SKILL.md).
   * Inventario de Topic IDs OpenAlex analizados: [Lista canónica de IDs primarios].
   * Fecha de corte del corpus: [Día Mes Año].
-  * Parámetros de partición y linajes AMI: umbrales de aceleración ($lpha$) y ventanas temporales analizadas.
+  * Parámetros de partición y linajes AMI: umbrales de aceleración ($\alpha$) y ventanas temporales analizadas.
   * Catálogo de Material Suplementario:
     - *Script S1 (`supplementary/01_extract_topics_data.py`):* Extracción de producción y citas por Topic.
     - *Script S2 (`supplementary/02_topics_som_mapping.py`):* Construcción de la matriz y proyección SOM.

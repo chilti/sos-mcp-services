@@ -1,7 +1,7 @@
 ---
 name: template-policy-brief-gobernanza
 description: >-
-  Elaboración de resúmenes ejecutivos de política científica y tecnológica (Policy Briefs de 2 a 4 páginas) para rectorías, ministerios de ciencia (SECIHTI), comisiones legislativas y agencias de financiamiento. Guía al agente en el protocolo canónico de 5 fases: 1) Síntesis ejecutiva para decisores e Indicadores diagnósticos clave (Tabla 1), 2) Evidencia Multidimensional SOM contra el reduccionismo de los rankings (la falacia del pesar y sumar, con Tabla 2 de Clusters Institucionales), 3) Dilemas y trade-offs de gobernanza (APC vs Diamante, Hiperautoría vs Autonomía), 4) Evaluación prospectiva de escenarios, y 5) Matriz de recomendaciones prioritarias accionables (Tabla 3).
+  Elaboración de resúmenes ejecutivos de política científica y tecnológica (Policy Briefs de 2 a 4 páginas) para rectorías, ministerios de ciencia (SECIHTI), comisiones legislativas y agencias de financiamiento. Orquesta el flujo de 5 fases delegando en las Agent Skills especializadas del stack: 1) Diagnóstico sectorial y auditoría OA (openalex-mexico-aggregations, open-access-monitor), 2) Demografía del claustro SNII (snii-identity-resolver, infotlachia-scholar-intelligence), 3) Evidencia multidimensional SOM contra el reduccionismo de rankings (som-methodological-expert), 4) Trade-offs de gobernanza y prospectiva, y 5) Matriz de recomendaciones prioritarias de política pública.
 ---
 
 # Plantilla Maestra: Policy Brief de Gobernanza, Políticas de Ciencia y Tecnología (C&T) y Evidencia Multidimensional SOM
@@ -13,22 +13,43 @@ Aporta como argumento científico central el **marco neurocomputacional de Mapas
 
 ---
 
-## Directivas Operativas para el Agente (Protocolo MCP Real)
+## Directivas Operativas para el Agente (Protocolo de Orquestación de Agent Skills)
 
-Antes de redactar el policy brief, debes cosechar los datos cuantitativos mediante las herramientas MCP disponibles:
+Esta plantilla opera como una **meta-habilidad orquestadora** de formulación de política científica. Para asegurar el máximo rigor y contundencia ejecutiva, el agente NO debe ejecutar llamadas ad-hoc de bajo nivel a ciegas, sino que **debe orquestar y delegar cada fase analítica en la Agent Skill especializada correspondiente del ecosistema**.
 
-1. **Diagnóstico Cuantitativo del Sector o Institución:**
-   - Extraer agregaciones de producción, FWCI autónomo ($\le 20$ autores) y gasto comercial en APC mediante `sos_openalex` (`openalex_aggregate_mexico`) o consultas directas a `ClickHouse-OpenAlex` (CERO JOINs).
-2. **Censo Oficial del Claustro en el Padrón SNII:**
-   - Invocar `sos_sinapsisai` (`query_snii_census_overview`) para cuantificar la distribución del claustro por niveles (Candidato a Emérito) y detectar riesgos de envejecimiento o falta de relevo generacional.
-3. **Evidencia de Perfiles Diferenciados con Redes SOM (`sos_knomap`):**
-   - Evidenciar la partición de las instituciones en clusters funcionales mediante `sos_knomap` (`train_som`, `evaluate_som_clusters`; verificar que `status` no sea `fallback`), demostrando que comparar entidades de distinta vocación bajo un mismo escalar perjudica la diversidad y las necesidades locales.
-4. **Focalización Estricta en Trade-Offs de Política Pública:**
-   - Destacar los dilemas centrales: fuga en cuotas APC comerciales en USD vs. inversión en revistas Diamante públicas; hiperautoría pasiva vs. liderazgo intelectual de correspondencia; concentración centralizada vs. descentralización territorial.
-5. **Brevedad, Claridad y Contundencia:**
-   - Longitud objetivo: 2 a 4 páginas. Estructura modular ejecutiva con viñetas analíticas y tablas de acción inmediata.
-6. **Trazabilidad y Verificación Técnica:**
-   - Registrar la ficha técnica con fecha de corte de los datos, identificadores ROR y parámetros de los clusters para que el cuerpo de asesores técnicos de SECIHTI o rectoría pueda replicar las cifras mediante un script Python ligero (`scripts/verify_brief_metrics.py`).
+El protocolo canónico de 5 fases se orquesta como sigue:
+
+1. **Fase 1: Diagnóstico Cuantitativo del Sector y Auditoría de Acceso Abierto:**
+   - **Agent Skills Orquestadas:** [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md) y [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
+   - **Propósito y Directivas:**
+     * Extraer métricas agregadas de producción, citas y FWCI en el Régimen B autónomo ($\\le 20$ autores) sobre `rag.works_academic_all` bajo la regla estricta de CERO JOINs.
+     * Auditar la distribución por las 6 vías canónicas de publicación y cuantificar la fuga financiera en cuotas APC comerciales en USD a partir de `apc_paid_usd` y `apc_list_usd`.
+   - **Artefactos Producidos:** Tabla 1 (Indicadores Diagnósticos Clave).
+
+2. **Fase 2: Demografía del Claustro y Padrón Oficial SNII:**
+   - **Agent Skills Orquestadas:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
+   - **Propósito y Directivas:**
+     * Cuantificar la distribución del personal académico por niveles (Candidato a Emérito) y áreas del conocimiento.
+     * Estimar el ratio de masa crítica consolidada (Nivel 2 + 3 + Eméritos) vs. novel (Candidato + Nivel 1), identificando riesgos demográficos de envejecimiento de líneas troncales y falta de relevo generacional.
+   - **Artefactos Producidos:** Indicadores de masa crítica y estructura demográfica del claustro.
+
+3. **Fase 3: Evidencia Neurocomputacional SOM contra la Falacia de los Rankings:**
+   - **Agent Skill Orquestada:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+   - **Propósito y Directivas:**
+     * Fundamentar el rechazo a los rankings escalares comerciales (*pesar y sumar*) aplicando los principios del Manifiesto de Leiden (Hicks et al., 2015, Nature) y los estándares de la directriz GLOBAL (ISSI).
+     * Proyectar el espacio de estados multidimensional institucional con retícula hexagonal SVD, U-Matrix y meta-clustering de Vesanto & Alhoniemi con Silhouette ($s^*$).
+     * Demostrar que el sistema se organiza en clusters funcionales con misiones legítimas distintas (Élite Global, Soberanía Social/Diamante, Formación de Recursos), evidenciando que evaluar a todas bajo un mismo baremo perjudica la diversidad y las necesidades territoriales.
+   - **Artefactos Producidos:** Tabla 2 (Tipología de Clusters Institucionales Revelados por el SOM).
+
+4. **Fase 4: Articulación de Dilemas Estratégicos y Disyuntivas de Gobernanza (Trade-Offs):**
+   - **Propósito y Directivas:**
+     * Formular analíticamente los trade-offs centrales: 1) Visibilidad global subordinada en Big Science vs. Liderazgo intelectual de correspondencia endógeno; 2) Drenaje financiero por cuotas APC en USD vs. Fortalecimiento de la soberanía editorial Diamante; 3) Polarización metropolitana centralizada vs. Federalización de capacidades de investigación.
+     * Evaluar escenarios prospectivos a 3 y 5 años (inercial vs. proactivo).
+
+5. **Fase 5: Matriz de Recomendaciones Accionables y Verificación Técnica:**
+   - **Propósito y Directivas:**
+     * Formular la Tabla 3 con recomendaciones de política pública de alto impacto clasificadas por nivel de decisión (Rectoría / SECIHTI, Consejos Técnicos, Coordinaciones) con plazos e indicadores verificables.
+     * Generar la ficha técnica con RORs, fecha de corte y script de verificación rápida reproducible (`scripts/verify_brief_metrics.py`).
 
 ---
 
@@ -138,9 +159,12 @@ Presentar la **Tabla 3: Matriz de Recomendaciones Accionables para Decisores**:
 
 ## FUENTES Y METADATOS AUDITABLES
 
-- **Ficha Técnica y Trazabilidad para Cuerpos Asesores:**
+- **Ficha Técnica, Trazabilidad y Agent Skills Orquestadas:**
+  * Agregaciones columnares CERO JOINs vía [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
+  * Monitoreo de vías de acceso abierto y costos APC vía [`open-access-monitor`](/home/jlja/.gemini/config/skills/open-access-monitor/SKILL.md).
+  * Resolución de identidad y censo SNII vía [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md).
+  * Modelado neurocomputacional de perfiles SOM vía [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
   * Base de datos: OpenAlex México en ClickHouse (`rag.works_academic_all`, fecha de corte: [Día Mes Año]).
-  * Padrón Oficial SNII vía `sos_sinapsisai` (corte: [Día Mes Año]).
   * Identificadores ROR consultados: [Lista canónica].
   * Verificación independiente: Las cifras de la Tabla 1 y los clusters de la Tabla 2 son auditables mediante el script reproducible `scripts/verify_brief_metrics.py` o re-ejecutando la skill `template-policy-brief-gobernanza` con los parámetros indicados.
 - **Metodología neurocomputacional y gobernanza métrica:**
