@@ -85,9 +85,13 @@ Antes de redactar el policy brief, debes cosechar los datos cuantitativos median
 
 *La falacia del "pesar y sumar": por qué un solo indicador escalar distorsiona las políticas públicas (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025).*
 
-- **2.1. El Error Metodológico de los Rankings Comerciales:**
+- **2.1. El Error Metodológico de los Rankings Comerciales y el Manifiesto de Leiden:**
   * Los rankings internacionales (ARWU, QS, THE) combinan indicadores heterogéneos mediante ponderaciones lineales arbitrarias, forzando a todas las instituciones a competir bajo un único modelo anglosajón intensivo en recursos.
-  * Este reduccionismo castiga la investigación orientada a problemas nacionales, las publicaciones en lenguas locales y el acceso abierto comunitario.
+  * Este reduccionismo viola los principios fundamentales del **Manifiesto de Leiden (Hicks et al., 2015, Nature)** y los estándares de transparencia de la directriz **GLOBAL (ISSI)**:
+    1. *Principio 1:* La evaluación cuantitativa debe apoyar, nunca sustituir, el juicio cualitativo experto.
+    2. *Principio 3:* Proteger la excelencia en la investigación de relevancia local y regional.
+    3. *Principio 8:* Evitar el reduccionismo de indicadores únicos basados en clasificaciones unidimensionales.
+  * Este reduccionismo castiga severamente la investigación orientada a problemas nacionales, las publicaciones en lenguas locales y el acceso abierto comunitario.
 - **2.2. Demostración Neurocomputacional con Redes SOM:**
   * El modelado en espacios de estados con redes de Kohonen demuestra que las instituciones se agrupan en clusters cualitativamente distintos: no son "mejores o peores" en una escala unidimensional, sino que cumplen funciones y misiones académicas diferenciadas.
 - **2.3. Tabla 2: Tipología de Clusters Institucionales Revelados por el SOM:**
@@ -139,4 +143,7 @@ Presentar la **Tabla 3: Matriz de Recomendaciones Accionables para Decisores**:
   * Padrón Oficial SNII vía `sos_sinapsisai` (corte: [Día Mes Año]).
   * Identificadores ROR consultados: [Lista canónica].
   * Verificación independiente: Las cifras de la Tabla 1 y los clusters de la Tabla 2 son auditables mediante el script reproducible `scripts/verify_brief_metrics.py` o re-ejecutando la skill `template-policy-brief-gobernanza` con los parámetros indicados.
-- **Metodología neurocomputacional:** Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
+- **Metodología neurocomputacional y gobernanza métrica:**
+  * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
+  * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431.
+  * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.

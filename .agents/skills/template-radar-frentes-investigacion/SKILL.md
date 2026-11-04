@@ -79,6 +79,7 @@ Antes de redactar el reporte, debes cosechar los datos cuantitativos mediante la
 
 - **1.1. Síntesis Estratégica del Dominio:**
   * Diagnóstico global del ritmo de crecimiento, masa crítica de publicaciones, dispersión geográfica y grado de madurez del frente tecnológico o científico.
+  * **Trazabilidad Metodológica GLOBAL (ISSI):** Declaración de la fuente de datos (OpenAlex / Topics v5.0), snapshot temporal con fecha y huso horario exacto de corte, criterios de delimitación temática multi-etapa y métricas de normalización relacional (Coseno de Salton para afinidad geopolítica y Association Strength para co-ocurrencia).
 - **1.2. Tabla 1: Cuadrante de Frentes de Investigación (Research Fronts v5.0):**
 
 | Frente de Investigación / Topic ID | Denominación Canónica del Frente | Fase del Ciclo de Vida | Tasa Crecimiento Anual ($\alpha$) | Tiempo Duplicación ($t_d$) | FWCI Promedio | Volumen Trabajos | Polo Geopolítico Líder (% Liderazgo) |
@@ -191,3 +192,6 @@ graph TD
 - **Referencias metodológicas:**
   * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. UNAM, IIBI.
   * Jiménez-Andrade, J. L., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2025). Análisis y visualización de la evolución de perfiles cienciométricos multidimensionales con IA. UNAM, IIBI.
+  * Huang, C., Schiebel, E., & Porter, A. L. (2011). A multi-stage approach to mapping emerging technologies: the case of DNA sequencing technology. *Scientometrics*, 87(2), 241–260.
+  * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
+  * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431.

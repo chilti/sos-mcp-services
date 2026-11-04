@@ -120,9 +120,29 @@ Antes de redactar el artículo, debes cosechar los datos cuantitativos mediante 
 
 ## 3. MARCO METODOLÓGICO, FORMALIZACIÓN MATEMÁTICA Y MODELO CAUSAL
 
-- **3.1. Corpus de Datos y Estrategia de Filtrado:**
-  * Detalle de la fuente de datos (ClickHouse OpenAlex / Scopus), parámetros de normalización toponímica y temporal.
-  * Regla estricta de CERO JOINs en ClickHouse, aislamiento de hiperautoría ($\le 20$ autores) y exclusión de artefactos de indexación.
+- **3.1. Corpus de Datos, Delimitación de Campo y Protocolo GLOBAL (ISSI):**
+  * **3.1.1. Fuentes, Cobertura y Snapshot Temporal:**
+    Declarar explícitamente las plataformas de consulta (OpenAlex / ClickHouse `rag.works_academic_all`, Scopus, Web of Science Core Collection), la versión exacta de la base, la fecha de extracción y el huso horario correspondiente (requisito obligatorio de la directriz GLOBAL de la ISSI debido a la naturaleza dinámica de los índices).
+  * **3.1.2. Delimitación del Campo (Field Delineation Multi-Etapa de Huang, Schiebel & Porter, 2011):**
+    Detallar las 4 etapas de delimitación: 1) *Core Search* con términos de máxima precisión; 2) *Modular Expansion* por bloques conceptuales temáticos y esquemas de clasificación (Topics de OpenAlex, MeSH Headings, Categorías WoS); 3) *Noise Filtering* por reglas de co-ocurrencia y exclusión de ramas ajenas; 4) *Calibración de Semillas* verificando el 100% de recuperación del *golden standard*.
+  * **3.1.3. Desambiguación de Entidades y Armonización:**
+    Procedimiento para resolver homónimos de autores hispanos (mediante identificadores persistentes ORCID y OpenAlex Author IDs), unificación institucional mediante el catálogo canónico **ROR** (Research Organization Registry) y normalización de descriptores mediante tesauro de sinónimos.
+  * **3.1.4. Unidades de Análisis y Métodos de Conteo:**
+    Declaración obligatoria del método de ponderación: **conteo completo (*full counting*)** vs. **conteo fraccional (*fractional counting*, Perianes-Rodriguez et al., 2016)** para matrices de coautoría y acoplamiento bibliográfico, aislando de forma justificada el sesgo de mega-consorcios (>20 autores).
+  * **3.1.5. Algoritmos de Clustering, Métricas de Similitud y Parámetros:**
+    Declaración de la métrica de normalización relacional (*Association Strength* de Van Eck & Waltman o Coseno de Salton), algoritmo de partición comunitaria (Leiden / Louvain), parámetro de resolución modular ($\gamma$) y umbrales mínimos de frecuencia ($k$).
+
+Presentar la **Tabla Metodológica de Cumplimiento de la Directriz GLOBAL (ISSI)**:
+
+| Dimensión GLOBAL | Ítem Metodológico | Especificación Técnica en este Estudio | Estado |
+| :--- | :--- | :--- | :---: |
+| **1. Justificación Conceptual** | Delimitación del frente y preguntas de investigación | Justificación teórica de la cinética emergente y formalización de $RQ_1, RQ_2, RQ_3$. | ✅ |
+| **2. Fuentes y Snapshot** | Base de datos, fecha exacta de corte y huso horario | [Nombre de la base] Snapshot: [YYYY-MM-DD, HH:MM UTC-X]; Ediciones: [Ediciones]. | ✅ |
+| **3. Delimitación de Campo** | Ecuación exacta con sintaxis completa y etiquetas | Ecuación booleana completa auditada sin JOINs con etiquetas `TS=` / funciones nativas. | ✅ |
+| **4. Desambiguación** | Normalización de autores, catálogos ROR y tesauro | Identificadores ORCID/OpenAlex, ROR IDs unificados y tesauro de sinónimos. | ✅ |
+| **5. Métodos de Conteo** | Conteo fraccional vs. completo para redes | Conteo fraccional para coautoría; aislamiento de hiperautoría en Régimen B ($\le 20$ aut). | ✅ |
+| **6. Similitud y Clustering** | Métrica de asociación, algoritmo y resolución $\gamma$ | Association Strength / Coseno de Salton; Partición modular ($\gamma = [X.X]$); Topología SOM SVD. | ✅ |
+| **7. Reproducibilidad** | Datos abiertos, scripts versionados y manifiesto | Scripts S1-S2 documentados con semillas fijas (`random_state=42`) y manifiesto JSON. | ✅ |
 - **3.2. Formalización Matemática de Modelos Cinéticos y Leyes:**
   * **Modelo de Crecimiento Cinético de Price:**
     $$\frac{dN}{dt} = \alpha N \implies N(t) = N_0 e^{\alpha t}, \quad t_d = \frac{\ln(2)}{\alpha}$$
@@ -230,6 +250,11 @@ graph TD
 5. **Price, D. J. de S. (1963).** *Little Science, Big Science*. Columbia University Press.
 6. **Lotka, A. J. (1926).** The frequency distribution of scientific productivity. *Journal of the Washington Academy of Sciences*, 16(12), 317–323.
 7. **Salton, G., & McGill, M. J. (1983).** *Introduction to Modern Information Retrieval*. McGraw-Hill.
+8. **Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015).** Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431. https://doi.org/10.1038/520429a
+9. **Huang, C., Schiebel, E., & Porter, A. L. (2011).** A multi-stage approach to mapping emerging technologies: the case of DNA sequencing technology. *Scientometrics*, 87(2), 241–260. https://doi.org/10.1007/s11192-011-0341-9
+10. **International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024).** *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
+11. **Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).** Constructing bibliometric networks: A comparison between full and fractional counting. *Journal of Informetrics*, 10(4), 1178–1195. https://doi.org/10.1016/j.joi.2016.10.006
+12. **Zupic, I., & Čater, T. (2015).** Bibliometric methods in management and organization. *Organizational Research Methods*, 18(3), 429–472. https://doi.org/10.1177/1094428114562629
 
 ---
 

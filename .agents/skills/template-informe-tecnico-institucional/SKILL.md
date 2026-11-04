@@ -107,8 +107,13 @@ Antes de redactar el informe, debes cosechar los datos cuantitativos mediante la
 
 ## 2. ANÁLISIS TRIPARTITO OBLIGATORIO DE LA PRODUCCIÓN Y FILTRO DE HIPERAUTORÍA
 
-*El aislamiento del sesgo inducido por mega-consorcios internacionales (Big Science) es un mandato metodológico estricto para medir la verdadera capacidad científica instalada y la productividad autónoma de la institución.*
+*El aislamiento del sesgo inducido por mega-consorcios internacionales (Big Science) es un mandato metodológico estricto para medir la verdadera capacidad científica instalada y la productividad autónoma de la institución, alineado con las directrices de desambiguación y métodos de conteo de la Directriz GLOBAL (ISSI).*
 
+- **2.0. Delimitación Institucional, Snapshot de Datos y Protocolo GLOBAL (ISSI):**
+  * **Snapshot y Trazabilidad:** Declaración obligatoria de la base de datos (ClickHouse `rag.works_academic_all` / OpenAlex), identificador canónico institucional **ROR** (Research Organization Registry), fecha exacta de corte y huso horario de la consulta.
+  * **Desambiguación de Dependencias:** Declaración formal de la regla de filtrado por coincidencia insensible a mayúsculas y diacríticos en `institution_names`, especificando que el ROR identifica a la institución matriz y reportando las limitaciones toponímicas inherentes.
+  * **Métodos de Conteo (Conteo Fraccional vs. Conteo Completo):** Justificación de la ponderación de autoría (*fractional counting*, Perianes-Rodriguez et al., 2016) para reflejar la contribución institucional real frente a publicaciones con más de 20 autores de múltiples países.
+  * **Desambiguación Autoral:** Uso de ORCID y del Padrón Oficial SNII para mitigar la colisión de homónimos de investigadores hispanos.
 - **2.1. Justificación Matemática y Epistemológica del Filtro Tripartito:**
   * Demostración analítica de por qué computar artículos de 1,000 a 3,000 autores en consorcios globales infla artificialmente el FWCI y la tasa de citación institucional, ocultando la realidad del impacto generado por el claustro propio.
 - **2.2. Diagrama de Flujo del Análisis Tripartito (Mermaid Obligatorio):**
@@ -259,3 +264,6 @@ Presentar la **Tabla 5: Matriz de Recomendaciones Accionables para los Órganos 
   * Carrillo-Calvet, H., Jiménez-Andrade, J. L., & Arencibia-Jorge, R. (2025). Redes neuronales autoorganizadas y mapeos de la ciencia. En S. Gorbea Portal & M. Piña Pozas (Coords.), *La metría de la información-conocimiento y los datos en la búsqueda de evidencias científicas* (pp. 271–292). UNAM, IIBI.
   * Villaseñor-García, E. A., Arencibia-Jorge, R., & Carrillo-Calvet, H. (2017). Multiparametric characterization of scientometric performance profiles assisted by neural networks. *Scientometrics*, 110(1), 77–104.
   * Vesanto, J., & Alhoniemi, E. (2000). Clustering of the Self-Organizing Map. *IEEE Transactions on Neural Networks*, 11(3), 586–600.
+  * Hicks, D., Wouters, P., Waltman, L., de Rijcke, S., & Rafols, I. (2015). Bibliometrics: The Leiden Manifesto for research metrics. *Nature*, 520(7548), 429–431.
+  * International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*. ISSI Guidelines Initiative.
+  * Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016). Constructing bibliometric networks: A comparison between full and fractional counting. *Journal of Informetrics*, 10(4), 1178–1195.
