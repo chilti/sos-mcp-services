@@ -232,6 +232,8 @@ Invocar `knomap-som-engine -> train_som` con:
 * `iterations`: 100–200 para batch.
 * `clustering_algorithm`: `"kmeans"` o `"hierarchical"`.
 * `n_clusters`: Valor inicial preliminar.
+* `output_state_path`: (Opcional pero recomendado para el dashboard) Ruta de archivo JSON donde persistir el estado (ej. `/tmp/som_state.json` o `./reports/som_state.json`).
+* `indicator_names`: (Opcional) Nombres de las variables/columnas para los planos de componentes en el dashboard.
 
 ### 3. Calibración del K Óptimo
 
