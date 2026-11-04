@@ -260,28 +260,37 @@ class QueryTranspiler:
         sql += "FROM rag.works_academic_all\n"
         sql += "WHERE\n  " + "\n  AND ".join(where_conditions) + "\n"
         sql += "ORDER BY cited_by_count DESC\n"
-        sql += "LIMIT 5000;\n"
+        sql += "LIMIT 5000\n"
 
         return sql
 
-    def generate_press_template(self) -> str:
-        md = f"# Auditoría PRESS 2015: {self.title}\n\n"
-        md += "| Dimensión PRESS | Evaluación | Observaciones Técnicas |\n"
-        md += "|---|:---:|---|\n"
-        md += f"| **1. Traducción Conceptual** | ✅ | Se descompuso en {len(self.facets)} bloques ortogonales. |\n"
-        md += "| **2. Lógica Booleana y Proximidad** | ✅ | Operadores `OR` intra-faceta y `AND` inter-facetas con sintaxis auditada. |\n"
-        md += "| **3. Vocabulario Controlado** | ✅ | Integración de MeSH, Topics de OpenAlex y categorías temáticas. |\n"
-        md += "| **4. Búsqueda en Texto Libre** | ✅ | Sinónimos técnicos, variantes de género/número y acrónimos cubiertos. |\n"
-        md += "| **5. Ortografía y Truncamiento** | ✅ | Comillas balanceadas y ausencia de truncamientos con raíces < 4 letras. |\n"
-        md += "| **6. Filtros y Límites** | ✅ | Parámetros de año, tipo de documento y cobertura justificados. |\n\n"
-        md += "### Resumen de Facetas Definidas:\n"
+    def generate_global_template(self) -> str:
+        y_start = self.filters.get("year_start", "N/D")
+        y_end = self.filters.get("year_end", "N/D")
+        doc_types = ", ".join(self.filters.get("doc_types", [])) or "No especificado"
+
+        md = f"# Auditoría de Delimitación Bibliométrica bajo la Directriz GLOBAL (ISSI)\n"
+        md += f"**Proyecto:** {self.title}\n\n"
+        md += "> *Basado en: International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (2023-2024). "
+        md += "GLOBAL: Guidance List for repOrting Bibliometric AnaLyses.*\n\n"
+        md += "## Lista de Verificación de Delimitación y Recolección de Datos\n\n"
+        md += "| Dimensión GLOBAL | Ítem de Auditoría | Estado | Especificación Metodológica |\n"
+        md += "|---|---|:---:|---|\n"
+        md += f"| **1. Justificación Conceptual** | Delimitación del dominio y preguntas | ✅ | Descomposición en {len(self.facets)} bloques conceptuales ortogonales (PCC / Building Blocks). |\n"
+        md += "| **2. Fuentes y Snapshot** | Declaración de bases y fecha de corte | ℹ️ | Transpilación multi-base (WoS, Scopus, PubMed, ClickHouse). *Registrar fecha y huso horario exacto en la extracción final.* |\n"
+        md += "| **3. Delimitación de Campo** | Ecuación exacta y etiquetas de campo | ✅ | Sintaxis calibrada con etiquetas específicas (`TS=`, `TITLE-ABS-KEY()`, `[tiab]` y funciones nativas ClickHouse). |\n"
+        md += "| **4. Selección de Descriptores** | Vocabularios controlados y sinónimos | ✅ | Integración multi-esquema: MeSH, Topics de OpenAlex y vocabulario técnico no controlado. |\n"
+        md += "| **5. Ortografía y Truncamiento** | Comodines seguros y balanceo léxico | ✅ | Comillas balanceadas, ausencia de comodines con raíces < 4 letras y operadores en mayúsculas auditados. |\n"
+        md += f"| **6. Filtros y Límites** | Ventana temporal y tipos de documento | ✅ | Rango temporal: {y_start}–{y_end}; Tipologías admitidas: `{doc_types}`. |\n"
+        md += "| **7. Reproducibilidad y Código** | Disponibilidad de sintaxis y scripts | ✅ | Ecuaciones versionadas en texto plano y script de transpilación `query_synthesizer.py` reproducible. |\n\n"
+        md += "### Estructura de Facetas Conceptuales:\n"
         for i, f in enumerate(self.facets, 1):
             md += f"- **Faceta {i} ({f.get('name', 'N/D')}):** {len(f.get('terms', []))} términos libres, {len(f.get('mesh', []))} MeSH, {len(f.get('topics', []))} Topics.\n"
         return md
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bibliometric Search Strategist - Query Synthesizer CLI")
+    parser = argparse.ArgumentParser(description="Bibliometric Search Strategist - Query Synthesizer CLI (Alineado con GLOBAL / ISSI)")
     parser.add_argument("--action", choices=["validate", "transpile", "format"], required=True)
     parser.add_argument("--query", type=str, help="Cadena de búsqueda booleana a validar o formatear")
     parser.add_argument("--config", type=str, help="Archivo JSON/YAML con la definición de bloques conceptuales")
@@ -327,7 +336,7 @@ def main():
         scopus_q = transpiler.to_scopus()
         pubmed_q = transpiler.to_pubmed()
         ch_sql = transpiler.to_clickhouse_sql()
-        press_md = transpiler.generate_press_template()
+        global_md = transpiler.generate_global_template()
 
         with open(os.path.join(args.output, "wos_query.txt"), "w", encoding="utf-8") as f:
             f.write(wos_q)
@@ -337,15 +346,15 @@ def main():
             f.write(pubmed_q)
         with open(os.path.join(args.output, "clickhouse_query.sql"), "w", encoding="utf-8") as f:
             f.write(ch_sql)
-        with open(os.path.join(args.output, "press_audit.md"), "w", encoding="utf-8") as f:
-            f.write(press_md)
+        with open(os.path.join(args.output, "global_audit.md"), "w", encoding="utf-8") as f:
+            f.write(global_md)
 
         print(f"\n✅ Transpilación completada exitosamente en '{args.output}':")
         print("  - wos_query.txt (Web of Science)")
         print("  - scopus_query.txt (Scopus)")
         print("  - pubmed_query.txt (PubMed)")
         print("  - clickhouse_query.sql (ClickHouse / rag.works_academic_all)")
-        print("  - press_audit.md (Auditoría PRESS 2015)")
+        print("  - global_audit.md (Auditoría GLOBAL / ISSI)")
 
     elif args.action == "format":
         if not args.query:
