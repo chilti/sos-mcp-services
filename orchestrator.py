@@ -63,6 +63,12 @@ SERVICES: Dict[str, Dict[str, Any]] = {
         "script": BASE_DIR / "services/openproject/mcp_server.py",
         "description": "OpenProject PM Gateway",
         "pythonpath": f"{BASE_DIR}"
+    },
+    "mattermost": {
+        "port": 8017,
+        "script": Path("/mnt/expansion/desplegados/mattermost-agents-hub/mcp_service/mcp_server.py"),
+        "description": "Mattermost Think Tank Collaboration Gateway",
+        "pythonpath": "/mnt/expansion/desplegados/mattermost-agents-hub"
     }
 }
 

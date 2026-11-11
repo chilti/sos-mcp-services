@@ -57,6 +57,16 @@
         "OPENPROJECT_URL": "http://127.0.0.1:8085/openproject",
         "OPENPROJECT_HOST_HEADER": "dinamica1.fciencias.unam.mx"
       }
+    },
+    "sos_mattermost": {
+      "command": "/home/ambientesPy/revistaslatam/bin/python",
+      "args": ["/mnt/expansion/desplegados/mattermost-agents-hub/mcp_service/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/mnt/expansion/desplegados/mattermost-agents-hub",
+        "MCP_TRANSPORT": "stdio",
+        "MATTERMOST_URL": "http://127.0.0.1:8065/mattermost",
+        "MATTERMOST_HOST_HEADER": "dinamica1.fciencias.unam.mx"
+      }
     }
   }
 }
