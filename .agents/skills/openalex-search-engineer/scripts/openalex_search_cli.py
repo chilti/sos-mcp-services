@@ -103,8 +103,11 @@ def generate_hispanic_name_permutations(name: str) -> List[str]:
 
 
 def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """Asegura que un registro de obra tenga todas las columnas canónicas del ecosistema."""
+    """Asegura que un registro de obra (de ClickHouse o de la API pública de OpenAlex) tenga todas las columnas canónicas."""
     rec = dict(raw)
+    if not rec.get("title") and rec.get("display_name"):
+        rec["title"] = rec["display_name"]
+
     year_val = rec.get("year") if rec.get("year") is not None else rec.get("publication_year")
     rec["year"] = int(year_val) if year_val is not None else None
     rec["publication_year"] = rec["year"]
@@ -116,6 +119,62 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
     doc_type = rec.get("doc_type") or rec.get("type") or "article"
     rec["doc_type"] = str(doc_type)
     rec["type"] = str(doc_type)
+
+    # Extraer authorships si viene de la API pública de OpenAlex
+    authorships = rec.get("authorships")
+    if isinstance(authorships, list) and authorships and not rec.get("author_names"):
+        a_names, i_names, i_rors, c_codes = [], [], [], []
+        for auth in authorships:
+            if not isinstance(auth, dict):
+                continue
+            aname = (auth.get("author") or {}).get("display_name") or auth.get("raw_author_name")
+            if aname:
+                a_names.append(str(aname))
+            for c in auth.get("countries") or []:
+                if c and c not in c_codes:
+                    c_codes.append(str(c))
+            for inst in auth.get("institutions") or []:
+                if not isinstance(inst, dict):
+                    continue
+                iname = inst.get("display_name")
+                iror = inst.get("ror")
+                icc = inst.get("country_code")
+                if iname and iname not in i_names:
+                    i_names.append(str(iname))
+                if iror and iror not in i_rors:
+                    i_rors.append(str(iror))
+                if icc and icc not in c_codes:
+                    c_codes.append(str(icc))
+        rec["author_names"] = a_names
+        rec["institution_names"] = i_names
+        rec["institution_rors"] = i_rors
+        rec["all_country_codes"] = c_codes
+
+    # Extraer open_access si viene anidado de la API pública
+    oa_obj = rec.get("open_access")
+    if isinstance(oa_obj, dict):
+        if "is_oa" not in rec or rec["is_oa"] is None:
+            rec["is_oa"] = oa_obj.get("is_oa", False)
+        if not rec.get("oa_status"):
+            rec["oa_status"] = oa_obj.get("oa_status", "closed")
+
+    # Extraer primary_topic si viene anidado
+    pt_obj = rec.get("primary_topic")
+    if isinstance(pt_obj, dict):
+        rec.setdefault("topic", pt_obj.get("display_name", ""))
+        rec.setdefault("subfield", (pt_obj.get("subfield") or {}).get("display_name", ""))
+        rec.setdefault("field", (pt_obj.get("field") or {}).get("display_name", ""))
+        rec.setdefault("domain", (pt_obj.get("domain") or {}).get("display_name", ""))
+
+    # Extraer APCs y SDGs si vienen anidados
+    if isinstance(rec.get("apc_paid"), dict) and not rec.get("apc_paid_usd"):
+        rec["apc_paid_usd"] = rec["apc_paid"].get("value_usd") or 0.0
+    if isinstance(rec.get("apc_list"), dict) and not rec.get("apc_list_usd"):
+        rec["apc_list_usd"] = rec["apc_list"].get("value_usd") or 0.0
+    if isinstance(rec.get("sustainable_development_goals"), list) and not rec.get("sdgs"):
+        rec["sdgs"] = [s.get("display_name") or s.get("id") for s in rec["sustainable_development_goals"] if isinstance(s, dict)]
+    if isinstance(rec.get("keywords"), list) and rec["keywords"] and isinstance(rec["keywords"][0], dict):
+        rec["keywords"] = [k.get("display_name", "") for k in rec["keywords"] if isinstance(k, dict) and k.get("display_name")]
 
     author_names = rec.get("author_names") or rec.get("raw_author_names") or []
     if isinstance(author_names, str):
@@ -244,7 +303,25 @@ def cmd_search_authors(args):
             it_id = it.get("id")
             if it_id and it_id not in seen_ids:
                 seen_ids.add(it_id)
-                results.append(it)
+                h_idx = it.get("h_index")
+                if h_idx is None and isinstance(it.get("summary_stats"), dict):
+                    h_idx = it["summary_stats"].get("h_index")
+                inst_name = it.get("last_known_institution")
+                ror_id = it.get("ror")
+                if not inst_name and it.get("last_known_institutions"):
+                    inst_first = it["last_known_institutions"][0]
+                    inst_name = inst_first.get("display_name")
+                    ror_id = inst_first.get("ror")
+                results.append({
+                    "id": it_id,
+                    "display_name": it.get("display_name"),
+                    "orcid": it.get("orcid"),
+                    "works_count": it.get("works_count"),
+                    "cited_by_count": it.get("cited_by_count"),
+                    "h_index": h_idx,
+                    "last_known_institution": inst_name,
+                    "ror": ror_id,
+                })
 
     output_data = {
         "query": name,
@@ -332,12 +409,17 @@ def cmd_search_works(args):
         ORDER BY cited_by_count DESC
         LIMIT {limit}
         """
-        res = client.query(sql)
-        col_names = list(res.column_names)
-        for row in res.result_rows:
-            row_dict = dict(zip(col_names, row))
-            records.append(_normalize_work_record(row_dict))
-    else:
+        try:
+            res = client.query(sql)
+            col_names = list(res.column_names)
+            for row in res.result_rows:
+                row_dict = dict(zip(col_names, row))
+                records.append(_normalize_work_record(row_dict))
+        except Exception as e:
+            print(f"Warning: ClickHouse query failed ({e}). Falling back to OpenAlex API.", file=sys.stderr)
+            records = []
+
+    if not records and not args.sql_file:
         res = openalex_search_works(
             search_query=args.query or "",
             author_id=args.author_id,
@@ -348,7 +430,7 @@ def cmd_search_works(args):
             is_oa=args.is_oa,
             limit=limit,
         )
-        items = res.get("data", res.get("results", []))
+        items = res.get("data") or res.get("results") or []
         records = [_normalize_work_record(it) for it in items]
 
     _save_works_output(

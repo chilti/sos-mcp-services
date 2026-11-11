@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Agregar KnoMap Engine al path tanto en Windows como en entornos Linux
 KNOMAP_ENGINE_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "engine",
     Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
     Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
     Path("/home/labsom/knomap/engine")

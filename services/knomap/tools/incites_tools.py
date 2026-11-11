@@ -8,13 +8,18 @@ from typing import List, Dict, Any, Optional, Tuple, Union
 
 # Agregar KnoMap Engine al path tanto en Windows como en entornos Linux
 KNOMAP_ENGINE_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "engine",
     Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
     Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
     Path("/home/labsom/knomap/engine")
 ]
-for p in KNOMAP_ENGINE_CANDIDATES:
-    if p.exists() and str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+for engine_dir in KNOMAP_ENGINE_CANDIDATES:
+    if engine_dir.exists():
+        lib_dir = engine_dir / "lib"
+        for p in [str(engine_dir), str(lib_dir)]:
+            if p not in sys.path:
+                sys.path.insert(0, p)
+        break
 
 try:
     from incites_parser import (

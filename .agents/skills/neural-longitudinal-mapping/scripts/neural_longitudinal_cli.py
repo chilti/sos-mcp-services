@@ -19,12 +19,19 @@ from typing import Dict, List, Any, Optional, Tuple, Set
 
 # Ensure knomap engine is in sys.path for direct local execution
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-KNOMAP_ENGINE_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", ".."))
-if not os.path.exists(os.path.join(KNOMAP_ENGINE_DIR, "main_engine.py")):
-    KNOMAP_ENGINE_DIR = "/home/labsom/knomap/engine"
-
-if KNOMAP_ENGINE_DIR not in sys.path and os.path.exists(KNOMAP_ENGINE_DIR):
-    sys.path.insert(0, KNOMAP_ENGINE_DIR)
+ENGINE_CANDIDATES = [
+    os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "..", "..", "services", "knomap", "engine")),
+    os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "..")),
+    "/home/labsom/knomap/engine"
+]
+for cand in ENGINE_CANDIDATES:
+    if os.path.exists(os.path.join(cand, "main_engine.py")):
+        if cand not in sys.path:
+            sys.path.insert(0, cand)
+        lib_cand = os.path.join(cand, "lib")
+        if os.path.exists(lib_cand) and lib_cand not in sys.path:
+            sys.path.insert(0, lib_cand)
+        break
 
 
 def extract_year(val: Any) -> Optional[int]:
@@ -445,6 +452,146 @@ def cmd_train(args):
     print(f"Success! Trained {len(results.get('maps', {}))} longitudinal SOM maps.")
     print(f"Output saved to: {args.output}")
 
+    if getattr(args, "plot_dir", None):
+        render_longitudinal_publication_figures(results, args.plot_dir, dpi=getattr(args, "dpi", 300))
+
+
+def render_longitudinal_publication_figures(results: Dict[str, Any], plot_dir: str, dpi: int = 300):
+    """
+    Renders clean publication-ready 300 DPI figures in Spanish (som_longitudinal_es.png)
+    and English (som_longitudinal_en.png) showing the period cluster maps on top and
+    the final period's Component Planes grid on the bottom, with strict equal aspect ratio
+    and no dark bbox behind mapped entity labels.
+    """
+    import numpy as np
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import RegularPolygon
+    from matplotlib.collections import PatchCollection
+    from matplotlib.colors import LinearSegmentedColormap
+    import matplotlib.patheffects as pe
+    import colorsys
+
+    os.makedirs(plot_dir, exist_ok=True)
+    maps = results.get("maps", {})
+    sorted_periods = sorted(list(maps.keys()))
+    if not sorted_periods:
+        return
+    indicators = results.get("indicators", [])
+    hp = results.get("hyperparameters", {})
+    rows = int(hp.get("rows", 10))
+    cols = int(hp.get("cols", 20))
+    r_hex = 1.0
+
+    def get_cluster_hex_color(cid: int) -> str:
+        hue = ((cid * 137.5) % 360) / 360.0
+        r, g, b = colorsys.hls_to_rgb(hue, 0.65, 0.65)
+        return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
+    comp_cmap = LinearSegmentedColormap.from_list("labsom_comp", ["#38a169", "#ecc94b", "#e53e3e"], N=256)
+
+    for lang in ["es", "en"]:
+        n_periods = len(sorted_periods)
+        last_map = maps[sorted_periods[-1]]
+        weights = last_map.get("weights", [])
+        n_vars = len(weights[0]) if weights and isinstance(weights[0], list) else 0
+        var_names = indicators if indicators and len(indicators) == n_vars else [f"Var {i+1}" for i in range(n_vars)]
+
+        n_comp_cols = 4 if n_vars >= 4 else max(1, n_vars)
+        n_comp_rows = math.ceil(n_vars / n_comp_cols) if n_vars > 0 else 0
+
+        fig_w = max(14.0, 5.5 * min(n_periods, 3))
+        h_top = 6.5 * math.ceil(n_periods / min(n_periods, 3))
+        h_per_comp = (fig_w / n_comp_cols) * (rows / max(cols, 1)) * 1.18 if n_comp_rows > 0 else 0
+        fig_h = h_top + n_comp_rows * h_per_comp + 1.0
+
+        fig = plt.figure(figsize=(fig_w, fig_h), dpi=dpi, facecolor="white")
+        if n_comp_rows > 0:
+            gs = fig.add_gridspec(2, 1, height_ratios=[h_top, n_comp_rows * h_per_comp], hspace=0.14)
+            gs_top = gs[0].subgridspec(math.ceil(n_periods / min(n_periods, 3)), min(n_periods, 3), wspace=0.08, hspace=0.15)
+        else:
+            gs = fig.add_gridspec(1, 1)
+            gs_top = gs[0].subgridspec(math.ceil(n_periods / min(n_periods, 3)), min(n_periods, 3), wspace=0.08, hspace=0.15)
+
+        p_cols = min(n_periods, 3)
+        for p_idx, p_key in enumerate(sorted_periods):
+            ax = fig.add_subplot(gs_top[p_idx // p_cols, p_idx % p_cols])
+            ax.set_facecolor("white")
+            m = maps[p_key]
+            clustering = m.get("clustering", [])
+            mapped_labels = m.get("mappedLabels") or m.get("mapped_labels") or []
+
+            patches = []
+            colors = []
+            xs, ys = [], []
+            for idx in range(rows * cols):
+                r_idx = idx // cols
+                c_idx = idx % cols
+                cx = math.sqrt(3) * r_hex * (c_idx + 0.5 * (r_idx & 1))
+                cy = -1.5 * r_hex * r_idx
+                xs.append(cx)
+                ys.append(cy)
+                poly = RegularPolygon((cx, cy), numVertices=6, radius=r_hex, orientation=0)
+                patches.append(poly)
+                cid = int(clustering[idx]) if idx < len(clustering) else 0
+                colors.append(get_cluster_hex_color(cid))
+
+            pc = PatchCollection(patches, facecolors=colors, edgecolors="#334155", linewidths=0.45, alpha=0.92)
+            ax.add_collection(pc)
+
+            for idx, labs in enumerate(mapped_labels):
+                if not labs or idx >= len(xs):
+                    continue
+                disp = labs[0][:18] + (".." if len(labs[0]) > 18 else "")
+                if len(labs) > 1:
+                    disp += f" (+{len(labs)-1})"
+                ax.text(
+                    xs[idx], ys[idx], disp,
+                    ha="center", va="center", fontsize=7.0, fontweight="bold",
+                    color="#ffffff", zorder=6,
+                    path_effects=[pe.withStroke(linewidth=2.2, foreground="#0f172a")]
+                )
+
+            p_label = f"Periodo {p_key}" if lang == "es" else f"Period {p_key}"
+            ax.set_title(p_label, fontsize=11, fontweight="bold", color="#0f172a", pad=6)
+            pad = r_hex * 1.35
+            ax.set_xlim(min(xs) - pad, max(xs) + pad)
+            ax.set_ylim(min(ys) - pad, max(ys) + pad)
+            ax.set_aspect("equal")
+            ax.axis("off")
+
+        if n_comp_rows > 0:
+            gs_comp = gs[1].subgridspec(n_comp_rows, n_comp_cols, wspace=0.08, hspace=0.22)
+            w_arr = np.array(weights, dtype=float)
+            for v_idx in range(n_vars):
+                r_sub = v_idx // n_comp_cols
+                c_sub = v_idx % n_comp_cols
+                ax_c = fig.add_subplot(gs_comp[r_sub, c_sub])
+                ax_c.set_facecolor("white")
+                col_vals = w_arr[:, v_idx]
+                vmin, vmax = float(np.min(col_vals)), float(np.max(col_vals))
+                denom = (vmax - vmin) if vmax > vmin else 1.0
+                norm_vals = (col_vals - vmin) / denom
+
+                c_patches = [
+                    RegularPolygon((xs[i], ys[i]), numVertices=6, radius=r_hex, orientation=0)
+                    for i in range(len(xs))
+                ]
+                c_colors = [comp_cmap(float(norm_vals[i])) for i in range(len(xs))]
+                pc_c = PatchCollection(c_patches, facecolors=c_colors, edgecolors="#cbd5e1", linewidths=0.2)
+                ax_c.add_collection(pc_c)
+                ax_c.set_xlim(min(xs) - r_hex * 1.2, max(xs) + r_hex * 1.2)
+                ax_c.set_ylim(min(ys) - r_hex * 1.2, max(ys) + r_hex * 1.2)
+                ax_c.set_aspect("equal")
+                ax_c.axis("off")
+                ax_c.set_title(str(var_names[v_idx])[:28], fontsize=8.5, fontweight="bold", color="#1e293b", pad=3)
+
+        out_file = os.path.join(plot_dir, f"som_longitudinal_{lang}.png")
+        fig.savefig(out_file, dpi=dpi, bbox_inches="tight", facecolor="white", pad_inches=0.1)
+        plt.close(fig)
+        print(f"Saved longitudinal publication figure ({lang.upper()}): {out_file}")
+
 
 def cmd_analyze(args):
     """
@@ -863,7 +1010,21 @@ def main():
     p_train.add_argument("--min-samples", default=3, type=int, help="DBSCAN min_samples")
     p_train.add_argument("--api-url", help="Optional KnoMap HTTP backend URL (e.g. http://localhost:5015)")
     p_train.add_argument("--output", required=True, help="Path to write longitudinal_results.json")
+    p_train.add_argument("--plot-dir", default=None, help="Directory to export 300 DPI bilingual figures (som_longitudinal_es.png / _en.png)")
+    p_train.add_argument("--dpi", type=int, default=300, help="Resolution in DPI for static PNG figures (default: 300)")
     p_train.set_defaults(func=cmd_train)
+
+    # Subcommand: plot
+    def cmd_plot(args):
+        with open(args.input, "r", encoding="utf-8") as f:
+            results = json.load(f)
+        render_longitudinal_publication_figures(results, args.plot_dir, dpi=args.dpi)
+
+    p_plot = subparsers.add_parser("plot", help="Render 300 DPI bilingual publication figures from longitudinal_results.json")
+    p_plot.add_argument("--input", required=True, help="Path to longitudinal_results.json")
+    p_plot.add_argument("--plot-dir", required=True, help="Directory to save som_longitudinal_es.png and som_longitudinal_en.png")
+    p_plot.add_argument("--dpi", type=int, default=300, help="Resolution in DPI (default: 300)")
+    p_plot.set_defaults(func=cmd_plot)
 
     # Subcommand: analyze
     p_ana = subparsers.add_parser("analyze", help="Compute Macro, Meso, Micro, and Population dynamics")

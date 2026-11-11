@@ -138,21 +138,44 @@ def cmd_lotka(args):
     }
 
     # Plot if requested
-    if args.plot_output:
-        os.makedirs(os.path.dirname(os.path.abspath(args.plot_output)), exist_ok=True)
-        plt.figure(figsize=(7, 5))
-        plt.scatter(log_x, log_y, color="#2563eb", label="Empirical Data", zorder=3)
-        plt.plot(log_x, intercept + slope * log_x, color="#dc2626", linestyle="--",
-                 label=f"Lotka Fit: c={c_exponent:.2f} (R²={r_value**2:.2f})")
-        plt.xlabel("ln(Papers per Author)")
-        plt.ylabel("ln(Number of Authors)")
-        plt.title(f"Lotka's Law Distribution ({counting.capitalize()} Counting)")
-        plt.legend()
+    dpi = getattr(args, "dpi", 300) or 300
+    plot_paths = {}
+    if getattr(args, "plot_es", None):
+        plot_paths["es"] = args.plot_es
+    if getattr(args, "plot_en", None):
+        plot_paths["en"] = args.plot_en
+    if getattr(args, "plot_output", None) and not plot_paths:
+        plot_paths["en"] = args.plot_output
+
+    for lang, p_out in plot_paths.items():
+        os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
+        plt.figure(figsize=(7.5, 5.2), dpi=dpi)
+        plt.scatter(log_x, log_y, color="#2563eb", s=38, label="Datos empíricos" if lang == "es" else "Empirical Data", zorder=3)
+        fit_lbl = (
+            f"Ajuste Lotka: c={c_exponent:.2f} (R²={r_value**2:.2f})"
+            if lang == "es"
+            else f"Lotka Fit: c={c_exponent:.2f} (R²={r_value**2:.2f})"
+        )
+        plt.plot(log_x, intercept + slope * log_x, color="#dc2626", linestyle="--", linewidth=2.0, label=fit_lbl)
+        plt.xlabel("ln(Artículos por Autor)" if lang == "es" else "ln(Papers per Author)", fontsize=10, fontweight="bold")
+        plt.ylabel("ln(Número de Autores)" if lang == "es" else "ln(Number of Authors)", fontsize=10, fontweight="bold")
+        cnt_txt = "Completo" if counting == "full" else "Fraccionario"
+        title_txt = (
+            f"Distribución de la Ley de Lotka (Conteo {cnt_txt})"
+            if lang == "es"
+            else f"Lotka's Law Distribution ({counting.capitalize()} Counting)"
+        )
+        plt.title(title_txt, fontsize=11, fontweight="bold", pad=10)
+        plt.legend(frameon=True, facecolor="#f8fafc", edgecolor="#cbd5e1", fontsize=9)
         plt.grid(True, linestyle=":", alpha=0.6)
         plt.tight_layout()
-        plt.savefig(args.plot_output, dpi=200)
+        plt.savefig(p_out, dpi=dpi, bbox_inches="tight", facecolor="white")
         plt.close()
-        result["plot_path"] = args.plot_output
+
+    if plot_paths:
+        result["plot_paths"] = plot_paths
+        if "en" in plot_paths:
+            result["plot_path"] = plot_paths["en"]
     # Plotly interactive figure if requested
     plotly_path = getattr(args, "plotly_html", None)
     if plotly_path and HAS_PLOTLY:
@@ -420,22 +443,57 @@ def cmd_growth(args):
         "diagnosed_phase": growth_phase
     }
 
-    if args.plot_output:
-        os.makedirs(os.path.dirname(os.path.abspath(args.plot_output)), exist_ok=True)
-        plt.figure(figsize=(8, 5))
-        plt.scatter(years, docs, color="#1e293b", label="Empirical Output", zorder=3)
-        plt.plot(years, docs_pred_exp, color="#2563eb", linestyle="--", label=f"Exponential (R²={r2_exp:.2f})")
+    dpi = getattr(args, "dpi", 300) or 300
+    plot_paths = {}
+    if getattr(args, "plot_es", None):
+        plot_paths["es"] = args.plot_es
+    if getattr(args, "plot_en", None):
+        plot_paths["en"] = args.plot_en
+    if getattr(args, "plot_output", None) and not plot_paths:
+        plot_paths["en"] = args.plot_output
+
+    for lang, p_out in plot_paths.items():
+        os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
+        plt.figure(figsize=(8.2, 5.2), dpi=dpi)
+        plt.scatter(years, docs, color="#1e293b", s=40, label="Producción empírica" if lang == "es" else "Empirical Output", zorder=3)
+        exp_lbl = (
+            f"Exponencial (R²={r2_exp:.2f}, T.dup={doubling_time:.1f}a)"
+            if lang == "es"
+            else f"Exponential (R²={r2_exp:.2f}, T.doubling={doubling_time:.1f}y)"
+        )
+        plt.plot(years, docs_pred_exp, color="#2563eb", linestyle="--", linewidth=2.0, label=exp_lbl)
         if docs_pred_log is not None:
-            plt.plot(years, docs_pred_log, color="#16a34a", linestyle="-", label=f"Logistic (R²={r2_log:.2f})")
-        plt.xlabel("Year")
-        plt.ylabel("Publications Count")
-        plt.title(f"Scientific Growth Curve ({growth_phase})")
-        plt.legend()
+            log_lbl = (
+                f"Logístico (R²={r2_log:.2f}, K={saturation_K:,.0f})"
+                if lang == "es"
+                else f"Logistic (R²={r2_log:.2f}, K={saturation_K:,.0f})"
+            )
+            plt.plot(years, docs_pred_log, color="#16a34a", linestyle="-", linewidth=2.2, label=log_lbl)
+        plt.xlabel("Año de Publicación" if lang == "es" else "Publication Year", fontsize=10, fontweight="bold")
+        plt.ylabel("Volumen Anual de Producción" if lang == "es" else "Annual Publication Volume", fontsize=10, fontweight="bold")
+        phase_txt = (
+            growth_phase
+            if lang == "es"
+            else growth_phase.replace("Fase II: Crecimiento Exponencial (Expansión Activa)", "Phase II: Exponential Growth (Active Expansion)")
+                            .replace("Fase III: Madurez / Saturación Logística", "Phase III: Maturity / Logistic Saturation")
+                            .replace("Fase I: Emergencia / Fluctuación Inicial", "Phase I: Emergence / Early Fluctuation")
+        )
+        title_txt = (
+            f"Cinética de Crecimiento Científico ({phase_txt})"
+            if lang == "es"
+            else f"Scientific Growth Kinetics ({phase_txt})"
+        )
+        plt.title(title_txt, fontsize=11, fontweight="bold", pad=10)
+        plt.legend(frameon=True, facecolor="#f8fafc", edgecolor="#cbd5e1", fontsize=9)
         plt.grid(True, linestyle=":", alpha=0.6)
         plt.tight_layout()
-        plt.savefig(args.plot_output, dpi=200)
+        plt.savefig(p_out, dpi=dpi, bbox_inches="tight", facecolor="white")
         plt.close()
-        result["plot_path"] = args.plot_output
+
+    if plot_paths:
+        result["plot_paths"] = plot_paths
+        if "en" in plot_paths:
+            result["plot_path"] = plot_paths["en"]
 
     
     # Plotly interactive figure if requested
@@ -489,6 +547,9 @@ def main():
     p_lot.add_argument("--output", required=True, help="Path to output JSON")
     p_lot.add_argument("--counting", choices=["full", "fractional"], default="full")
     p_lot.add_argument("--plot-output", help="Optional path to output PNG plot")
+    p_lot.add_argument("--plot-es", help="Optional path to Spanish publication PNG plot (300 DPI)")
+    p_lot.add_argument("--plot-en", help="Optional path to English publication PNG plot (300 DPI)")
+    p_lot.add_argument("--dpi", type=int, default=300, help="DPI for publication plots (default: 300)")
     p_lot.add_argument("--plotly-html", help="Optional path to output interactive Plotly HTML")
     p_lot.set_defaults(func=cmd_lotka)
 
@@ -509,6 +570,9 @@ def main():
     p_gro.add_argument("--input", required=True, help="Path to corpus file")
     p_gro.add_argument("--output", required=True, help="Path to output JSON")
     p_gro.add_argument("--plot-output", help="Optional path to output PNG plot")
+    p_gro.add_argument("--plot-es", help="Optional path to Spanish publication PNG plot (300 DPI)")
+    p_gro.add_argument("--plot-en", help="Optional path to English publication PNG plot (300 DPI)")
+    p_gro.add_argument("--dpi", type=int, default=300, help="DPI for publication plots (default: 300)")
     p_gro.add_argument("--plotly-html", help="Optional path to output interactive Plotly HTML")
     p_gro.set_defaults(func=cmd_growth)
 

@@ -22,12 +22,20 @@ import os
 import sys
 import json
 import math
+import colorsys
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection, LineCollection
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.patheffects as pe
 
 CURRENT_DIR = Path(__file__).resolve().parent
 SOS_ROOT = CURRENT_DIR.parents[3]
@@ -101,6 +109,348 @@ def get_hex_neighbors(r: int, c: int, rows: int, cols: int) -> List[Tuple[int, i
     return out
 
 
+INDICATOR_NAMES_ES = {
+    "num_documents": "Volumen de Artículos (N)",
+    "share_pct": "Participación (%)",
+    "times_cited": "Citas Acumuladas",
+    "cites_per_doc": "Citas por Artículo",
+    "cited_docs": "Artículos Citados",
+    "uncited_docs": "Artículos No Citados",
+    "pct_docs_cited": "% Artículos Citados",
+    "pct_uncited": "% Artículos No Citados",
+    "h_index": "Índice H",
+    "g_index": "Índice G",
+    "m_index": "Índice M (H/Edad)",
+    "i10_index": "Índice i10",
+    "fwci_avg": "FWCI Promedio",
+    "fwci_median": "FWCI Mediana",
+    "avg_percentile": "Percentil Promedio",
+    "top_10_pct_docs": "Artículos Top 10%",
+    "pct_top_10": "% Artículos Top 10%",
+    "top_1_pct_docs": "Artículos Top 1%",
+    "pct_top_1": "% Artículos Top 1%",
+    "oa_docs": "Artículos en Acceso Abierto",
+    "pct_oa": "% Acceso Abierto",
+    "pct_oa_total": "% Acceso Abierto Total",
+    "pct_oa_diamond": "% OA Diamante",
+    "pct_oa_gold": "% OA Dorada APC",
+    "pct_oa_hybrid": "% OA Híbrida",
+    "pct_oa_green": "% OA Verde",
+    "pct_oa_bronze": "% OA Bronce",
+    "pct_oa_closed": "% Acceso Cerrado",
+    "apc_list_usd": "Gasto APC Lista (USD)",
+    "estimated_apc_paid_usd": "Gasto APC Estimado (USD)",
+    "avg_apc_per_doc_usd": "APC Promedio por Doc (USD)",
+    "estimated_diamond_savings_usd": "Ahorro Estimado Diamante (USD)",
+    "pct_international": "% Coautoría Internacional",
+    "pct_domestic": "% Coautoría Nacional",
+    "pct_global_south": "% Coautoría Sur Global",
+    "pct_single_authored": "% Autoría Única",
+    "avg_authors_per_doc": "Autores por Doc",
+    "avg_countries_per_doc": "Países por Doc",
+    "collaboration_index": "Índice de Colaboración",
+    "active_years": "Años Activos"
+}
+
+INDICATOR_NAMES_EN = {
+    "num_documents": "Documents Volume (N)",
+    "share_pct": "Share (%)",
+    "times_cited": "Times Cited",
+    "cites_per_doc": "Citations per Doc",
+    "cited_docs": "Cited Documents",
+    "uncited_docs": "Uncited Documents",
+    "pct_docs_cited": "% Cited Documents",
+    "pct_uncited": "% Uncited Documents",
+    "h_index": "H-Index",
+    "g_index": "G-Index",
+    "m_index": "M-Index (H/Years)",
+    "i10_index": "i10-Index",
+    "fwci_avg": "Average FWCI",
+    "fwci_median": "Median FWCI",
+    "avg_percentile": "Average Percentile",
+    "top_10_pct_docs": "Top 10% Documents",
+    "pct_top_10": "% Top 10% Documents",
+    "top_1_pct_docs": "Top 1% Documents",
+    "pct_top_1": "% Top 1% Documents",
+    "oa_docs": "Open Access Documents",
+    "pct_oa": "% Open Access",
+    "pct_oa_total": "% Total Open Access",
+    "pct_oa_diamond": "% Diamond OA",
+    "pct_oa_gold": "% Gold APC OA",
+    "pct_oa_hybrid": "% Hybrid OA",
+    "pct_oa_green": "% Green OA",
+    "pct_oa_bronze": "% Bronze OA",
+    "pct_oa_closed": "% Closed Access",
+    "apc_list_usd": "List APC Expenditure ($)",
+    "estimated_apc_paid_usd": "Est. APC Paid ($)",
+    "avg_apc_per_doc_usd": "Avg. APC per Doc ($)",
+    "estimated_diamond_savings_usd": "Est. Diamond Savings ($)",
+    "pct_international": "% International Collab.",
+    "pct_domestic": "% Domestic Collab.",
+    "pct_global_south": "% Global South Collab.",
+    "pct_single_authored": "% Single-Authored",
+    "avg_authors_per_doc": "Authors per Doc",
+    "avg_countries_per_doc": "Countries per Doc",
+    "collaboration_index": "Collaboration Index",
+    "active_years": "Active Years"
+}
+
+
+def render_som_publication_figures(
+    som_state: Dict[str, Any],
+    out_clusters_es: str,
+    out_clusters_en: str,
+    out_umatrix_es: str,
+    out_umatrix_en: str,
+    dpi: int = 300
+):
+    """
+    Genera figuras estáticas limpias de alta resolución (300 DPI) para publicación científica:
+    - som_clusters: Estructura canónica de los papers LabSOM: Mapa de Clusters en la parte superior
+      en tamaño grande + Rejilla inferior de todos los Mapas de Componentes (Component Planes)
+      con paleta divergente LabSOM (Verde -> Amarillo -> Rojo), preservando dimensiones isométricas (set_aspect equal).
+    - som_umatrix: U-Matrix de distancias con barra horizontal y aspecto geométrico regular estricto.
+    """
+    rows = int(som_state.get("rows", 6))
+    cols = int(som_state.get("cols", 6))
+    clustering = som_state.get("clustering", [0] * (rows * cols))
+    mapped_labels = som_state.get("mapped_labels", [[] for _ in range(rows * cols)])
+    umatrix = som_state.get("umatrix", [])
+    weights = np.array(som_state.get("weights", []))
+    indicators = som_state.get("indicators", [])
+    k_clusters = int(som_state.get("n_clusters", len(set(clustering))))
+    sil_score = float(som_state.get("silhouette_score", 0.0))
+    n_ind = len(indicators)
+
+    R = 1.0
+    apotema = math.sqrt(3) / 2.0
+    avanceX = 1.5 * R
+    avanceY = 2.0 * apotema * R
+
+    coords = []
+    u_vals = []
+    for i in range(rows):
+        for j in range(cols):
+            x = j * avanceX
+            y = i * avanceY + (apotema if j % 2 != 0 else 0.0)
+            coords.append((x, y))
+            val_u = umatrix[i][j] if i < len(umatrix) and j < len(umatrix[i]) else 0.0
+            u_vals.append(val_u)
+
+    def get_hex_points(xc: float, yc: float) -> List[Tuple[float, float]]:
+        return [
+            (xc + R, yc),
+            (xc + 0.5 * R, yc + apotema * R),
+            (xc - 0.5 * R, yc + apotema * R),
+            (xc - R, yc),
+            (xc - 0.5 * R, yc - apotema * R),
+            (xc + 0.5 * R, yc - apotema * R)
+        ]
+
+    def get_cluster_rgb(cid: int) -> Tuple[float, float, float]:
+        if cid is None or cid == -1:
+            return (0.18, 0.22, 0.28)
+        hue = (int(cid) * 137.5) % 360
+        r, g, b = colorsys.hls_to_rgb(hue / 360.0, 0.60, 0.75)
+        return (r, g, b)
+
+    # Cálculo de fronteras entre clusters
+    border_lines = []
+    neighbors_map = {
+        "n1": lambda r, c: (r if c % 2 == 0 else r + 1, c + 1, (0, 1)),
+        "n2": lambda r, c: (r + 1, c, (1, 2)),
+        "n3": lambda r, c: (r if c % 2 == 0 else r + 1, c - 1, (2, 3)),
+        "n4": lambda r, c: (r - 1 if c % 2 == 0 else r, c - 1, (3, 4)),
+        "n5": lambda r, c: (r - 1, c, (4, 5)),
+        "n6": lambda r, c: (r - 1 if c % 2 == 0 else r, c + 1, (5, 0))
+    }
+    for i in range(rows):
+        for j in range(cols):
+            idx = j + i * cols
+            cid = clustering[idx] if idx < len(clustering) else 0
+            xc, yc = coords[idx]
+            pts = get_hex_points(xc, yc)
+            for k, fn in neighbors_map.items():
+                nr, nc, edge = fn(i, j)
+                out_of_bounds = nr < 0 or nr >= rows or nc < 0 or nc >= cols
+                n_idx = nc + nr * cols if not out_of_bounds else -1
+                is_diff = out_of_bounds or (clustering[n_idx] != cid if n_idx < len(clustering) else False)
+                if is_diff:
+                    border_lines.append((pts[edge[0]], pts[edge[1]]))
+
+    # Medoides para etiquetas de clusters
+    c_map: Dict[int, List[int]] = {}
+    for idx, cid in enumerate(clustering):
+        if cid == -1: continue
+        c_map.setdefault(cid, []).append(idx)
+
+    cluster_centroids = {}
+    for cid, indices in c_map.items():
+        avg_x = sum(coords[idx][0] for idx in indices) / len(indices)
+        avg_y = sum(coords[idx][1] for idx in indices) / len(indices)
+        best_idx = min(indices, key=lambda idx: (coords[idx][0] - avg_x)**2 + (coords[idx][1] - avg_y)**2)
+        cluster_centroids[cid] = coords[best_idx]
+
+    min_x = min(c[0] for c in coords) - 1.5
+    max_x = max(c[0] for c in coords) + 1.5
+    min_y = min(c[1] for c in coords) - 1.5
+    max_y = max(c[1] for c in coords) + 1.5
+    aspect = (max_y - min_y) / (max_x - min_x) if (max_x - min_x) > 0 else 0.7
+
+    # Colormaps canónicos LabSOM
+    cmap_comp = LinearSegmentedColormap.from_list("labsom_component", ["#38a169", "#ecc94b", "#e53e3e"])
+    cmap_labsom_umatrix = LinearSegmentedColormap.from_list("labsom_umatrix", ["#e53e3e", "#ecc94b"])
+
+    # --- 1. FIGURA COMBINADA DE CLUSTERS + REJILLA DE COMPONENT PLANES (ES y EN) ---
+    n_comp_cols = 5
+    n_comp_rows = math.ceil(n_ind / n_comp_cols) if n_ind > 0 else 0
+
+    fig_w = 16.0
+    h_main = fig_w * aspect * 0.75
+    h_per_comp_row = (fig_w / n_comp_cols) * aspect * 1.15
+    fig_h = h_main + (n_comp_rows * h_per_comp_row) + (2.2 if n_comp_rows > 0 else 1.0)
+
+    for lang, out_path in [("es", out_clusters_es), ("en", out_clusters_en)]:
+        fig = plt.figure(figsize=(fig_w, fig_h), dpi=dpi)
+        total_rows = n_comp_rows + 1
+        height_ratios = [h_main] + ([h_per_comp_row] * n_comp_rows if n_comp_rows > 0 else [])
+        gs = fig.add_gridspec(total_rows, n_comp_cols, height_ratios=height_ratios, hspace=0.38, wspace=0.12)
+
+        # Panel Superior: Mapa de Clusters en Gran Formato
+        ax_main = fig.add_subplot(gs[0, :])
+        patches = [Polygon(get_hex_points(xc, yc), closed=True) for xc, yc in coords]
+        colors = [get_cluster_rgb(clustering[idx] if idx < len(clustering) else 0) for idx in range(len(coords))]
+        p_coll = PatchCollection(patches, facecolors=colors, edgecolors="#475569", linewidths=0.32, alpha=0.92)
+        ax_main.add_collection(p_coll)
+
+        if border_lines:
+            l_coll = LineCollection(border_lines, colors="#000000", linewidths=1.8, zorder=4)
+            ax_main.add_collection(l_coll)
+
+        # Insignias de cluster
+        for cid, (cx, cy) in cluster_centroids.items():
+            txt = f"GRUPO {cid}" if lang == "es" else f"CLUSTER {cid}"
+            ax_main.text(
+                cx, cy, txt,
+                color="white", fontsize=11.5, fontweight="black",
+                ha="center", va="center", zorder=5,
+                path_effects=[pe.withStroke(linewidth=3.5, foreground="black")]
+            )
+
+        # Etiquetas mapeadas (sin recuadro, con mayor tamaño de fuente y contorno negro para máxima legibilidad)
+        for idx, (xc, yc) in enumerate(coords):
+            docs = mapped_labels[idx] if idx < len(mapped_labels) else []
+            if not docs: continue
+            clean = str(docs[0])[:20] + (".." if len(str(docs[0])) > 20 else "")
+            ax_main.text(
+                xc, yc, clean,
+                color="white", fontsize=7.5, fontweight="bold",
+                ha="center", va="center", zorder=6,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="black")]
+            )
+
+        title_str = (
+            f"Mapa Autoorganizado (SOM): Meta-Clustering Jerárquico de Vesanto (K={k_clusters}, Silhouette={sil_score:.3f})"
+            if lang == "es"
+            else f"Self-Organizing Map (SOM): Vesanto Hierarchical Meta-Clustering (K={k_clusters}, Silhouette={sil_score:.3f})"
+        )
+        ax_main.set_title(title_str, fontsize=13, fontweight="bold", pad=12, color="#0f172a")
+        # ASEGURAR PROPORCIÓN ISOMÉTRICA EXACTA (SIN ESTIRAMIENTO VERTICAL)
+        ax_main.set_aspect("equal")
+        ax_main.set_xlim(min_x, max_x)
+        ax_main.set_ylim(max_y, min_y)
+        ax_main.axis("off")
+
+        # Panel Inferior: Rejilla de Component Planes (Mapas de Componentes)
+        if n_ind > 0 and len(weights) > 0:
+            for d_idx, ind_name in enumerate(indicators):
+                r_sub = 1 + (d_idx // n_comp_cols)
+                c_sub = d_idx % n_comp_cols
+                ax_sub = fig.add_subplot(gs[r_sub, c_sub])
+
+                w_col = weights[:, d_idx] if d_idx < weights.shape[1] else np.zeros(len(coords))
+                patches_sub = [Polygon(get_hex_points(xc, yc), closed=True) for xc, yc in coords]
+                norm_sub = plt.Normalize(vmin=float(np.min(w_col)), vmax=float(np.max(w_col)))
+                p_sub = PatchCollection(patches_sub, cmap=cmap_comp, norm=norm_sub, edgecolors="#334155", linewidths=0.15, alpha=0.95)
+                p_sub.set_array(w_col)
+                ax_sub.add_collection(p_sub)
+
+                if border_lines:
+                    l_sub = LineCollection(border_lines, colors="#000000", linewidths=0.55, alpha=0.55, zorder=4)
+                    ax_sub.add_collection(l_sub)
+
+                # Aspect ratio isométrico estricto
+                ax_sub.set_aspect("equal")
+                ax_sub.set_xlim(min_x, max_x)
+                ax_sub.set_ylim(max_y, min_y)
+                ax_sub.axis("off")
+
+                name_dict = INDICATOR_NAMES_ES if lang == "es" else INDICATOR_NAMES_EN
+                clean_name = name_dict.get(ind_name, ind_name.replace("_", " ").title())
+                ax_sub.set_title(clean_name, fontsize=7.2, fontweight="bold", pad=3.5, color="#1e293b")
+
+            # Celdas vacías sobrantes
+            total_grid_cells = n_comp_rows * n_comp_cols
+            for empty_idx in range(n_ind, total_grid_cells):
+                r_sub = 1 + (empty_idx // n_comp_cols)
+                c_sub = empty_idx % n_comp_cols
+                ax_empty = fig.add_subplot(gs[r_sub, c_sub])
+                ax_empty.axis("off")
+
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+
+    # --- 2. RENDERIZADO U-MATRIX (ES y EN) ---
+    norm_u = plt.Normalize(vmin=min(u_vals) if u_vals else 0.0, vmax=max(u_vals) if u_vals else 1.0)
+    fig_u_h = max(7.0, min(14.0, 14.0 * aspect + 1.8))
+
+    for lang, out_path in [("es", out_umatrix_es), ("en", out_umatrix_en)]:
+        fig, ax = plt.subplots(figsize=(14.0, fig_u_h), dpi=dpi)
+        patches = [Polygon(get_hex_points(xc, yc), closed=True) for xc, yc in coords]
+        p_coll = PatchCollection(patches, cmap=cmap_labsom_umatrix, norm=norm_u, edgecolors="#334155", linewidths=0.35, alpha=0.95)
+        p_coll.set_array(np.array(u_vals))
+        ax.add_collection(p_coll)
+
+        # Barra de color horizontal
+        cbar = fig.colorbar(p_coll, ax=ax, orientation="horizontal", fraction=0.035, pad=0.04, aspect=40)
+        cbar_lbl = (
+            "Distancia euclidiana (U-Matrix): Valles (rojo / alta densidad) → Crestas (amarillo / límites)"
+            if lang == "es"
+            else "Euclidean distance (U-Matrix): Valleys (red / high density) → Crests (yellow / boundaries)"
+        )
+        cbar.set_label(cbar_lbl, fontsize=9.5, fontweight="bold", labelpad=8, color="#0f172a")
+        cbar.ax.tick_params(labelsize=8)
+
+        # Etiquetas mapeadas sobre U-matrix (sin recuadro, con mayor tamaño de fuente y contorno negro)
+        for idx, (xc, yc) in enumerate(coords):
+            docs = mapped_labels[idx] if idx < len(mapped_labels) else []
+            if not docs: continue
+            clean = str(docs[0])[:20] + (".." if len(str(docs[0])) > 20 else "")
+            ax.text(
+                xc, yc, clean,
+                color="white", fontsize=7.5, fontweight="bold",
+                ha="center", va="center", zorder=5,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="black")]
+            )
+
+        title_str = (
+            f"Matriz de Distancias Unificadas (U-Matrix) — {rows}x{cols} neuronas hexagonales"
+            if lang == "es"
+            else f"Unified Distance Matrix (U-Matrix) — {rows}x{cols} hexagonal lattice"
+        )
+        ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color="#0f172a")
+        # ASEGURAR PROPORCIÓN ISOMÉTRICA EXACTA
+        ax.set_aspect("equal")
+        ax.set_xlim(min_x, max_x)
+        ax.set_ylim(max_y, min_y)
+        ax.axis("off")
+        plt.tight_layout()
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description="SOM Methodological Expert CLI - Entrenamiento y Diagnóstico SOM")
     parser.add_argument("--input", "-i", required=True, help="Ruta a la matriz de indicadores (.parquet, .csv, .json)")
@@ -111,7 +461,12 @@ def main():
         help="Lista opcional de indicadores separados por coma (si se omite, utiliza todos los indicadores numéricos de la matriz sin truncar)",
     )
     parser.add_argument("--norm", choices=["zscore", "minmax", "robust", "none"], default="zscore", help="Normalización (default: zscore)")
-    parser.add_argument("--grid-type", choices=["small", "big"], default="small", help="Regla de dimensionamiento automático: small (5*sqrt(N)) o big (10*N)")
+    parser.add_argument(
+        "--grid-type",
+        choices=["small", "big"],
+        default="big",
+        help="Regla de dimensionamiento automático: big (10*N, estándar en KnoMap/cienciometría) o small (5*sqrt(N))",
+    )
     parser.add_argument("--rows", type=int, default=None, help="Filas de la malla SOM (sobreescribe --grid-type)")
     parser.add_argument("--cols", type=int, default=None, help="Columnas de la malla SOM (sobreescribe --grid-type)")
     parser.add_argument("--iterations", type=int, default=200, help="Épocas de entrenamiento (default: 200)")
@@ -120,6 +475,11 @@ def main():
     parser.add_argument("--state-out", default="./reports/som_state.json", help="Ruta de salida del estado SOM (.json)")
     parser.add_argument("--html-out", default="./reports/som_dashboard.html", help="Ruta de salida del dashboard interactivo (.html)")
     parser.add_argument("--diagnosis-out", default="./reports/som_diagnosis.json", help="Ruta del diagnóstico cienciométrico (.json)")
+    parser.add_argument("--png-clusters-es", default="./reports/som_clusters_es.png", help="Ruta PNG de clusters para publicación en español (300 DPI)")
+    parser.add_argument("--png-clusters-en", default="./reports/som_clusters_en.png", help="Ruta PNG de clusters para publicación en inglés (300 DPI)")
+    parser.add_argument("--png-umatrix-es", default="./reports/som_umatrix_es.png", help="Ruta PNG de U-Matrix para publicación en español (300 DPI)")
+    parser.add_argument("--png-umatrix-en", default="./reports/som_umatrix_en.png", help="Ruta PNG de U-Matrix para publicación en inglés (300 DPI)")
+    parser.add_argument("--dpi", type=int, default=300, help="Resolución DPI para imágenes de publicación (default: 300)")
 
     args = parser.parse_args()
     df = load_matrix_df(args.input)
@@ -251,6 +611,20 @@ def main():
             "paradox_diagnosis": paradox_type,
         })
 
+    # Generar Figuras Estáticas para Publicación Científica (300 DPI, ES y EN)
+    clusters_es_abs = str(Path(args.png_clusters_es).resolve())
+    clusters_en_abs = str(Path(args.png_clusters_en).resolve())
+    umatrix_es_abs = str(Path(args.png_umatrix_es).resolve())
+    umatrix_en_abs = str(Path(args.png_umatrix_en).resolve())
+    render_som_publication_figures(
+        som_state=som_state,
+        out_clusters_es=clusters_es_abs,
+        out_clusters_en=clusters_en_abs,
+        out_umatrix_es=umatrix_es_abs,
+        out_umatrix_en=umatrix_en_abs,
+        dpi=args.dpi
+    )
+
     diagnosis = {
         "input_matrix": args.input,
         "n_entities": len(labels),
@@ -263,6 +637,10 @@ def main():
         "artifacts": {
             "som_state_json": state_out_abs,
             "som_dashboard_html": html_out_abs,
+            "som_clusters_es_png": clusters_es_abs,
+            "som_clusters_en_png": clusters_en_abs,
+            "som_umatrix_es_png": umatrix_es_abs,
+            "som_umatrix_en_png": umatrix_en_abs,
         },
         "entities": entity_diagnostics,
     }
@@ -275,6 +653,10 @@ def main():
     print(f"[SOM Methodological Expert] Entrenamiento exitoso ({rows}x{cols} neuronas, {len(indicator_cols)} dimensiones, k={best_k}, Silhouette={best_sil:.3f}).")
     print(f"  - Estado SOM: {state_out_abs}")
     print(f"  - Dashboard HTML: {html_out_abs}")
+    print(f"  - Clusters ES (300 DPI): {clusters_es_abs}")
+    print(f"  - Clusters EN (300 DPI): {clusters_en_abs}")
+    print(f"  - U-Matrix ES (300 DPI): {umatrix_es_abs}")
+    print(f"  - U-Matrix EN (300 DPI): {umatrix_en_abs}")
     print(f"  - Diagnóstico y Pares: {diag_out_abs}")
 
 

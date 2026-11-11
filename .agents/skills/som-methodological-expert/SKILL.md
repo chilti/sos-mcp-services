@@ -51,6 +51,10 @@ Esta skill proporciona el núcleo neurocomputacional y metodológico para todo e
     --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
     --state-out ./reports/som_state.json \
     --html-out ./reports/som_dashboard.html \
+    --png-clusters-es ./reports/som_clusters_es.png \
+    --png-clusters-en ./reports/som_clusters_en.png \
+    --png-umatrix-es ./reports/som_umatrix_es.png \
+    --png-umatrix-en ./reports/som_umatrix_en.png \
     --diagnosis-out ./reports/som_diagnosis.json
   ```
 * **Habilidades Downstream (Evolución y Trayectorias):**
@@ -71,10 +75,12 @@ Para garantizar que el SOM funcione como una representación continua de alta re
 
 1. Centrar la matriz de datos numéricos $X \in \mathbb{R}^{N \times D}$ respecto a la media de cada indicador: $\tilde{X} = X - \mu_X$.
 2. Calcular la descomposición en valores singulares (SVD) de $\tilde{X}$ o los valores propios de la matriz de covarianza:
+
    $$
    \text{Ratio Espectral} = \frac{\sigma_1}{\sigma_2} \quad \left(\text{o } \sqrt{\frac{\lambda_1}{\lambda_2}}\right)
    $$
 3. La proporción entre el número de columnas y filas de la retícula debe ajustarse a este ratio:
+
    $$
    \frac{\text{cols}}{\text{rows}} \approx \frac{\sigma_1}{\sigma_2}
    $$
@@ -83,20 +89,28 @@ Para garantizar que el SOM funcione como una representación continua de alta re
 
 ### B. Sobremalla y Número de Neuronas en la Capa de Salida
 
-* **Regla de Dedo Empírica para Perfiles de Desempeño (Carrillo-Calvet et al., 2025):**
-  Para explorar a fondo la estructura de datos cienciométricos y disponer de múltiples neuronas representativas por cada *cluster*, dimensionar la malla con:
+* **Big SOM Estándar (KnoMap Engine - Recomendado para perfiles cienciométricos):**
+  Para explorar a fondo la estructura de datos cienciométricos, evitar el colapso de entidades distintas en la misma neurona y disponer de un espacio de alta resolución topológica:
+
   $$
-  \text{Total Neuronas } M \approx \mathbf{20 \cdot N \text{ a } 30 \cdot N}
+  \text{Total Neuronas } M \approx \mathbf{10 \cdot N}
   $$
 
   *(Donde $N$ es el número de observaciones/entidades analizadas).*
-* **Big SOM Estándar (KnoMap Engine):**
+* **Small SOM (Cuantización Compacta):**
+  Utilizado para síntesis ejecutiva rápida o cuantización vectorial básica:
+
+  $$
+  \text{Total Neuronas } M \approx \mathbf{5 \cdot \sqrt{N}}
+  $$
+
   $$
   M_{\text{Big}} \ge 10 \cdot N \quad (\text{mínimo } 25 \text{ neuronas})
   $$
 
   Recomendado para análisis topológico continuo, U-Matrix de alta definición y detección de gradientes.
 * **Small SOM (Clustering Compacto):**
+
   $$
   M_{\text{Small}} \approx 5 \cdot \sqrt{N} \quad (\text{mínimo } 9 \text{ neuronas})
   $$
@@ -209,7 +223,7 @@ Configurar una batería multidimensional equilibrada que cubra los 4 ejes cardin
 
 ### Paso 2: Normalización de Variables
 
-* Aplicar estandarización $z$-score o normalización de escala según la dispersión, garantizando que indicadores de volumen absoluto (e.g., miles de papers) no distorsionen las distancias euclidianas frente a indicadores porcentuales o ratios normalizados.
+* Aplicar prioritariamiente división por el máximo. También se puede usar la estandarización $z$-score o normalización de escala según la dispersión, garantizando que indicadores de volumen absoluto (e.g., miles de papers) no distorsionen las distancias euclidianas frente a indicadores porcentuales o ratios normalizados.
 
 ### Paso 3: Ejecución y Validación Topológica
 
@@ -282,20 +296,14 @@ Invocar `knomap-som-engine -> knomap_render_som_dashboard` (o `render_knomap_som
 
 ## 6. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
 
-- ❌ **Anti-patrón 1: Uso de topología rectangular o cuadrada**  
-  Configurar la retícula como cuadrícula ortogonal. En una malla cuadrada, los 4 vecinos diagonales están a distancia $\sqrt{2} \approx 1.414$ frente a los 4 axiales a distancia $1.0$, introduciendo una asimetría geométrica artificial.  
-  **Solución:** Utilizar siempre topología hexagonal *flat-topped*, donde los 6 vecinos inmediatos son estrictamente equidistantes.
-- ❌ **Anti-patrón 2: Sub-dimensionamiento de la malla ($M < 20N$)**  
-  Usar mallas pequeñas (tipo cuantizador vectorial de 10x10 neuronas) para modelar perfiles institucionales. Esto provoca que entidades cualitativamente distintas colapsen en la misma neurona.  
-  **Solución:** Aplicar la regla empírica de sobremalla: $M \approx 20N\text{--}30N$ neuronas (o Big SOM $10N$), permitiendo que el SOM actúe como un espacio continuo de alta resolución.
-- ❌ **Anti-patrón 3: Entrenar con variables heterogéneas sin estandarización previa (Z-score)**  
-  Introducir directamente indicadores de volumen (e.g. $10,000$ documentos) junto a indicadores normalizados de impacto (e.g. $\text{FWCI} = 1.25$ o $\text{CNCI} = 1.10$). La varianza de los documentos absorberá el 99% del cálculo de distancia euclidiana, anulando el impacto cualitativo.  
-  **Solución:** Centrar y estandarizar cada indicador ($z = \frac{x - \mu}{\sigma}$) o normalizar por la media antes del cálculo de SVD y entrenamiento.
-- ❌ **Anti-patrón 4: Saturación de etiquetas de texto en la visualización**  
-  Querer imprimir el nombre de las 50 o 100 entidades simultáneamente sobre los hexágonos sin filtros de densidad, provocando un empastamiento ilegible.  
-  **Solución:** Aplicar `max_labels_per_neuron = 1` o `2`, mostrar etiquetas solo para entidades de interés prioritario o implementar botón interactivo de aumento/disminución de tipografía en el dashboard.
-- ❌ **Anti-patrón 5: Violación de File-Output First con los pesos neuronales**  
-  Volcar la matriz de pesos $[M \times D]$ con miles de flotantes en la respuesta del LLM.  
+- ❌ **Anti-patrón 1: Uso de topología rectangular o cuadrada**Configurar la retícula como cuadrícula ortogonal. En una malla cuadrada, los 4 vecinos diagonales están a distancia $\sqrt{2} \approx 1.414$ frente a los 4 axiales a distancia $1.0$, introduciendo una asimetría geométrica artificial.**Solución:** Utilizar siempre topología hexagonal *flat-topped*, donde los 6 vecinos inmediatos son estrictamente equidistantes.
+- ❌ **Anti-patrón 2: Sub-dimensionamiento de la malla (Small SOM para perfiles institucionales)**
+  Usar mallas reducidas ($5\sqrt{N}$) para modelar perfiles institucionales o fuentes bibliográficas. Esto provoca que entidades cualitativamente distintas colapsen en la misma neurona.
+  **Solución:** Aplicar siempre el **Big SOM estándar ($M \approx 10N$ neuronas)** con aspecto espectral SVD, permitiendo que el SOM actúe como un espacio continuo de alta resolución topológica.
+- ❌ **Anti-patrón 3: Entrenar con variables heterogéneas sin estandarización previa (Z-score)**Introducir directamente indicadores de volumen (e.g. $10,000$ documentos) junto a indicadores normalizados de impacto (e.g. $\text{FWCI} = 1.25$ o $\text{CNCI} = 1.10$). La varianza de los documentos absorberá el 99% del cálculo de distancia euclidiana, anulando el impacto cualitativo.**Solución:** Centrar y estandarizar cada indicador ($z = \frac{x - \mu}{\sigma}$) o normalizar por la media antes del cálculo de SVD y entrenamiento.
+- ❌ **Anti-patrón 4: Saturación de etiquetas de texto en la visualización**Querer imprimir el nombre de las 50 o 100 entidades simultáneamente sobre los hexágonos sin filtros de densidad, provocando un empastamiento ilegible.**Solución:** Aplicar `max_labels_per_neuron = 1` o `2`, mostrar etiquetas solo para entidades de interés prioritario o implementar botón interactivo de aumento/disminución de tipografía en el dashboard.
+- ❌ **Anti-patrón 5: Violación de File-Output First con los pesos neuronales**
+  Volcar la matriz de pesos $[M \times D]$ con miles de flotantes en la respuesta del LLM.
   **Solución:** Persistir el modelo y el dashboard HTML en archivos locales (`scratch/som_dashboard.html`), devolviendo únicamente las métricas de cuantización ($Q_e$, $T_e$), Silhouette y el enlace al artefacto.
 
 ---

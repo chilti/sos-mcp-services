@@ -15,6 +15,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!services/knomap/engine/lib/
 lib64/
 parts/
 sdist/
@@ -53,3 +54,4 @@ paper_extracted.txt
 Thumbs.db
 reports/
 scratch/
+services/knomap/engine/temp/

@@ -22,11 +22,14 @@ El módulo permite auditar colecciones documentales (Parquet, CSV o JSON) para i
 ## Interfaz CLI
 
 ### 1. Desglose por Vías de Acceso Abierto (`breakdown`)
-Calcula la distribución absoluta y porcentual en las 6 vías:
+Calcula la distribución absoluta y porcentual en las 6 vías, generando reporte JSON y figuras duales en alta resolución (300 DPI) para publicación:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /home/jlja/.gemini/config/skills/open-access-monitor/scripts/open_access_monitor_cli.py breakdown \
+/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/scripts/open_access_monitor_cli.py breakdown \
   --input /ruta/al/corpus.parquet \
-  --output /ruta/a/oa_breakdown.json
+  --output /ruta/a/oa_breakdown.json \
+  --plot-es /ruta/a/oa_distribution_es.png \
+  --plot-en /ruta/a/oa_distribution_en.png \
+  --plotly-html /ruta/a/oa_distribution.html
 ```
 
 ### 2. Estimación de Gasto Comercial en APC (`apc-spending`)

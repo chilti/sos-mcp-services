@@ -5,6 +5,7 @@ from pathlib import Path
 # Configurar sys.path para sos-mcp-services y KnoMap Engine
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 KNOMAP_CANDIDATES = [
+    Path(__file__).resolve().parent / "engine",
     Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
     Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
     Path("/home/labsom/knomap/engine")

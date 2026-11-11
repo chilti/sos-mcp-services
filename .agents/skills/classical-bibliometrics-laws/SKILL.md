@@ -124,9 +124,10 @@ Ajusta la distribución de productividad autoral y calcula la prueba Kolmogorov-
 python scripts/bibliometric_laws_cli.py lotka \
   --input ./data/corpus_cientifico.parquet \
   --counting full \
-  --plot-output ./data/grafico_lotka.png \
-  --plotly-html ./data/grafico_lotka.html \
-  --output ./data/resultado_lotka.json
+  --plot-es ./reports/lotka_distribution_es.png \
+  --plot-en ./reports/lotka_distribution_en.png \
+  --plotly-html ./reports/lotka_distribution.html \
+  --output ./reports/resultado_lotka.json
 ```
 * **Opciones de `--counting`:**
   - `full`: Conteo completo (1 crédito por coautoría; estándar para sociología de la ciencia).
@@ -153,9 +154,10 @@ Compara el ajuste Exponencial vs. Logístico para diagnosticar la fase de madure
 ```bash
 python scripts/bibliometric_laws_cli.py growth-phase \
   --input ./data/corpus_cientifico.parquet \
-  --plot-output ./data/grafico_crecimiento.png \
-  --plotly-html ./data/grafico_crecimiento.html \
-  --output ./data/diagnostico_fase.json
+  --plot-es ./reports/growth_kinetics_es.png \
+  --plot-en ./reports/growth_kinetics_en.png \
+  --plotly-html ./reports/growth_kinetics.html \
+  --output ./reports/diagnostico_fase.json
 ```
 
 ---

@@ -13,6 +13,16 @@ import argparse
 from collections import defaultdict, Counter
 from typing import Dict, List, Any, Optional
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+try:
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
+
 DEFAULT_GOLD_APC_USD = 2200.0
 DEFAULT_HYBRID_APC_USD = 3200.0
 
@@ -81,19 +91,139 @@ def cmd_breakdown(args):
             "percentage": round((counts[p] / total * 100.0) if total > 0 else 0.0, 2)
         }
 
+    # Estimación de APC para anotación visual
+    gold_cost = getattr(args, "gold_apc_usd", DEFAULT_GOLD_APC_USD) or DEFAULT_GOLD_APC_USD
+    hybrid_cost = getattr(args, "hybrid_apc_usd", DEFAULT_HYBRID_APC_USD) or DEFAULT_HYBRID_APC_USD
+    est_apc_usd = counts["gold_apc"] * gold_cost + counts["hybrid"] * hybrid_cost
+
     result = {
         "total_documents_analyzed": total,
         "total_open_access_documents": open_total,
         "overall_open_access_rate_pct": round(oa_percentage, 2),
         "pathways_breakdown": breakdown_pct,
+        "estimated_commercial_apc_usd": round(est_apc_usd, 2),
         "sovereignty_verdict": "Alta Soberanía Científica (Preponderancia Diamante)" if counts["diamond"] > counts["gold_apc"] else "Dependencia de Mercado Comercial (Preponderancia APC)"
     }
+
+    # Renderizado de Figuras Estáticas (300 DPI) para Publicación Científica (ES y EN)
+    dpi = getattr(args, "dpi", 300) or 300
+    plot_paths = {}
+    if getattr(args, "plot_es", None):
+        plot_paths["es"] = args.plot_es
+    if getattr(args, "plot_en", None):
+        plot_paths["en"] = args.plot_en
+
+    pathway_order = ["diamond", "green", "gold_apc", "hybrid", "bronze", "closed"]
+    oa_colors = {
+        "diamond": "#10b981",
+        "green": "#06b6d4",
+        "gold_apc": "#f59e0b",
+        "hybrid": "#8b5cf6",
+        "bronze": "#b45309",
+        "closed": "#64748b"
+    }
+    labels_es = {
+        "diamond": "Diamante (Sin APC)",
+        "green": "Verde (Repositorio)",
+        "gold_apc": "Dorada APC (Comercial)",
+        "hybrid": "Híbrida (Comercial)",
+        "bronze": "Bronce (Sin licencia)",
+        "closed": "Cerrada (Acceso Restringido)"
+    }
+    labels_en = {
+        "diamond": "Diamond (No APC)",
+        "green": "Green (Repository)",
+        "gold_apc": "Gold APC (Commercial)",
+        "hybrid": "Hybrid (Commercial)",
+        "bronze": "Bronze (No license)",
+        "closed": "Closed (Paywall)"
+    }
+
+    ordered_counts = [counts[p] for p in pathway_order]
+    ordered_colors = [oa_colors[p] for p in pathway_order]
+
+    for lang, p_out in plot_paths.items():
+        os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
+        fig = plt.figure(figsize=(10.5, 5.5), dpi=dpi)
+        gs = fig.add_gridspec(1, 2, width_ratios=[1.2, 1.4], wspace=0.1)
+        ax_pie = fig.add_subplot(gs[0, 0])
+        ax_legend = fig.add_subplot(gs[0, 1])
+        ax_legend.set_xlim(0, 1)
+        ax_legend.set_ylim(0, 1)
+        ax_legend.axis("off")
+
+        # Gráfica de Donas
+        wedges, _ = ax_pie.pie(
+            ordered_counts,
+            colors=ordered_colors,
+            startangle=90,
+            counterclock=False,
+            wedgeprops=dict(width=0.38, edgecolor="white", linewidth=2.0)
+        )
+        ax_pie.text(0, 0.08, f"{oa_percentage:.1f}%", ha="center", va="center", fontsize=22, fontweight="black", color="#0f172a")
+        sub_center = f"Acceso Abierto\nTotal: {total:,} docs" if lang == "es" else f"Open Access\nTotal: {total:,} docs"
+        ax_pie.text(0, -0.12, sub_center, ha="center", va="center", fontsize=9, color="#64748b", fontweight="bold")
+
+        # Panel de leyenda lateral
+        panel_title = "DISTRIBUCIÓN DE LAS 6 VÍAS DE ACCESO ABIERTO" if lang == "es" else "DISTRIBUTION OF THE 6 OPEN ACCESS PATHWAYS"
+        ax_legend.text(0.05, 0.98, panel_title, fontsize=10.5, fontweight="black", color="#0f172a", va="top")
+
+        y_pos = 0.86
+        for p in pathway_order:
+            c = counts[p]
+            pct = (c / total * 100.0) if total > 0 else 0.0
+            col = oa_colors[p]
+            name = labels_es[p] if lang == "es" else labels_en[p]
+            ax_legend.plot(0.05, y_pos, marker="s", color=col, markersize=10, markeredgecolor="white")
+            ax_legend.text(0.12, y_pos, name, fontsize=9.0, fontweight="bold", color="#1e293b", va="center")
+            ax_legend.text(0.88, y_pos, f"{c:,} ({pct:.1f}%)", fontsize=9.0, fontweight="bold", color="#334155", va="center", ha="right")
+            y_pos -= 0.12
+
+        apc_box_title = (
+            f"Gasto Comercial Estimado en APC: ${est_apc_usd:,.0f} USD"
+            if lang == "es"
+            else f"Estimated Commercial APC Spending: ${est_apc_usd:,.0f} USD"
+        )
+        ax_legend.text(
+            0.05, 0.14, apc_box_title,
+            fontsize=9.2, fontweight="bold", color="#b45309",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#fffbeb", edgecolor="#fde68a")
+        )
+
+        plt.savefig(p_out, dpi=dpi, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+
+    # Gráfica interactiva Plotly si se especifica
+    plotly_html = getattr(args, "plotly_html", None)
+    if plotly_html and HAS_PLOTLY:
+        os.makedirs(os.path.dirname(os.path.abspath(plotly_html)), exist_ok=True)
+        fig_oa = go.Figure(data=[go.Pie(
+            labels=[labels_es[p] for p in pathway_order],
+            values=ordered_counts,
+            hole=0.45,
+            marker=dict(colors=ordered_colors, line=dict(color="#ffffff", width=2)),
+            textinfo="percent+label",
+            hoverinfo="label+value+percent"
+        )])
+        fig_oa.update_layout(
+            title=f"Distribución de Vías de Acceso Abierto ({oa_percentage:.1f}% OA)",
+            template="plotly_white",
+            margin=dict(l=40, r=40, t=50, b=40)
+        )
+        fig_oa.write_html(plotly_html, include_plotlyjs="cdn")
+        result["plotly_html"] = plotly_html
+
+    if plot_paths:
+        result["plot_paths"] = plot_paths
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
     print(f"OA Breakdown: {oa_percentage:.1f}% Open Access (Diamond: {counts['diamond']}, Gold: {counts['gold_apc']}). Saved to {args.output}")
+    if plot_paths:
+        for k, p in plot_paths.items():
+            print(f"  - PNG {k.upper()} (300 DPI): {p}")
     sys.exit(0)
 
 
@@ -226,6 +356,10 @@ def main():
     p_brk = subparsers.add_parser("breakdown", help="Calculate distribution across 6 OA pathways")
     p_brk.add_argument("--input", required=True, help="Path to corpus file")
     p_brk.add_argument("--output", required=True, help="Path to output JSON")
+    p_brk.add_argument("--plot-es", help="Optional path to Spanish publication PNG plot (300 DPI)")
+    p_brk.add_argument("--plot-en", help="Optional path to English publication PNG plot (300 DPI)")
+    p_brk.add_argument("--plotly-html", help="Optional path to interactive Plotly HTML")
+    p_brk.add_argument("--dpi", type=int, default=300, help="DPI for publication plots (default: 300)")
     p_brk.set_defaults(func=cmd_breakdown)
 
     # Subcommand: apc-spending

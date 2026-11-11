@@ -47,6 +47,8 @@ Esta skill orquesta la evolución temporal continua en el espacio latente y oper
     --top-entities 5 \
     --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
     --html-out ./reports/som_trajectories.html \
+    --png-es ./reports/som_trajectories_es.png \
+    --png-en ./reports/som_trajectories_en.png \
     --json-out ./reports/som_trajectories.json
   ```
 * **Herramientas de Software Asociadas:**

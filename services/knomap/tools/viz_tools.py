@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 # Asegurar que el engine de knomap está en el path (Windows y Linux)
 KNOMAP_CANDIDATES = [
+    Path(__file__).resolve().parent.parent,
     Path(r"c:\Users\jlja\Documents\Proyectos\knomap"),
     Path(__file__).resolve().parent.parent.parent.parent / "knomap",
     Path("/home/labsom/knomap")

@@ -15,7 +15,9 @@ def openalex_search_authors(search_query: str = "", orcid: str = None, instituti
         with httpx.Client(timeout=4.0) as client:
             resp = client.get(f"{settings.openalex_api_url}/authors", params=params)
             if resp.status_code == 200:
-                return resp.json()
+                data = resp.json()
+                if data.get("results"):
+                    return data
     except Exception:
         pass
 
@@ -28,7 +30,27 @@ def openalex_search_authors(search_query: str = "", orcid: str = None, instituti
     
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
     sql = f"SELECT id, display_name, orcid, works_count, cited_by_count FROM openalex.authors WHERE {where_sql} ORDER BY cited_by_count DESC LIMIT {limit}"
-    return execute_safe_query(sql)
+    ch_res = execute_safe_query(sql)
+    if ch_res.get("status") == "success" and ch_res.get("data"):
+        return ch_res
+
+    # Intento 3: Fallback a API pública oficial de OpenAlex (https://api.openalex.org)
+    try:
+        params = {"search": search_query, "per-page": min(limit, 200)}
+        filters = []
+        if orcid:
+            filters.append(f"orcid:{orcid}")
+        if institution_ror:
+            filters.append(f"last_known_institutions.ror:{institution_ror}")
+        if filters:
+            params["filter"] = ",".join(filters)
+        with httpx.Client(timeout=12.0, headers={"User-Agent": "SoSMCPServices/1.0 (mailto:soporte@knomap.org)"}) as client:
+            resp = client.get("https://api.openalex.org/authors", params=params)
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+    return ch_res
 
 def openalex_search_works(search_query: str = "", author_id: str = None, institution_ror: str = None, topic_id: str = None, from_publication_date: str = None, to_publication_date: str = None, is_oa: bool = None, limit: int = 20) -> dict:
     """Busca artículos y publicaciones científicas por título, tópico, autor, revista o fechas."""
@@ -54,7 +76,9 @@ def openalex_search_works(search_query: str = "", author_id: str = None, institu
         with httpx.Client(timeout=4.0) as client:
             resp = client.get(f"{settings.openalex_api_url}/works", params=params)
             if resp.status_code == 200:
-                return resp.json()
+                data = resp.json()
+                if data.get("results"):
+                    return data
     except Exception:
         pass
 
@@ -67,4 +91,21 @@ def openalex_search_works(search_query: str = "", author_id: str = None, institu
     
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
     sql = f"SELECT id, doi, title, publication_year, cited_by_count, is_oa, oa_status FROM openalex.works WHERE {where_sql} ORDER BY cited_by_count DESC LIMIT {limit}"
-    return execute_safe_query(sql)
+    ch_res = execute_safe_query(sql)
+    if ch_res.get("status") == "success" and ch_res.get("data"):
+        return ch_res
+
+    # Fallback a API pública oficial de OpenAlex (https://api.openalex.org)
+    try:
+        params = {"per-page": min(limit, 200)}
+        if search_query:
+            params["search"] = search_query
+        if filters:
+            params["filter"] = ",".join(filters)
+        with httpx.Client(timeout=15.0, headers={"User-Agent": "SoSMCPServices/1.0 (mailto:soporte@knomap.org)"}) as client:
+            resp = client.get("https://api.openalex.org/works", params=params)
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+    return ch_res

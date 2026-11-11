@@ -7,13 +7,18 @@ from networkx.algorithms.community import louvain_communities, modularity
 
 # Asegurar KnoMap Engine en sys.path (Windows y Linux)
 KNOMAP_ENGINE_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "engine",
     Path(r"c:\Users\jlja\Documents\Proyectos\knomap\engine"),
     Path(__file__).resolve().parent.parent.parent.parent / "knomap" / "engine",
     Path("/home/labsom/knomap/engine")
 ]
-for p in KNOMAP_ENGINE_CANDIDATES:
-    if p.exists() and str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+for engine_dir in KNOMAP_ENGINE_CANDIDATES:
+    if engine_dir.exists():
+        lib_dir = engine_dir / "lib"
+        for p in [str(engine_dir), str(lib_dir)]:
+            if p not in sys.path:
+                sys.path.insert(0, p)
+        break
 
 try:
     from bibliometrics_parser import read_and_generate_bibliometrics
@@ -50,16 +55,24 @@ def parse_bibliographic_file(
                 max_terms=max_terms,
                 min_cooccurrence=min_cooccurrence
             )
-            if res.get("matrix"):
-                terms = res.get("terms", [])
-                matrix = res.get("matrix", [])
-                nodes = [{"id": i, "label": t, "weight": sum(matrix[i]) if i < len(matrix) else 1} for i, t in enumerate(terms)]
-                links = []
-                for i in range(len(terms)):
-                    for j in range(i + 1, len(terms)):
-                        w = matrix[i][j] if i < len(matrix) and j < len(matrix[i]) else 0
-                        if w > 0:
-                            links.append({"source": i, "target": j, "strength": w})
+            if res.get("success") or res.get("vosviewer_json") or res.get("network") or res.get("matrix"):
+                vos_net = (res.get("vosviewer_json") or {}).get("network", {})
+                items = vos_net.get("items", [])
+                links_raw = vos_net.get("links", [])
+                if items:
+                    nodes = [{"id": it.get("id"), "label": it.get("label"), "weight": it.get("weights", {}).get("Occurrences", 1)} for it in items]
+                    links = [{"source": l.get("source_id"), "target": l.get("target_id"), "strength": l.get("strength", 1.0)} for l in links_raw]
+                    terms = [it.get("label") for it in items]
+                else:
+                    terms = res.get("terms", [])
+                    matrix = res.get("matrix", [])
+                    nodes = [{"id": i, "label": t, "weight": sum(matrix[i]) if i < len(matrix) else 1} for i, t in enumerate(terms)]
+                    links = []
+                    for i in range(len(terms)):
+                        for j in range(i + 1, len(terms)):
+                            w = matrix[i][j] if i < len(matrix) and j < len(matrix[i]) else 0
+                            if w > 0:
+                                links.append({"source": i, "target": j, "strength": w})
 
                 return {
                     "status": "success",
@@ -72,7 +85,7 @@ def parse_bibliographic_file(
                         "links": links
                     },
                     "terms": terms,
-                    "matrix": matrix,
+                    "vosviewer_json": res.get("vosviewer_json"),
                     "summary": f"Red de {network_type} extraída exitosamente con {len(nodes)} términos y {len(links)} relaciones de co-ocurrencia."
                 }
         except Exception as e:
