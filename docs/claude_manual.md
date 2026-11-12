@@ -64,7 +64,7 @@ Hello Claude. I want to set up and activate the SOS (Science of Science) Agent S
    - Check if this workspace contains `sos-mcp-services`. If not, clone it:
      `git clone https://github.com/chilti/sos-mcp-services.git`
    - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
-   - Index the 37 skills and add their reference instructions to `CLAUDE.md` in this directory so you can invoke their CLI tools anytime.
+   - Index the 38 skills and add their reference instructions to `CLAUDE.md` in this directory so you can invoke their CLI tools anytime.
 
 2. Python Runtime & Scientific Libraries:
    - Use an active Python virtual environment with Python >= 3.10 (or create one: `python3 -m venv .venv && source .venv/bin/activate`).

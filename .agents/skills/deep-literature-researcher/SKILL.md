@@ -51,6 +51,7 @@ flowchart TD
 ### Explicit Eligibility Criteria (PCC / PICOS Framework)
 
 Before initiating retrieval, the agent must formalize:
+
 1. **Inclusion Criteria (IC):**
    - **IC1 (Domain/Concept):** Theoretical construct, formal model, or technology under analysis.
    - **IC2 (Methodological Approach):** Empirical studies, benchmarks, mathematical formalizations, or systematic reviews.
@@ -67,7 +68,9 @@ Before initiating retrieval, the agent must formalize:
 
 To overcome the limitations of lexical silence (synonyms or terminological shifts) and the imprecision of pure latent vector spaces, a 3-tier hybrid pipeline is implemented:
 
-$$\text{Combined Score (RRF)}: \quad \text{RRF}(d) = \sum_{m \in \{\text{Boolean}, \text{Semantic}\}} \frac{1}{60 + r_m(d)}$$
+$$
+\text{Combined Score (RRF)}: \quad \text{RRF}(d) = \sum_{m \in \{\text{Boolean}, \text{Semantic}\}} \frac{1}{60 + r_m(d)}
+$$
 
 1. **Symbolic Tier (Boolean Recall):**
    - Built with [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) and executed in ClickHouse (`rag.works_academic_all`) or global APIs (OpenAlex, WoS, Scopus).
@@ -83,7 +86,9 @@ $$\text{Combined Score (RRF)}: \quad \text{RRF}(d) = \sum_{m \in \{\text{Boolean
 
 Citation tracking across academic graphs maps theoretical roots and contemporary evolution (Wohlin, 2014). However, to prevent **topic drift**, the density criterion proposed by Wolfgang Glänzel is enforced:
 
-$$\text{Inclusion Criterion}: \quad d \in \text{Candidates} \iff |\text{Connections}(d, \text{Seeds})| \ge k$$
+$$
+\text{Inclusion Criterion}: \quad d \in \text{Candidates} \iff |\text{Connections}(d, \text{Seeds})| \ge k
+$$
 
 ```mermaid
 flowchart LR
@@ -109,6 +114,7 @@ flowchart LR
 ```
 
 ### Operational Rules
+
 1. **Seed Core Selection:** Between 3 and 8 canonical landmark articles in the discipline.
 2. **Backward Snowballing (Retrospective Tracking):**
    - Extract `referenced_works` from the seeds.
@@ -124,12 +130,14 @@ flowchart LR
 
 All extracted evidence must be structured in the **Canonical Synthesis Matrix**:
 
-| Identifier (DOI) | Authors (Year) | Approach / Theoretical Dimension | Methodology / Benchmark | Sample / Corpus ($N$) | Main Findings | Stated Limitations | Open Research Gap |
-|---|---|---|---|---|---|---|---|
-| `10.xxxx/...` | Author et al. (2023) | Symbolic / Causal networks | Synthetic SCMs | 10,000 queries | 94% accuracy on Rung 1; collapse on Rung 3 without SCM. | Everyday variable names with semantic bias. | Evaluate autonomous agents on abstract graphs. |
+| Identifier (DOI) | Authors (Year)       | Approach / Theoretical Dimension | Methodology / Benchmark | Sample / Corpus ($N$) | Main Findings                                           | Stated Limitations                          | Open Research Gap                              |
+| ---------------- | -------------------- | -------------------------------- | ----------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| `10.xxxx/...`  | Author et al. (2023) | Symbolic / Causal networks       | Synthetic SCMs          | 10,000 queries          | 94% accuracy on Rung 1; collapse on Rung 3 without SCM. | Everyday variable names with semantic bias. | Evaluate autonomous agents on abstract graphs. |
 
 ### Inviolable Anti-Hallucination Principle (Grounded Extraction)
-- **Strict Rule:** If a datum (sample size, statistical metric, limitation) is not explicitly stated in the retrieved metadata or abstract, the agent must rigorously record `N/A` (Not Available in abstract).
+
+- **Strict Rule:** If a datum (sample size, statistical metric, limitation) is not explicitly stated in the retrieved metadata, abstract, or harvested full text, the agent must rigorously record `N/A` (Not Available in text/abstract).
+- **Full-Text Prioritization:** When `--download-oa-pdfs` is enabled, the agent must inspect the layout-preserved text files in `<output>/text/` to extract exact empirical sample sizes ($N$), experimental conditions, and formal limitations before falling back to `N/A`.
 - **Absolute Prohibition:** Never conjecture or fabricate unverified metrics, sample sizes, or conclusions.
 
 ---
@@ -137,6 +145,7 @@ All extracted evidence must be structured in the **Canonical Synthesis Matrix**:
 ## 5. Detection of Consensuses, Controversies, and Research Gaps
 
 The qualitative synthesis report must be structured around 3 analytical axes:
+
 1. **Community Consensus Points:** Findings independently validated by multiple groups (e.g., insufficiency of purely autoregressive training for causal inference).
 2. **Methodological Controversies:** Theoretical or empirical discrepancies between schools of thought (e.g., emergence of latent *world models* vs. the *causal parrot* hypothesis).
 3. **Epistemic Gaps (Research Gaps):** Unresolved research questions at the frontier of knowledge that justify new experiments or conceptual frameworks.
@@ -145,7 +154,7 @@ The qualitative synthesis report must be structured around 3 analytical axes:
 
 ## 6. Automated Tool: `scripts/citation_snowball.py`
 
-Standalone CLI for backward/forward snowballing with local ClickHouse (zero JOINs) and global OpenAlex:
+Standalone CLI for backward/forward snowballing with local ClickHouse (zero JOINs) and global OpenAlex, with optional automated Open Access full-text harvesting:
 
 ```bash
 # Backward and forward snowballing with density filter over seeds
@@ -156,13 +165,28 @@ Standalone CLI for backward/forward snowballing with local ClickHouse (zero JOIN
   --top-citations 35 \
   --min-cocitations 1 \
   --output ./snowball_results/
+
+# Advanced full-text pipeline: Snowballing + automated Open Access PDF acquisition
+/home/ambientesPy/revistaslatam/bin/python \
+  /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/deep-literature-researcher/scripts/citation_snowball.py \
+  --seeds "10.1038/s41598-025-01676-x" "10.1111/bjet.13544" \
+  --mode both \
+  --top-citations 20 \
+  --download-oa-pdfs \
+  --fulltext-limit 10 \
+  --extract-text \
+  --output ./snowball_fulltext/ \
+  --lang es
 ```
 
 ### Generated Outputs:
-* `snowball_candidates.json`: Deduplicated candidates with metadata, seed connections, and composite scores.
-* `snowball_candidates.csv`: Exportable table for tabular screening.
-* `prisma_flow_data.json`: Quantitative flow metrics for the PRIBA / PRISMA 2020 diagram.
-* `snowball_report.md`: Report with Mermaid diagram and Top ranking of articles by centrality and impact.
+
+* `snowball_candidates.json`: Deduplicated candidates with metadata, seed connections, composite scores, and local full-text paths.
+* `snowball_candidates.csv`: Exportable table for tabular screening with `OA Status`, `FullText Status`, and file paths.
+* `prisma_flow_data.json`: Quantitative flow metrics for the PRIBA / PRISMA 2020 diagram, including Full-Text Eligibility counts.
+* `snowball_report.md`: Report with Mermaid diagram, Top ranking of articles by centrality, and direct markdown links to local PDFs and texts.
+* `pdf/`: (Optional, when `--download-oa-pdfs` is active) Harvested Open Access PDF documents.
+* `text/`: (Optional, when `--extract-text` is active) Plain-text extractions for agent reading.
 
 ---
 

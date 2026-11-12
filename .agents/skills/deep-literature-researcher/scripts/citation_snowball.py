@@ -6,6 +6,7 @@ Herramienta de Snowballing de Citas (Backward & Forward) sobre grafos de citaci�
 académica (Wohlin, 2014) para revisiones sistemáticas de literatura PRISMA 2020.
 Combina consultas locales de alta velocidad en ClickHouse (rag.works_academic_all, CERO JOINs)
 con la API pública de OpenAlex para cobertura internacional completa.
+Incluye adquisición opcional de texto completo en Acceso Abierto (--download-oa-pdfs).
 """
 
 import argparse
@@ -26,6 +27,17 @@ try:
     HAS_CLICKHOUSE = True
 except ImportError:
     HAS_CLICKHOUSE = False
+
+# Importación dinámica del motor de descarga de PDFs en Acceso Abierto
+downloader_script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "open-access-pdf-downloader", "scripts"))
+if downloader_script_dir not in sys.path:
+    sys.path.insert(0, downloader_script_dir)
+try:
+    from download_oa_pdfs import run_oa_pdf_harvester
+    HAS_DOWNLOADER = True
+except ImportError:
+    run_oa_pdf_harvester = None
+    HAS_DOWNLOADER = False
 
 
 OPENALEX_API_BASE = "https://api.openalex.org/works"
@@ -242,7 +254,17 @@ def fetch_forward_citations(work_id: str, limit: int = 25) -> List[Dict[str, Any
     return citing_works
 
 
-def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_cocitations: int, output_dir: str, lang: str = "en"):
+def run_snowballing(
+    seeds_raw: List[str],
+    mode: str,
+    top_candidates: int,
+    min_cocitations: int,
+    output_dir: str,
+    download_oa_pdfs: bool = False,
+    fulltext_limit: int = 10,
+    extract_text: bool = True,
+    lang: str = "en"
+):
     os.makedirs(output_dir, exist_ok=True)
     ch_client = get_ch_client()
     is_es = (lang == "es")
@@ -342,7 +364,12 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
             "forward_citation_count": f_count,
             "seed_connections": connected_seeds,
             "composite_score": round(composite_score, 2),
-            "source_provenance": meta.get("source", "unknown")
+            "source_provenance": meta.get("source", "unknown"),
+            "fulltext_status": "NOT_REQUESTED",
+            "oa_status": "unknown",
+            "pdf_filename": "",
+            "pdf_path": "",
+            "text_path": ""
         }
         candidate_records.append(rec)
 
@@ -350,7 +377,55 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
     candidate_records.sort(key=lambda x: x["composite_score"], reverse=True)
     top_records = candidate_records[:top_candidates]
 
-    # 5. Generar salidas PRISMA y tablas
+    # 5. Adquisición opcional de textos completos en Acceso Abierto
+    fulltext_manifest_map = {}
+    fulltext_success_count = 0
+    fulltext_paywalled_count = 0
+
+    if download_oa_pdfs:
+        print("\n" + "=" * 60)
+        print("  [Fase 5] Cosecha de Textos Completos en Acceso Abierto..." if is_es else "  [Phase 5] Harvesting Open Access Full-Text PDFs...")
+        print("=" * 60)
+        if HAS_DOWNLOADER and run_oa_pdf_harvester:
+            top_ids_to_download = [r["work_id"] for r in top_records[:fulltext_limit]]
+            run_oa_pdf_harvester(
+                identifiers=top_ids_to_download,
+                output_dir=output_dir,
+                limit=fulltext_limit,
+                delay=0.5,
+                extract_text=extract_text,
+                timeout=25,
+                lang=lang
+            )
+            manifest_json_path = os.path.join(output_dir, "download_manifest.json")
+            if os.path.exists(manifest_json_path):
+                try:
+                    with open(manifest_json_path, "r", encoding="utf-8") as f_man:
+                        mdata = json.load(f_man)
+                        fulltext_success_count = mdata.get("successful_downloads", 0)
+                        fulltext_paywalled_count = mdata.get("paywalled_closed", 0)
+                        for rec in mdata.get("records", []):
+                            w_ident = clean_work_id(rec.get("work_id", ""))
+                            fulltext_manifest_map[w_ident] = rec
+                except Exception as e:
+                    print(f"[Aviso] No se pudo leer download_manifest.json: {e}", file=sys.stderr)
+        else:
+            print("[Aviso] El motor 'open-access-pdf-downloader' no está disponible.", file=sys.stderr)
+
+    # Enriquecer los registros top con la información de texto completo
+    for r in top_records:
+        wid = clean_work_id(r["work_id"])
+        man_entry = fulltext_manifest_map.get(wid)
+        if man_entry:
+            r["fulltext_status"] = man_entry.get("status", "NOT_REQUESTED")
+            r["oa_status"] = man_entry.get("oa_status", "unknown")
+            r["pdf_filename"] = man_entry.get("pdf_filename", "")
+            r["pdf_path"] = man_entry.get("pdf_path", "")
+            if extract_text and man_entry.get("text_extracted") and r["pdf_filename"]:
+                txt_name = r["pdf_filename"].rsplit(".", 1)[0] + ".txt"
+                r["text_path"] = os.path.join(output_dir, "text", txt_name)
+
+    # 6. Generar salidas PRISMA y tablas
     json_path = os.path.join(output_dir, "snowball_candidates.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({
@@ -358,6 +433,8 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
             "mode": mode,
             "total_candidates": len(candidate_records),
             "top_candidates_count": len(top_records),
+            "fulltext_harvested": download_oa_pdfs,
+            "fulltext_success_count": fulltext_success_count,
             "results": top_records
         }, f, indent=2, ensure_ascii=False)
 
@@ -366,13 +443,15 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
         writer = csv.writer(f)
         writer.writerow([
             "Work ID", "DOI", "Title", "Year", "Type", "Authors", "Citations", "FWCI",
-            "Direction", "Co-Citations", "Seed Connections", "Score"
+            "Direction", "Co-Citations", "Seed Connections", "Score",
+            "OA Status", "FullText Status", "PDF Path", "Text Path"
         ])
         for r in top_records:
             writer.writerow([
                 r["work_id"], r["doi"], r["title"], r["year"], r["type"],
                 "; ".join(r["authors"]), r["cited_by_count"], r["fwci"],
-                r["direction"], r["co_citation_count"], "; ".join(r["seed_connections"]), r["composite_score"]
+                r["direction"], r["co_citation_count"], "; ".join(r["seed_connections"]), r["composite_score"],
+                r.get("oa_status", ""), r.get("fulltext_status", ""), r.get("pdf_path", ""), r.get("text_path", "")
             ])
 
     # PRISMA flow data
@@ -390,6 +469,13 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
             "recommended_for_full_text": min(25, len(top_records))
         }
     }
+    if download_oa_pdfs:
+        prisma_flow["full_text_eligibility"] = {
+            "requested_for_harvest": min(fulltext_limit, len(top_records)),
+            "oa_fulltext_retrieved": fulltext_success_count,
+            "paywalled_or_closed": fulltext_paywalled_count
+        }
+
     flow_path = os.path.join(output_dir, "prisma_flow_data.json")
     with open(flow_path, "w", encoding="utf-8") as f:
         json.dump(prisma_flow, f, indent=2)
@@ -402,37 +488,59 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
             f.write(f"- **Artículos Semilla Analizados:** {len(resolved_seeds)}\n")
             f.write(f"- **Modo de Rastreo:** `{mode}`\n")
             f.write(f"- **Total de Candidatos Descubiertos:** {len(candidate_records)}\n")
-            f.write(f"- **Candidatos Priorizados para Tamizaje PRISMA:** {len(top_records)}\n\n")
+            f.write(f"- **Candidatos Priorizados para Tamizaje PRISMA:** {len(top_records)}\n")
+            if download_oa_pdfs:
+                f.write(f"- **Textos Completos en OA Descargados:** {fulltext_success_count}/{min(fulltext_limit, len(top_records))}\n\n")
+            else:
+                f.write("\n")
 
             f.write("## Diagrama de Flujo PRISMA 2020\n\n")
             f.write("```mermaid\nflowchart TD\n")
             f.write(f'    S["Conjunto Semilla (n = {len(resolved_seeds)})"] --> B["Backward Snowballing (n = {len(backward_counter)})"]\n')
             f.write(f'    S --> F["Forward Snowballing (n = {len(forward_works_dict)})"]\n')
             f.write(f'    B & F --> U["Total Candidatos Únicos (n = {len(candidate_records)})"]\n')
-            f.write(f'    U --> SCR["Priorizados para Tamizaje de Resumen (n = {len(top_records)})"]\n')
+            f.write(f'    U --> SCR["Priorizados para Tamizaje (n = {len(top_records)})"]\n')
+            if download_oa_pdfs:
+                f.write(f'    SCR --> FT["Textos Completos OA Recuperados (n = {fulltext_success_count})"]\n')
+                f.write(f'    SCR --> CLO["Excluidos: Muro de Pago / Cerrados (n = {fulltext_paywalled_count})"]\n')
             f.write("```\n\n")
 
             f.write("## Top 15 Artículos Candidatos por Centralidad e Impacto\n\n")
-            f.write("| # | Año | Citas | Dirección | Conexiones Semilla | Título / DOI |\n")
-            f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+            if download_oa_pdfs:
+                f.write("| # | Año | Citas | Dirección | Texto Completo | Título / DOI |\n")
+                f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+            else:
+                f.write("| # | Año | Citas | Dirección | Conexiones Semilla | Título / DOI |\n")
+                f.write("|---|:---:|:---:|:---:|:---:|---|\n")
         else:
             f.write("# Citation Snowballing Report (Wohlin Protocol, 2014)\n\n")
             f.write(f"- **Seed Articles Analyzed:** {len(resolved_seeds)}\n")
             f.write(f"- **Tracking Mode:** `{mode}`\n")
             f.write(f"- **Total Candidates Discovered:** {len(candidate_records)}\n")
-            f.write(f"- **Prioritized Candidates for PRISMA Screening:** {len(top_records)}\n\n")
+            f.write(f"- **Prioritized Candidates for PRISMA Screening:** {len(top_records)}\n")
+            if download_oa_pdfs:
+                f.write(f"- **OA Full-Text PDFs Harvested:** {fulltext_success_count}/{min(fulltext_limit, len(top_records))}\n\n")
+            else:
+                f.write("\n")
 
             f.write("## PRISMA 2020 Flow Diagram\n\n")
             f.write("```mermaid\nflowchart TD\n")
             f.write(f'    S["Seed Set (n = {len(resolved_seeds)})"] --> B["Backward Snowballing (n = {len(backward_counter)})"]\n')
             f.write(f'    S --> F["Forward Snowballing (n = {len(forward_works_dict)})"]\n')
             f.write(f'    B & F --> U["Total Unique Candidates (n = {len(candidate_records)})"]\n')
-            f.write(f'    U --> SCR["Prioritized for Abstract Screening (n = {len(top_records)})"]\n')
+            f.write(f'    U --> SCR["Prioritized for Screening (n = {len(top_records)})"]\n')
+            if download_oa_pdfs:
+                f.write(f'    SCR --> FT["OA Full-Text Retrieved (n = {fulltext_success_count})"]\n')
+                f.write(f'    SCR --> CLO["Excluded: Closed / Paywalled (n = {fulltext_paywalled_count})"]\n')
             f.write("```\n\n")
 
             f.write("## Top 15 Candidate Articles by Centrality and Impact\n\n")
-            f.write("| # | Year | Citations | Direction | Seed Connections | Title / DOI |\n")
-            f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+            if download_oa_pdfs:
+                f.write("| # | Year | Citations | Direction | Full Text | Title / DOI |\n")
+                f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+            else:
+                f.write("| # | Year | Citations | Direction | Seed Connections | Title / DOI |\n")
+                f.write("|---|:---:|:---:|:---:|:---:|---|\n")
 
         seed_unit = "semillas" if is_es else "seeds"
         na_lbl = "N/D" if is_es else "N/A"
@@ -449,7 +557,27 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
                 doi_display = r["work_id"]
 
             doi_link = f"[{doi_display}]({doi_url})" if doi_url else doi_display
-            f.write(f"| {i} | {r['year'] or na_lbl} | {r['cited_by_count']} | `{r['direction']}` | {len(r['seed_connections'])} {seed_unit} | **{r['title'][:80]}...**<br>{doi_link} |\n")
+
+            if download_oa_pdfs:
+                ft_status = r.get("fulltext_status", "NOT_REQUESTED")
+                if "SUCCESS" in ft_status:
+                    pdf_rel = os.path.relpath(r["pdf_path"], output_dir) if r.get("pdf_path") else ""
+                    txt_rel = os.path.relpath(r["text_path"], output_dir) if r.get("text_path") else ""
+                    ft_cell = f"`OA ({r.get('oa_status', '')})`"
+                    links = []
+                    if pdf_rel:
+                        links.append(f"[PDF]({pdf_rel})")
+                    if txt_rel:
+                        links.append(f"[TXT]({txt_rel})")
+                    if links:
+                        ft_cell += "<br>" + " · ".join(links)
+                elif "PAYWALLED" in ft_status or "CLOSED" in ft_status:
+                    ft_cell = "`Paywalled`" if not is_es else "`Cerrado`"
+                else:
+                    ft_cell = f"`{ft_status[:15]}`"
+                f.write(f"| {i} | {r['year'] or na_lbl} | {r['cited_by_count']} | `{r['direction']}` | {ft_cell} | **{r['title'][:80]}...**<br>{doi_link} |\n")
+            else:
+                f.write(f"| {i} | {r['year'] or na_lbl} | {r['cited_by_count']} | `{r['direction']}` | {len(r['seed_connections'])} {seed_unit} | **{r['title'][:80]}...**<br>{doi_link} |\n")
 
     print("\n" + "=" * 60)
     print(f"✅ {'Snowballing finalizado con éxito en' if is_es else 'Snowballing completed successfully in'} '{output_dir}':")
@@ -457,6 +585,10 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
     print("  - snowball_candidates.csv")
     print("  - prisma_flow_data.json")
     print("  - snowball_report.md")
+    if download_oa_pdfs:
+        print(f"  - pdf/ ({fulltext_success_count} {'PDFs descargados' if is_es else 'PDFs downloaded'})")
+        if extract_text:
+            print("  - text/ (textos planos extraídos)")
     print("=" * 60 + "\n")
 
 
@@ -468,9 +600,22 @@ def main():
     parser.add_argument("--top-citations", type=int, default=30, help="Number of top candidates to prioritize")
     parser.add_argument("--min-cocitations", type=int, default=1, help="Minimum co-citation threshold to include reference")
     parser.add_argument("--output", type=str, default="./snowball_results", help="Output directory for results")
+    parser.add_argument("--download-oa-pdfs", action="store_true", help="Download open-access full-text PDFs for top prioritized candidates")
+    parser.add_argument("--fulltext-limit", type=int, default=10, help="Maximum number of candidate full-text PDFs to download (default: 10)")
+    parser.add_argument("--extract-text", action="store_true", default=True, help="Extract plain text (.txt) from downloaded PDFs (default: True)")
 
     args = parser.parse_args()
-    run_snowballing(args.seeds, args.mode, args.top_citations, args.min_cocitations, args.output, lang=args.lang)
+    run_snowballing(
+        seeds_raw=args.seeds,
+        mode=args.mode,
+        top_candidates=args.top_citations,
+        min_cocitations=args.min_cocitations,
+        output_dir=args.output,
+        download_oa_pdfs=args.download_oa_pdfs,
+        fulltext_limit=args.fulltext_limit,
+        extract_text=args.extract_text,
+        lang=args.lang
+    )
 
 
 if __name__ == "__main__":

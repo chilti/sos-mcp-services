@@ -34,7 +34,7 @@
 
 ## Section 1: Installation & Setup (Basic vs. Advanced)
 
-This project provides **37 specialized Agent Skills** and modular analytical engines designed for Antigravity (Google's agentic AI assistant) and Gemini.
+This project provides **38 specialized Agent Skills** and modular analytical engines designed for Antigravity (Google's agentic AI assistant) and Gemini.
 
 To ensure universal portability, the ecosystem is built with a **Zero-Barrier Architecture**: **you do NOT need a local database server, ClickHouse cluster, or private OpenAlex snapshot to perform state-of-the-art scientometrics.**
 
@@ -59,7 +59,7 @@ Hello Antigravity. I want to install and activate the SOS (Science of Science) A
    - Check if this workspace already contains the repository `sos-mcp-services`. If not, clone it using:
      `git clone https://github.com/chilti/sos-mcp-services.git`
    - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
-   - Index all 37 skills and make them accessible in my active Antigravity environment (link or copy them into my workspace `.agents/skills/` or global Antigravity skills directory `~/.gemini/antigravity/skills/`).
+   - Index all 38 skills and make them accessible in my active Antigravity environment (link or copy them into my workspace `.agents/skills/` or global Antigravity skills directory `~/.gemini/antigravity/skills/`).
 
 2. Python Runtime & Scientific Libraries:
    - Use an active Python virtual environment with Python >= 3.10 (or create a local one: `python3 -m venv .venv && source .venv/bin/activate`).
@@ -82,7 +82,7 @@ Hello Antigravity. I want to install and activate the SOS (Science of Science) A
 
 When you paste the basic prompt, Antigravity performs a lightweight setup:
 
-1. **Loads the 37 Skill Definitions:** Automatically scans each `SKILL.md` in `.agents/skills/` and makes them available for natural language triggering and slash command execution.
+1. **Loads the 38 Skill Definitions:** Automatically scans each `SKILL.md` in `.agents/skills/` and makes them available for natural language triggering and slash command execution.
 2. **Binds the Execution Environment:** Configures CLI calls to run with Python >= 3.10, ensuring all data wrangling (`pandas`, `pyarrow`), clustering (`scikit-learn`), and plotting (`plotly`, `matplotlib`) execute without system permission issues.
 3. **Applies Universal Language Invariant:** Sets default plot/report labels to English (`--lang en`), while supporting Spanish (`--lang es`) whenever the user interacts in Spanish.
 4. **Keeps Everything Local:** All harvested papers, indicator matrices, and reports are saved to your active workspace directory (`./corpus.parquet`, `./matrices/`, `./reportes/`) under the **Workspace-First** principle.
@@ -194,7 +194,7 @@ Now, every client Antigravity agent can invoke tools like `mcp_sos_openalex_*`, 
 
 ## Section 2: Standalone Usage of Agent Skills with Slash Commands
 
-The repository includes **37 modular Agent Skills**. Each skill is a self-contained expert with its own execution CLI, mathematical documentation (`references/*.md`), and bilingual output engine (`--lang en` / `--lang es`).
+The repository includes **38 modular Agent Skills**. Each skill is a self-contained expert with its own execution CLI, mathematical documentation (`references/*.md`), and bilingual output engine (`--lang en` / `--lang es`).
 
 ### 2.1. Catalog of Scientific Skill Families
 
@@ -233,6 +233,7 @@ graph TD
         P3[sdg-impact-intelligence]
         P4[infotlachia-scholar-intelligence]
         P5[revistaslatam-indicators-engine]
+        P6[open-access-pdf-downloader]
     end
 
     H1 --> H2 & H3

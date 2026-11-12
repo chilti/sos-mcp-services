@@ -153,6 +153,7 @@ Grupo de 5 skills optimizadas para consultar las tablas materializadas del corpu
 | `infotlachia-scholar-intelligence` | CLI / Protocolo | `infotlachia_cli.py` | JSON | Inteligencia profunda sobre el Padrón SNII 2025, caché DuckDB de 14 tablas, APC y UMAP 2D/3D. |
 | `journal-editorial-intelligence` | Protocolo MCP | — | N/A | Evaluación cienciométrica de revistas, Acceso Abierto Diamante, indización SciELO/DOAJ/Redalyc. |
 | `open-access-monitor` | CLI Autónoma | `open_access_monitor_cli.py` | JSON | Auditoría de las 6 vías canónicas de OA (Diamante, Gold, Híbrido, Verde, Bronce, Cerrado), estimación de gasto en APC y transición anual. |
+| `open-access-pdf-downloader` | CLI Autónoma | `download_oa_pdfs.py` | PDF / TXT / CSV | Cosecha automatizada y ética de textos completos (PDF) en Acceso Abierto mediante resolución en cascada (OpenAlex, arXiv, PMC, repositorios institucionales), validación binaria y manifiesto PRISMA 2020. |
 | `openalex-mexico-clickhouse` | CLI / Protocolo | `openalex_mexico_cli.py` | JSON | Motor analítico maestro sobre la producción científica de México en ClickHouse (1.65M trabajos, 2.57M autores, SNII, APC, embeddings nomic 768d y CERO JOINs). |
 | `research-fronts-detection-expert` | Protocolo MCP | — | N/A | Detección multimodal de frentes (v5.0), evolución longitudinal con AMI y análisis aluvial de linajes temáticos. |
 | `revistaslatam-editorial-intelligence` | Protocolo MCP | — | N/A | Catálogo de revistas iberoamericanas, evaluación editorial integral y checklist de indización. |
