@@ -1,31 +1,33 @@
 ---
 name: scopus-harvester
-description: Extracción, paginación y normalización de literatura científica desde la API de Elsevier Scopus hacia tablas canónicas (Parquet, JSON, CSV).
+description: Extract, paginate, and normalize scientific literature from the Elsevier Scopus API into canonical tables (Parquet, JSON, CSV). Respond and label outputs in the user's language.
 ---
 
 # Scopus Data Harvester
 
-Herramienta autónoma e independiente para la recolección de publicaciones indexadas en Elsevier Scopus a través de su API oficial (`https://api.elsevier.com/content/search/scopus`), con estandarización directa al esquema tabular canónico.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Autonomous, standalone tool for harvesting publications indexed in Elsevier Scopus via its official API (`https://api.elsevier.com/content/search/scopus`), standardizing records directly into the canonical tabular schema.
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Búsqueda Avanzada Scopus:** Soporte completo de sintaxis booleana y códigos de campo (`TITLE-ABS-KEY`, `AUTH`, `AFFIL`, `PUBYEAR`, etc.).
-- **Perfiles de Autor e Institución:** Extracción por Scopus Author ID (`AU-ID`) o Scopus Affiliation ID (`AF-ID`).
-- **Resiliencia de Red:** Detección automática y manejo de backoff ante límites de cuota (HTTP 429).
-- **Citas Brutas Confiables:** Normaliza citas acumuladas (`citedby-count`) y metadatos sin suposiciones de FWCI.
+- **Advanced Scopus Search:** Full support for Boolean syntax and field codes (`TITLE-ABS-KEY`, `AUTH`, `AFFIL`, `PUBYEAR`, etc.).
+- **Author and Institution Profiles:** Extraction by Scopus Author ID (`AU-ID`) or Scopus Affiliation ID (`AF-ID`).
+- **Network Resilience:** Automatic detection and backoff handling for quota rate limits (HTTP 429).
+- **Reliable Raw Citations:** Normalizes cumulative citation counts (`citedby-count`) and metadata without making FWCI assumptions.
 
 ---
 
-## Interfaz CLI
+## CLI Interface
 
-Entorno de ejecución:
+Execution environment:
 ```bash
-python scripts/scopus_harvest_cli.py [subcomando] [opciones]
+python scripts/scopus_harvest_cli.py [subcommand] [options]
 ```
 
-### 1. Búsqueda temática
+### 1. Thematic search
 ```bash
 python scripts/scopus_harvest_cli.py search \
   --query 'TITLE-ABS-KEY("deep learning" AND "medical imaging")' \
@@ -35,7 +37,7 @@ python scripts/scopus_harvest_cli.py search \
   --output ./scopus_deep_learning.parquet
 ```
 
-### 2. Publicaciones de un autor por AU-ID
+### 2. Author publications by AU-ID
 ```bash
 python scripts/scopus_harvest_cli.py author-profile \
   --author-id "57200234567" \
@@ -43,7 +45,7 @@ python scripts/scopus_harvest_cli.py author-profile \
   --output ./author_scopus.parquet
 ```
 
-### 3. Publicaciones institucionales por AF-ID
+### 3. Institutional publications by AF-ID
 ```bash
 python scripts/scopus_harvest_cli.py affil-works \
   --af-id "60028190" \
@@ -55,6 +57,6 @@ python scripts/scopus_harvest_cli.py affil-works \
 
 ---
 
-## Referencias Técnicas
-- [Sintaxis de Búsqueda Avanzada de Scopus](references/scopus_search_syntax.md)
-- [Políticas de Cuota y Respuestas HTTP 429](references/elsevier_quota_policies.md)
+## Technical References
+- [Scopus Advanced Search Syntax](references/scopus_search_syntax.md)
+- [Elsevier Quota Policies and HTTP 429 Responses](references/elsevier_quota_policies.md)

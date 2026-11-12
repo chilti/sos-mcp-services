@@ -76,7 +76,14 @@ def parse_arguments():
         "--output-dir", "-o",
         type=str,
         default="./reports",
-        help="Directorio destino para guardar los artefactos (default: ./reports)"
+        help="Target directory to save generated artifacts (default: ./reports)"
+    )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for alluvial chart and event labels (default: en)"
     )
     return parser.parse_args()
 
@@ -256,10 +263,14 @@ def main():
                 if combined_score >= args.min_similarity:
                     outgoing_transitions.append((f_c_id, f_c["name"], combined_score, len(i_refs) + len(i_docs)))
 
-            # Clasificación de eventos
+            # Event classification
+            is_es = (getattr(args, "lang", "en") == "es")
             if len(outgoing_transitions) == 1:
                 target_id, target_name, score, flow_weight = outgoing_transitions[0]
-                event_type = "Persistence" if score >= args.persistence_threshold else "Evolution"
+                if is_es:
+                    event_type = "Persistencia" if score >= args.persistence_threshold else "Evolución"
+                else:
+                    event_type = "Persistence" if score >= args.persistence_threshold else "Evolution"
                 events_records.append({
                     "source_window": w_prev_label,
                     "source_front": f_p["name"],
@@ -275,14 +286,14 @@ def main():
                     "value": max(1, flow_weight)
                 })
             elif len(outgoing_transitions) > 1:
-                # Evento Split (Bifurcación)
+                # Split event
                 for target_id, target_name, score, flow_weight in outgoing_transitions:
                     events_records.append({
                         "source_window": w_prev_label,
                         "source_front": f_p["name"],
                         "target_window": w_curr_label,
                         "target_front": target_name,
-                        "event_type": "Split (Bifurcación)",
+                        "event_type": "Split (Bifurcación)" if is_es else "Split (Bifurcation)",
                         "similarity_score": round(score, 4),
                         "flow_weight": max(1, flow_weight)
                     })
@@ -292,18 +303,19 @@ def main():
                         "value": max(1, flow_weight)
                     })
             else:
-                # Evento Dissolution / Decay
+                # Dissolution / Decay event
                 events_records.append({
                     "source_window": w_prev_label,
                     "source_front": f_p["name"],
                     "target_window": w_curr_label,
-                    "target_front": "None (Disolución)",
-                    "event_type": "Decay (Disolución)",
+                    "target_front": "None (Disolución)" if is_es else "None (Dissolution)",
+                    "event_type": "Decay (Disolución)" if is_es else "Decay (Dissolution)",
                     "similarity_score": 0.0,
                     "flow_weight": 0
                 })
 
-        # Identificar eventos Genesis (Emergencia) en ventana actual
+        # Identify Genesis (Emergence) events in current window
+        is_es = (getattr(args, "lang", "en") == "es")
         for f_c_id, f_c in fronts_curr.items():
             incoming_scores = []
             for f_p_id, f_p in fronts_prev.items():
@@ -315,23 +327,24 @@ def main():
             if not incoming_scores or max(incoming_scores) < args.min_similarity:
                 events_records.append({
                     "source_window": w_prev_label,
-                    "source_front": "None (Génesis)",
+                    "source_front": "None (Génesis)" if is_es else "None (Genesis)",
                     "target_window": w_curr_label,
                     "target_front": f_c["name"],
-                    "event_type": "Genesis (Emergencia)",
+                    "event_type": "Genesis (Emergencia)" if is_es else "Genesis (Emergence)",
                     "similarity_score": 0.0,
                     "flow_weight": 0
                 })
 
-    # Guardar Tabla Resumen de Eventos (lineages_summary.csv)
+    # Save Events Summary Table (lineages_summary.csv)
     events_df = pd.DataFrame(events_records)
     lineages_path = os.path.join(args.output_dir, "lineages_summary.csv")
     events_df.to_csv(lineages_path, index=False)
     logger.info(f"Tabla de linajes longitudinales guardada en: {lineages_path} ({len(events_df)} transiciones registradas).")
 
-    # Renderizar Diagrama Aluvial Interactivo en HTML con Plotly
+    # Render Interactive Alluvial Diagram in HTML with Plotly
     if sankey_links and sankey_nodes:
         logger.info("Construyendo Diagrama Aluvial interactivo con Plotly...")
+        is_es = (getattr(args, "lang", "en") == "es")
         fig = go.Figure(data=[go.Sankey(
             arrangement="snap",
             node=dict(
@@ -349,8 +362,13 @@ def main():
             )
         )])
 
+        title_html = (
+            "<b>Dinámica Longitudinal de Linajes Temáticos (Diagrama Aluvial de Frentes)</b><br><sup>Seguimiento temporal de eventos evolutivos (Persistencia, Bifurcación, Fusión, Emergencia)</sup>"
+            if is_es
+            else "<b>Longitudinal Dynamics of Thematic Lineages (Research Fronts Alluvial Diagram)</b><br><sup>Temporal tracking of evolutionary events (Persistence, Split, Merge, Genesis)</sup>"
+        )
         fig.update_layout(
-            title_text="<b>Dinámica Longitudinal de Linajes Temáticos (Diagrama Aluvial de Frentes)</b><br><sup>Seguimiento temporal de eventos evolutivos (Persistencia, Bifurcación, Fusión, Emergencia)</sup>",
+            title_text=title_html,
             font_size=12,
             font_family="Arial, sans-serif",
             width=1200,

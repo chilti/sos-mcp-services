@@ -1,107 +1,109 @@
 ---
 name: topics-research-fronts-intelligence
 description: >-
-  Motor analítico para la detección, delimitación y seguimiento longitudinal de frentes de investigación en redes bibliométricas (acoplamiento bibliográfico, cocitación, citas directas y OpenAlex Topics). Opera bajo el principio Workspace-First consumiendo corpus locales previos (Parquet/CSV) o consultando la tabla global ClickHouse (rag.works_flat) sin JOINs. Modela comunidades mediante el algoritmo Leiden (CPM), rastrea linajes temporales con la métrica AMI (Información Mutua Ajustada), clasifica eventos evolutivos (Persistencia, Split, Merge, Génesis) y genera diagramas aluviales interactivos (Plotly HTML) enlazados con bibliometric-network-analyst.
+  Analytical engine for detecting, delineating, and longitudinally tracking research fronts in bibliometric networks (bibliographic coupling, co-citation, direct citations, and OpenAlex Topics). Operates under the Workspace-First principle consuming prior local corpora (Parquet/CSV) or querying the global ClickHouse table (rag.works_flat) with zero JOINs. Models communities via the Leiden algorithm (CPM), tracks temporal lineages using Adjusted Mutual Information (AMI), classifies evolutionary events (Persistence, Split, Merge, Genesis), and generates interactive alluvial diagrams (Plotly HTML) linked with bibliometric-network-analyst. Respond and label outputs in the user's language.
 ---
 
 # Skill: Topics & Research Fronts Intelligence
-### *Detección de Frentes de Investigación, Redes Bibliométricas y Seguimiento Longitudinal de Linajes (AMI)*
+### *Research Front Detection, Bibliometric Networks, and Longitudinal Lineage Tracking (AMI)*
+
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
 ---
 
-## 1. Propósito y Fundamento Epistemológico
+## 1. Purpose and Epistemological Foundation
 
-Esta skill capacita al agente para **identificar, delimitar, caracterizar y rastrear la evolución temporal de frentes de investigación (*Research Fronts*)** en la literatura científica. 
+This skill enables the agent to **identify, delineate, characterize, and track the temporal evolution of Research Fronts** in the scientific literature.
 
-Supera la identificación superficial basada en palabras clave aisladas mediante el modelado formal de comunidades en grafos bibliográficos y taxonomías globales:
-- **Price (1965):** Conceptualización del frente como la banda activa y móvil de publicaciones recientes que avanzan la frontera del conocimiento.
-- **Kessler (1963) & Boyack & Klavans (2010):** Acoplamiento bibliográfico contemporáneo para detección con **nula latencia temporal** y máxima coherencia temática.
-- **Small & Griffith (1974):** Cocitación de documentos clásicos para delimitar la *Base Intelectual* (*Core Documents*).
-- **CWTS Leiden & Traag et al. (2019):** Algoritmo Leiden sobre redes de citación directa a escala masiva para la taxonomía jerárquica de ~4,500 Topics de OpenAlex.
-- **Rosvall & Bergstrom (2010):** Linajes longitudinales, Información Mutua Ajustada (AMI) y diagramas aluviales.
+It goes beyond superficial keyword-based identification through formal community modeling on bibliographic graphs and global taxonomies:
+- **Price (1965):** Conceptualization of the research front as the active, moving band of recent publications advancing the frontier of knowledge.
+- **Kessler (1963) & Boyack & Klavans (2010):** Contemporary bibliographic coupling for detection with **zero temporal latency** and maximum thematic coherence.
+- **Small & Griffith (1974):** Co-citation of classical documents to delineate the *Intellectual Base* (*Core Documents*).
+- **CWTS Leiden & Traag et al. (2019):** Leiden algorithm on massive-scale direct citation networks for the hierarchical taxonomy of ~4,500 OpenAlex Topics.
+- **Rosvall & Bergstrom (2010):** Longitudinal lineages, Adjusted Mutual Information (AMI), and alluvial diagrams.
 
 ---
 
-## 2. Principio Arquitectónico: *Workspace-First* y Contrato de Datos
+## 2. Architectural Principle: *Workspace-First* and Data Contract
 
-Esta skill sigue estrictamente el principio de **desacoplamiento entre ingesta y análisis**:
+This skill strictly follows the principle of **decoupling ingestion from analysis**:
 
 ```mermaid
 flowchart LR
-    subgraph Etapa_Previa["Etapa 1: Ingesta & Cosecha"]
-        H["bibliometric-search-strategist<br>openalex-harvester / ClickHouse"] -->|Persiste en espacio de trabajo| W["corpus.parquet / corpus.csv"]
+    subgraph Stage_1["Stage 1: Ingestion & Harvesting"]
+        H["bibliometric-search-strategist<br>openalex-harvester / ClickHouse"] -->|Persists in workspace| W["corpus.parquet / corpus.csv"]
     end
-    subgraph Esta_Skill["Etapa 2: topics-research-fronts-intelligence"]
-        W -->|Modo Primario: Ingesta Directa| F["build_bibliometric_fronts.py"]
+    subgraph Stage_2["Stage 2: topics-research-fronts-intelligence"]
+        W -->|Primary Mode: Direct Ingestion| F["build_bibliometric_fronts.py"]
         F --> S["fronts_summary.csv<br>works_with_fronts.parquet"]
         S --> L["track_longitudinal_lineages.py"]
         L --> A["alluvial_lineages.html<br>lineages_summary.csv"]
     end
-    subgraph Visualizacion["Etapa 3: Proyección de Red"]
-        F -->|Exporta fronts_network.json| V["bibliometric-network-analyst"]
+    subgraph Visualization["Stage 3: Network Projection"]
+        F -->|Exports fronts_network.json| V["bibliometric-network-analyst"]
     end
 ```
 
-### 2.1. Contrato de Datos (Data Contract)
-Para procesar un corpus ya cosechado, la skill solo requiere un archivo tabular (`.parquet` o `.csv`) que contenga:
-- `referenced_works` (o `references`): Lista de IDs de las referencias bibliográficas citadas (indispensable para acoplamiento bibliográfico y cocitación).
-- `publication_year`: Año de publicación (indispensable para ventanas móviles y linajes aluviales).
-- `title` y opcionalmente `abstract`: Para etiquetado semántico automático y frentes híbridos.
-- `topic` o `topic_id` (opcional): Si se desea utilizar la taxonomía nativa de OpenAlex.
-- `cited_by_count` y `fwci` (opcional): Para identificar los *Core Papers* y la visibilidad de cada frente.
+### 2.1. Data Contract
+To process a previously harvested corpus, the skill only requires a tabular file (`.parquet` or `.csv`) containing:
+- `referenced_works` (or `references`): List of cited bibliographic reference IDs (essential for bibliographic coupling and co-citation).
+- `publication_year`: Year of publication (essential for sliding windows and alluvial lineages).
+- `title` and optionally `abstract`: For automatic semantic labeling and hybrid fronts.
+- `topic` or `topic_id` (optional): If using the native OpenAlex taxonomy.
+- `cited_by_count` and `fwci` (optional): To identify *Core Papers* and the visibility of each front.
 
-### 2.2. Modo Standalone / Contingencia (ClickHouse `rag.works_flat`)
-Si la o el usuario invoca la skill de forma aislada sin un corpus previo descargado, la skill cuenta con capacidad de consulta directa a la base global de ClickHouse sobre **`rag.works_flat`** (464.8M de registros mundiales) bajo la regla estricta de **CERO JOINs**.
+### 2.2. Standalone / Contingency Mode (ClickHouse `rag.works_flat`)
+If the user invokes the skill standalone without a previously downloaded corpus, the skill can query the global ClickHouse database directly on **`rag.works_flat`** (464.8M worldwide records) under the strict **ZERO JOINs** rule.
 
 ---
 
-## 3. Las Cuatro Estrategias Metodológicas de Detección
+## 3. The Four Methodological Detection Strategies
 
 ```mermaid
 graph TD
-    subgraph Metodos["Estrategias de Detección de Frentes"]
-        M1["A. Acoplamiento Bibliográfico (coupling)<br><b>Recomendada para Frentes Emergentes</b><br>Nula latencia temporal. Clusters de artículos actuales.<br>Fórmula: Salton o Association Strength"]
-        M2["B. Cocitación de Documentos (cocitation)<br><b>Recomendada para Base Intelectual</b><br>Identificación de documentos fundacionales (Core Papers)<br>pequeño retraso temporal de citación"]
-        M3["C. Taxonomía OpenAlex Topics (topics)<br><b>Recomendada para Mapeo Rápido Macroscópico</b><br>Utiliza la partición CWTS Leiden precalculada en rag.works_flat<br>Jerarquía: Domain -> Field -> Subfield -> Topic"]
-        M4["D. Enfoque Híbrido (hybrid)<br><b>Recomendada para Baja Densidad de Citas</b><br>Fusión: lambda * Acoplamiento + (1-lambda) * TF-IDF"]
+    subgraph Methods["Research Front Detection Strategies"]
+        M1["A. Bibliographic Coupling (coupling)<br><b>Recommended for Emerging Fronts</b><br>Zero temporal latency. Clusters of current articles.<br>Formula: Salton or Association Strength"]
+        M2["B. Document Co-Citation (cocitation)<br><b>Recommended for Intellectual Base</b><br>Identification of foundational documents (Core Papers)<br>slight citation time lag"]
+        M3["C. OpenAlex Topics Taxonomy (topics)<br><b>Recommended for Rapid Macroscopic Mapping</b><br>Uses precomputed CWTS Leiden partition in rag.works_flat<br>Hierarchy: Domain -> Field -> Subfield -> Topic"]
+        M4["D. Hybrid Approach (hybrid)<br><b>Recommended for Low Citation Density</b><br>Fusion: lambda * Coupling + (1-lambda) * TF-IDF"]
     end
 ```
 
-### Matriz de Decisión Operativa para el Agente:
-1. **Frentes Emergentes Recientes (últimos 1 a 3 años):** Usar `--method coupling`. Es el método validado por Boyack & Klavans (2010) por su nula latencia temporal y mayor coherencia temática.
-2. **Hitos Históricos y Paradigmas Consolidados:** Usar `--method cocitation`. Agrupa la literatura fundacional y los clásicos de la base intelectual (Small & Griffith, 1974).
-3. **Exploración Rápida de un Subcampo Completo a Nivel País o Institución:** Usar `--method topics`. Agrupa directamente sobre la columna `topic` de OpenAlex sin requerir cómputo de matrices.
-4. **Campos Interdisciplinares o Emergentes con Pocas Citas:** Usar `--method hybrid`. Combina la topología de referencias con la similitud semántica de títulos y resúmenes.
+### Operational Decision Matrix for the Agent:
+1. **Recent Emerging Fronts (last 1 to 3 years):** Use `--method coupling`. Validated by Boyack & Klavans (2010) for its zero temporal latency and superior thematic coherence.
+2. **Historical Landmarks and Consolidated Paradigms:** Use `--method cocitation`. Clusters foundational literature and classics of the intellectual base (Small & Griffith, 1974).
+3. **Rapid Exploration of an Entire Subfield at Country or Institution Level:** Use `--method topics`. Aggregates directly over the OpenAlex `topic` column without computing adjacency matrices.
+4. **Interdisciplinary or Emerging Fields with Sparse Citations:** Use `--method hybrid`. Combines reference topology with semantic similarity of titles and abstracts.
 
 ---
 
-## 4. Dinámica Longitudinal y Linajes Aluviales (Métrica AMI)
+## 4. Longitudinal Dynamics and Alluvial Lineages (AMI Metric)
 
-Para capturar la evolución de los frentes a lo largo del tiempo, la skill ejecuta el protocolo de **ventanas móviles cronológicas** (Rosvall & Bergstrom, 2010; Shibata et al., 2011):
+To capture the evolution of fronts over time, the skill executes the **chronological sliding windows** protocol (Rosvall & Bergstrom, 2010; Shibata et al., 2011):
 
-1. **Segmentación:** Divide el corpus en ventanas solapadas (ej. ancho $w=3$ años, desplazamiento $s=1$ año).
-2. **Emparejamiento Intertemporal:** Cuantifica la afinidad entre clusters $C_i^{(t)}$ y $C_j^{(t+1)}$ mediante:
-   - **Índice de Jaccard:** Sobre el conjunto de referencias bibliográficas compartidas:
+1. **Segmentation:** Splits the corpus into overlapping windows (e.g., width $w=3$ years, step $s=1$ year).
+2. **Intertemporal Matching:** Quantifies affinity between clusters $C_i^{(t)}$ and $C_j^{(t+1)}$ via:
+   - **Jaccard Index:** Over the set of shared bibliographic references:
      $$J(C_i^{(t)}, C_j^{(t+1)}) = \frac{|R(C_i^{(t)}) \cap R(C_j^{(t+1)})|}{|R(C_i^{(t)}) \cup R(C_j^{(t+1)})|}$$
-   - **Información Mutua Ajustada (AMI):** Para comparar la coherencia de la partición en el solapamiento temporal.
-3. **Clasificación Formal de Eventos Evolutivos:**
-   - **Persistencia (Continuidad):** Un frente transita de forma unívoca y estable ($J \ge 0.30$).
-   - **Escisión (Bifurcación / *Split*):** Un frente maduro se fragmenta en dos o más frentes especializados.
-   - **Fusión (Convergencia / *Merge*):** Dos frentes procedentes de distintas disciplinas convergen en un nuevo cluster interdisciplinar.
-   - **Génesis (Emergencia):** Aparece un cluster en $t+1$ sin predecesores significativos, indicando un descubrimiento disruptivo o salto tecnológico.
-   - **Disolución (*Decay*):** Un cluster pierde cohesión interna y sus artículos se dispersan.
-4. **Diagrama Aluvial Interactivo:** Genera un archivo HTML autónomo con Plotly (`go.Sankey`) para visualizar el flujo continuo de linajes.
+   - **Adjusted Mutual Information (AMI):** To compare partition coherence across temporal overlaps.
+3. **Formal Classification of Evolutionary Events:**
+   - **Persistence (Continuity):** A front transitions uniquely and stably ($J \ge 0.30$).
+   - **Split (Bifurcation):** A mature front fragments into two or more specialized fronts.
+   - **Merge (Convergence):** Two fronts originating from different disciplines converge into a new interdisciplinary cluster.
+   - **Genesis (Emergence):** A cluster appears at $t+1$ without significant predecessors, indicating a disruptive discovery or technological leap.
+   - **Decay (Dissolution):** A cluster loses internal cohesion and its articles disperse.
+4. **Interactive Alluvial Diagram:** Generates a standalone HTML file with Plotly (`go.Sankey`) to visualize the continuous flow of lineages.
 
 ---
 
-## 5. Protocolo de Ejecución CLI (Python Certificado)
+## 5. CLI Execution Protocol (Certified Python)
 
-El agente debe ejecutar los scripts reproducibles utilizando el entorno oficial:
+The agent must execute the reproducible scripts using the official environment:
 `/home/ambientesPy/revistaslatam/bin/python`
 
-### 5.1. Paso 1: Detección y Clustering de Frentes de Investigación
+### 5.1. Step 1: Detection and Clustering of Research Fronts
 
-#### Modo A: Consumiendo Corpus Local Previo (Workspace-First — Recomendado)
+#### Mode A: Consuming Prior Local Corpus (Workspace-First — Recommended)
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/build_bibliometric_fronts.py \
   --input-file workspace/corpus.parquet \
@@ -112,7 +114,7 @@ El agente debe ejecutar los scripts reproducibles utilizando el entorno oficial:
   --output-dir reports
 ```
 
-#### Modo B: Fallback Directo sobre ClickHouse (`rag.works_flat` — Standalone)
+#### Mode B: Direct Fallback on ClickHouse (`rag.works_flat` — Standalone)
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/build_bibliometric_fronts.py \
   --topic-id T10023 \
@@ -120,14 +122,14 @@ El agente debe ejecutar los scripts reproducibles utilizando el entorno oficial:
   --output-dir reports
 ```
 
-*Artefactos Generados en `reports/`:*
-- `fronts_summary.csv`: Tabla con métricas cuantitativas, volumen $N$, citas, año medio y core paper representativo de cada frente.
-- `fronts_network.json`: Grafo estructurado (nodos y aristas normalizadas), listo para visualización.
-- `works_with_fronts.parquet`: Corpus enriquecido con las columnas `front_id` y `front_name`.
+*Artifacts Generated in `reports/`:*
+- `fronts_summary.csv`: Table with quantitative metrics, volume $N$, citations, mean year, and representative core paper for each front.
+- `fronts_network.json`: Structured graph (nodes and normalized edges), ready for visualization.
+- `works_with_fronts.parquet`: Enriched corpus with `front_id` and `front_name` columns.
 
 ---
 
-### 5.2. Paso 2: Rastreo de Linajes Longitudinales y Diagrama Aluvial
+### 5.2. Step 2: Longitudinal Lineage Tracking and Alluvial Diagram
 
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/track_longitudinal_lineages.py \
@@ -138,70 +140,70 @@ El agente debe ejecutar los scripts reproducibles utilizando el entorno oficial:
   --output-dir reports
 ```
 
-*Artefactos Generados en `reports/`:*
-- `lineages_summary.csv`: Registro cuantitativo de todas las transiciones intertemporales y su tipo de evento (*Persistence*, *Split*, *Merge*, *Genesis*, *Decay*).
-- `alluvial_lineages.html`: Diagrama aluvial interactivo autónomo en HTML generado con Plotly.
+*Artifacts Generated in `reports/`:*
+- `lineages_summary.csv`: Quantitative record of all intertemporal transitions and their event type (*Persistence*, *Split*, *Merge*, *Genesis*, *Decay*).
+- `alluvial_lineages.html`: Standalone interactive HTML alluvial diagram generated with Plotly.
 
 ---
 
-### 5.3. Paso 3: Encadenamiento con la Skill de Redes
+### 5.3. Step 3: Chaining with the Network Analysis Skill
 
-Para visualizar el mapa topológico de los frentes generados (distribución espacial en 2D, densidades y centralidades), el agente debe enlazar con [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) proporcionando el archivo generado:
+To visualize the topological map of the generated fronts (2D spatial layout, densities, and centralities), the agent should chain into [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) providing the generated file:
 `reports/fronts_network.json`.
 
 ---
 
-## 6. Estructura Canónica de Reporte en el Manuscrito o Informe
+## 6. Canonical Reporting Structure in Manuscripts or Reports
 
-Al presentar los resultados al usuario o incorporarlos en plantillas maestras (`template-articulo-cientifico-imryd`, `template-radar-frentes-investigacion`), el agente debe incluir las siguientes tablas canónicas:
+When presenting results to the user or incorporating them into master templates (`template-articulo-cientifico-imryd`, `template-radar-frentes-investigacion`), the agent must include the following canonical tables:
 
-### Tabla 1: Cuadrante de Frentes de Investigación Identificados
-*(Desplegar directamente en Markdown en el informe):*
+### Table 1: Identified Research Fronts Quadrant
+*(Render directly in Markdown in the report):*
 
-| ID Frente | Denominación Canónica del Frente | Estrategia de Red | Publicaciones ($N$) | Año Medio | Citas Totales | FWCI Promedio | Documento Núcleo Representativo (*Core Paper*) |
+| Front ID | Canonical Front Name | Network Strategy | Publications ($N$) | Mean Year | Total Citations | Mean FWCI | Representative Core Document (*Core Paper*) |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Frente 1** | Polariton Condensation & Microcavities | Acoplamiento Salton | [N] | [YYYY.Y] | [Citas] | [X.XX] | [Primer Autor et al. (Año), Citas: N] |
-| **Frente 2** | Plasmonic Waveguides & Metamaterials | Acoplamiento Salton | [N] | [YYYY.Y] | [Citas] | [X.XX] | [Primer Autor et al. (Año), Citas: N] |
-| **Frente 3** | Exciton-Polariton Superfluidity | Acoplamiento Salton | [N] | [YYYY.Y] | [Citas] | [X.XX] | [Primer Autor et al. (Año), Citas: N] |
+| **Front 1** | Polariton Condensation & Microcavities | Salton Coupling | [N] | [YYYY.Y] | [Citations] | [X.XX] | [First Author et al. (Year), Citations: N] |
+| **Front 2** | Plasmonic Waveguides & Metamaterials | Salton Coupling | [N] | [YYYY.Y] | [Citations] | [X.XX] | [First Author et al. (Year), Citations: N] |
+| **Front 3** | Exciton-Polariton Superfluidity | Salton Coupling | [N] | [YYYY.Y] | [Citations] | [X.XX] | [First Author et al. (Year), Citations: N] |
 
 ---
 
-### Tabla 2: Dinámica Longitudinal de Linajes Temáticos y Eventos Evolutivos
+### Table 2: Longitudinal Dynamics of Thematic Lineages and Evolutionary Events
 
-| Ventana Origen ($W_t$) | Frente Predecesor | Ventana Destino ($W_{t+1}$) | Frente Sucesor | Tipo de Evento | Similitud ($J$) | Interpretación Epistémica |
+| Source Window ($W_t$) | Predecessor Front | Target Window ($W_{t+1}$) | Successor Front | Event Type | Similarity ($J$) | Epistemic Interpretation |
 | :---: | :--- | :---: | :--- | :---: | :---: | :--- |
-| **2016–2018** | Microcavity Excitons | **2017–2019** | Polariton Condensation | Persistencia | 0.42 | Maduración incremental del núcleo |
-| **2017–2019** | Polariton Condensation | **2018–2020** | Topological Polaritons | Split (Bifurcación) | 0.24 | Diferenciación hacia topología cuántica |
-| **2017–2019** | Plasmonic Arrays | **2018–2020** | Hybrid Metasurfaces | Fusión (Convergencia) | 0.21 | Convergencia con metamateriales ópticos |
-| — | — | **2021–2023** | Neuromorphic Polaritonics | Génesis (Emergencia) | 0.00 | Ruptura tecnológica: computación neuromórfica |
+| **2016–2018** | Microcavity Excitons | **2017–2019** | Polariton Condensation | Persistence | 0.42 | Incremental maturation of the core |
+| **2017–2019** | Polariton Condensation | **2018–2020** | Topological Polaritons | Split (Bifurcation) | 0.24 | Differentiation toward quantum topology |
+| **2017–2019** | Plasmonic Arrays | **2018–2020** | Hybrid Metasurfaces | Merge (Convergence) | 0.21 | Convergence with optical metamaterials |
+| — | — | **2021–2023** | Neuromorphic Polaritonics | Genesis (Emergence) | 0.00 | Technological breakthrough: neuromorphic computing |
 
 ---
 
-### Diagrama Taxonómico Multinivel (Mermaid Obligatorio):
+### Multi-Level Taxonomic Diagram (Mandatory Mermaid):
 
 ```mermaid
 graph TD
-    Domain[Dominio: Physical Sciences] --> Field[Campo: Physics and Astronomy]
-    Field --> Subfield[Subcampo: Condensed Matter Physics]
-    Subfield --> F1[Frente 1: Polariton Condensation]
-    Subfield --> F2[Frente 2: Plasmonic Metamaterials]
-    Subfield --> F3[Frente 3: Quantum Microcavities]
-    F1 -.->|Evolución Longitudinal| F4[Frente Emergente: Neuromorphic Polariton Computing]
+    Domain[Domain: Physical Sciences] --> Field[Field: Physics and Astronomy]
+    Field --> Subfield[Subfield: Condensed Matter Physics]
+    Subfield --> F1[Front 1: Polariton Condensation]
+    Subfield --> F2[Front 2: Plasmonic Metamaterials]
+    Subfield --> F3[Front 3: Quantum Microcavities]
+    F1 -.->|Longitudinal Evolution| F4[Emerging Front: Neuromorphic Polariton Computing]
 ```
 
 ---
 
-## 7. Disponibilidad de Datos y Reglas Anti-Alucinación
+## 7. Data Availability and Anti-Hallucination Rules
 
-1. **Tabla Global en ClickHouse:** Toda consulta directa debe apuntar a `rag.works_flat` (464.8M de registros mundiales), no a `rag.works_academic_all` (que está acotada a México).
-2. **Regla de CERO JOINs:** Está estrictamente prohibido realizar `JOIN` en ClickHouse. Todas las consultas deben filtrar columnarmente sobre campos desnormalizados (`domain_name`, `field_name`, `subfield_name`, `topic`, `topic_id`, `has(all_topics, '...')`).
-3. **Referencias Reales:** La columna de referencias en `rag.works_flat` es `referenced_works: Array(String)`. Nunca inventar nombres de columnas como `references_ids` o `cites_list`.
-4. **Prohibición de Datos Sintéticos:** Si no se encuentran enlaces que superen el umbral mínimo de similitud, reportar que la red es dispersa y los frentes no alcanzan masa crítica; nunca inventar clusters ficticios.
-5. **Zero-Scaffolding Leakage:** En los informes y artículos producidos para el usuario, omitir la mención de prompts, scripts internos o mecánicas del chat; el documento debe leerse como un estudio cienciométrico formal.
+1. **Global Table in ClickHouse:** Any direct query must target `rag.works_flat` (464.8M global records), not `rag.works_academic_all` (which is scoped to Mexico).
+2. **ZERO JOINs Rule:** Performing `JOIN` operations in ClickHouse is strictly prohibited. All queries must filter column-wise over denormalized fields (`domain_name`, `field_name`, `subfield_name`, `topic`, `topic_id`, `has(all_topics, '...')`).
+3. **Real References:** The reference column in `rag.works_flat` is `referenced_works: Array(String)`. Never invent column names such as `references_ids` or `cites_list`.
+4. **Prohibition of Synthetic Data:** If no links exceed the minimum similarity threshold, report that the network is sparse and the fronts do not reach critical mass; never fabricate fictional clusters.
+5. **Zero-Scaffolding Leakage:** In reports and manuscripts produced for the user, omit references to prompts, internal scripts, or chat mechanics; the document must read like a formal scientometric study.
 
 ---
 
-## 8. Referencias Bibliográficas Fundacionales (APA 7ª)
+## 8. Foundational Bibliographic References (APA 7th)
 
 1. **Boyack, K. W., & Klavans, R. (2010).** Co-citation analysis, bibliographic coupling, and direct citation: Which citation approach represents the research front most accurately? *Journal of the American Society for Information Science and Technology*, 61(12), 2389–2404. https://doi.org/10.1002/asi.21419
 2. **Glänzel, W., & Thijs, B. (2012).** Using hybrid methods and "core documents" for representation, segmentation and mapping of science. *Journal of Informetrics*, 6(2), 316–329. https://doi.org/10.1016/j.joi.2011.12.005

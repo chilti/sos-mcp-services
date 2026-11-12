@@ -1,31 +1,33 @@
 ---
 name: pubmed-harvester
-description: Extracción, paginación y normalización de literatura biomédica y clínica desde la API oficial de PubMed (NCBI E-utilities) hacia el esquema tabular canónico (Parquet, JSON, CSV).
+description: Extract, paginate, and normalize biomedical and clinical literature from the official PubMed API (NCBI E-utilities) into the canonical tabular schema (Parquet, JSON, CSV). Respond and label outputs in the user's language.
 ---
 
 # PubMed Data Harvester
 
-Herramienta autónoma e independiente para la recolección de publicaciones indexadas en la National Library of Medicine (NLM / PubMed) mediante E-utilities (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils`), estandarizando automáticamente al esquema tabular canónico de la suite `sos-mcp-services`.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Autonomous, standalone tool for harvesting publications indexed in the National Library of Medicine (NLM / PubMed) via E-utilities (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils`), automatically standardizing records into the `sos-mcp-services` suite's canonical tabular schema.
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Búsqueda Avanzada Entrez:** Soporte completo de términos MeSH, campos `[Title/Abstract]`, `[Affiliation]` y filtros de fechas.
-- **Producción Autoral y Clínica:** Extracción por nombre de autor (`[Author]`) y cruce con afiliación (`[Affiliation]`).
-- **Detección de Acceso Abierto en PMC:** Clasificación automática de obras con texto completo disponible en PubMed Central (`pmcid`).
-- **Esquema Canónico:** Estandariza autores, identificadores cruzados (`pmid`, `doi`, `pmcid`), revista, fechas y vía de Acceso Abierto.
+- **Advanced Entrez Search:** Full support for MeSH terms, `[Title/Abstract]` and `[Affiliation]` fields, and date filters.
+- **Author and Clinical Output:** Extraction by author name (`[Author]`) cross-referenced with affiliation (`[Affiliation]`).
+- **PMC Open Access Detection:** Automatic classification of works with full text available in PubMed Central (`pmcid`).
+- **Canonical Schema:** Standardizes authors, cross-identifiers (`pmid`, `doi`, `pmcid`), journal, dates, and Open Access route.
 
 ---
 
-## Interfaz CLI
+## CLI Interface
 
-Entorno de ejecución:
+Execution environment:
 ```bash
-python scripts/pubmed_harvest_cli.py [subcomando] [opciones]
+python scripts/pubmed_harvest_cli.py [subcommand] [options]
 ```
 
-### 1. Búsqueda Temática y de Afiliación
+### 1. Thematic and Affiliation Search
 ```bash
 python scripts/pubmed_harvest_cli.py fetch-works \
   --query "idiopathic pulmonary fibrosis" \
@@ -36,7 +38,7 @@ python scripts/pubmed_harvest_cli.py fetch-works \
   --output ./ipf_mexico.parquet
 ```
 
-### 2. Producción de un Autor por Nombre
+### 2. Author Output by Name
 ```bash
 python scripts/pubmed_harvest_cli.py fetch-author-works \
   --author "Pardo Annie" \
@@ -47,5 +49,5 @@ python scripts/pubmed_harvest_cli.py fetch-author-works \
 
 ---
 
-## Referencias Técnicas
-- [Guía Técnica de E-utilities](references/pubmed_eutils_guide.md)
+## Technical References
+- [E-utilities Technical Guide](references/pubmed_eutils_guide.md)

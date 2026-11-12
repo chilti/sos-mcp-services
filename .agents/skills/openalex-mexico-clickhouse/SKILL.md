@@ -1,61 +1,63 @@
 ---
 name: openalex-mexico-clickhouse
 description: >-
-  Motor maestro y orquestador analítico sobre la producción científica de México en ClickHouse (1.65M trabajos en rag.works_academic_all, 2.57M autores en rag.authors_seed_mexico, 456K instituciones en rag.institutions_seed_mexico). Orquesta agregaciones de acceso abierto (Diamond vs Gold APC), gasto en USD, búsqueda y desambiguación de autores con padrón SNII, catálogo institucional ROR, búsqueda semántica vectorial nomic (768d) y visualización interactiva, bajo la regla estricta de CERO JOINs y principio File-Output First.
+  Master analytical engine and orchestrator for Mexico's scientific production in ClickHouse (1.65M works in rag.works_academic_all, 2.57M authors in rag.authors_seed_mexico, 456K institutions in rag.institutions_seed_mexico). Orchestrates Open Access aggregations (Diamond vs Gold APC), USD expenditure, author search and disambiguation with the SNII registry, ROR institutional catalog, 768d nomic semantic vector search, and interactive visualization, under the strict ZERO JOINs rule and File-Output First principle. Respond and label outputs in the user's language.
 metadata:
   python: ">=3.10"
   script: "shared_scripts/openalex_mexico_cli.py"
 ---
 
-# OpenAlex México ClickHouse: Motor Analítico y Orquestador Nacional
+# OpenAlex Mexico ClickHouse: National Analytical Engine and Orchestrator
 
-## 1. Overview y Propósito
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-Esta skill actúa como el **orquestador central** para la consulta, extracción y análisis de la producción científica mexicana alojada en el clúster ClickHouse de la UNAM. 
+## 1. Overview and Purpose
 
-La base de datos `rag` aloja el universo completo de investigación de México estructurado en tablas columnares masivas desnormalizadas:
-* **`rag.works_academic_all` (~1.65 millones de registros):** Trabajos con afiliación mexicana, incluyendo métricas normalizadas de impacto (FWCI, percentil, Top 10%, Top 1%), tipología de acceso abierto (6 vías OA, APC pagado y de lista en USD), Objetivos de Desarrollo Sostenible (ODS 1–17), taxonomía temática (Domain, Field, Subfield, Topic) y embeddings vectoriales `nomic` de 768 dimensiones.
-* **`rag.authors_seed_mexico` (~2.57 millones de registros):** Catálogo de autores con producción en México, métricas de citas, h-index y variantes hispanas.
-* **`rag.academics_all` (~431 mil registros):** Investigadoras e investigadores con cruce del Padrón Oficial SNII, vigencia y adscripción.
-* **`rag.institutions_seed_mexico` (~456 mil registros):** Catálogo institucional nacional con identificadores ROR, variantes de nombres y acrónimos (UNAM, IPN, UAM, Cinvestav, etc.).
+This skill acts as the **central orchestrator** for querying, extracting, and analyzing Mexican scientific production hosted in the UNAM ClickHouse cluster.
 
----
-
-## 2. Dependencies y Cadena de Valor
-
-* **Entorno de Ejecución:** `python` con librería `clickhouse-connect`.
-* **Script CLI Canónico:** `shared_scripts/openalex_mexico_cli.py` (motor multi-comando de 1,300 líneas con validación de seguridad integrada).
-* **Parámetros de Conexión:** Servidor ClickHouse configurado en variables de entorno (`CLICKHOUSE_HOST=10.90.0.87`, `CLICKHOUSE_PORT=8124`, `CLICKHOUSE_DATABASE=rag`).
-* **Habilidades Especializadas de la Suite:**
-  * [`openalex-mexico-query-architect`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md): Validador y consultor de sentencias SQL seguras.
-  * [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md): Agregaciones de vías OA, APC USD y series temporales.
-  * [`openalex-mexico-works-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extracción de publicaciones por filtros complejos.
-  * [`openalex-mexico-author-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-author-search/SKILL.md): Desambiguación de investigadoras/es y nivel SNII.
-  * [`openalex-mexico-institutions`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-institutions/SKILL.md): Mapeo ROR y catálogo institucional.
-  * [`openalex-mexico-semantic-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-semantic-search/SKILL.md): Búsqueda semántica vectorial (embeddings nomic 768d).
-  * [`openalex-mexico-visualizer`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-visualizer/SKILL.md): Dashboards interactivos Plotly y redes PyVis.
+The `rag` database hosts the complete universe of research from Mexico structured in massive denormalized columnar tables:
+* **`rag.works_academic_all` (~1.65 million records):** Works with Mexican affiliation, including normalized impact metrics (FWCI, percentile, Top 10%, Top 1%), Open Access typology (6 OA routes, paid and list APC in USD), Sustainable Development Goals (SDGs 1–17), thematic taxonomy (Domain, Field, Subfield, Topic), and 768-dimensional `nomic` vector embeddings.
+* **`rag.authors_seed_mexico` (~2.57 million records):** Catalog of authors with production in Mexico, citation metrics, h-index, and Hispanic name variants.
+* **`rag.academics_all` (~431 thousand records):** Researchers cross-referenced with the Official SNII Registry, validity status, and institutional affiliation.
+* **`rag.institutions_seed_mexico` (~456 thousand records):** National institutional catalog with ROR identifiers, name variants, and acronyms (UNAM, IPN, UAM, Cinvestav, etc.).
 
 ---
 
-## 3. Regla de Oro: Prohibición Estricta de JOINs
+## 2. Dependencies and Value Chain
+
+* **Execution Environment:** `python` with `clickhouse-connect` library.
+* **Canonical CLI Script:** `shared_scripts/openalex_mexico_cli.py` (multi-command engine with built-in security validation).
+* **Connection Parameters:** ClickHouse server configured via environment variables (`CLICKHOUSE_HOST=10.90.0.87`, `CLICKHOUSE_PORT=8124`, `CLICKHOUSE_DATABASE=rag`).
+* **Specialized Skills in the Suite:**
+  * [`openalex-mexico-query-architect`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md): Safe SQL statement validator and advisor.
+  * [`openalex-mexico-aggregations`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md): OA route aggregations, APC USD expenditure, and time series.
+  * [`openalex-mexico-works-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Publication extraction via complex filters.
+  * [`openalex-mexico-author-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-author-search/SKILL.md): Researcher disambiguation and SNII level lookup.
+  * [`openalex-mexico-institutions`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-institutions/SKILL.md): ROR mapping and institutional catalog.
+  * [`openalex-mexico-semantic-search`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-semantic-search/SKILL.md): Vector semantic search (768d nomic embeddings).
+  * [`openalex-mexico-visualizer`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-visualizer/SKILL.md): Interactive Plotly dashboards and PyVis networks.
+
+---
+
+## 3. Golden Rule: Strict Prohibition of JOINs
 
 > [!CAUTION]
-> En la infraestructura analítica de la UNAM, **queda terminantemente prohibido formular sentencias con `JOIN` directo** en ClickHouse.
-> Toda consulta que contenga la palabra clave `JOIN` será interceptada y rechazada automáticamente con error por `openalex_mexico_cli.py`.
+> In the UNAM analytical infrastructure, **formulating statements with direct `JOIN`s in ClickHouse is strictly prohibited**.
+> Any query containing the `JOIN` keyword will be automatically intercepted and rejected with an error by `openalex_mexico_cli.py`.
 
-### ¿Por qué no se necesitan JOINs?
-Porque la tabla `rag.works_academic_all` ya está completamente desnormalizada a nivel de documento. En lugar de cruzar tablas:
-* **Para filtrar por institución:** Usar `has(institution_rors, 'https://ror.org/01tmp8f25')`.
-* **Para filtrar por autor:** Usar `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'Apellido Nombre') > 0, author_names)`.
-* **Para clasificaciones temáticas:** Filtrar directamente sobre las columnas `domain`, `field`, `subfield` o `topic`.
+### Why Are JOINs Unnecessary?
+Because the `rag.works_academic_all` table is already completely denormalized at the document level. Instead of joining tables:
+* **To filter by institution:** Use `has(institution_rors, 'https://ror.org/01tmp8f25')`.
+* **To filter by author:** Use `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'Apellido Nombre') > 0, author_names)`.
+* **For thematic classifications:** Filter directly on the `domain`, `field`, `subfield`, or `topic` columns.
 
 ---
 
-## 4. Subcomandos CLI Canónicos (File-Output First)
+## 4. Canonical CLI Subcommands (File-Output First)
 
-Todos los comandos deben ejecutarse especificando `--output <ruta>` obligatoria y límites explícitos:
+All commands must be executed specifying a mandatory `--output <path>` and explicit limits (pass `--lang es` if Spanish output messages/instructions are desired; defaults to `--lang en`):
 
-### 1. Agregaciones Cienciométricas (`aggregate`)
+### 1. Scientometric Aggregations (`aggregate`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
@@ -63,17 +65,17 @@ python shared_scripts/openalex_mexico_cli.py aggregate \
   --output ./data/acceso_abierto_mexico.json
 ```
 
-### 2. Búsqueda de Publicaciones Científicas (`search-works`)
+### 2. Scientific Publication Search (`search-works`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py search-works \
   --query "artificial intelligence in education" \
-  --year-from 2020 --year-to 2025 \
-  --only-top-10 \
+  --year-min 2020 --year-max 2025 \
+  --is-top-10 true \
   --limit 100 \
   --output ./data/ia_educacion_top10.json
 ```
 
-### 3. Búsqueda y Desambiguación de Investigadores (`search-authors`)
+### 3. Researcher Search and Disambiguation (`search-authors`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py search-authors \
   --name "Gorbea Portal" \
@@ -82,25 +84,25 @@ python shared_scripts/openalex_mexico_cli.py search-authors \
   --output ./data/investigador_desambiguado.json
 ```
 
-### 4. Ranking de Entidades Líderes en un Tema (`top-entities`)
+### 4. Ranking Leading Entities in a Topic (`top-entities`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py top-entities \
-  --topic "Vaccines" \
-  --entity-type "institutions" \
+  --query "Vaccines" \
+  --by "institutions" \
   --limit 20 \
   --output ./data/top_instituciones_vacunas.json
 ```
 
-### 5. Búsqueda Semántica Vectorial (`semantic-search`)
+### 5. Vector Semantic Search (`semantic-search`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py semantic-search \
   --query "soberanía alimentaria y maíces nativos" \
-  --threshold 0.75 \
+  --target works \
   --limit 50 \
   --output ./data/busqueda_semantica_maiz.json
 ```
 
-### 6. Validación de Consultas SQL (`validate-query`)
+### 6. SQL Query Validation (`validate-query`)
 ```bash
 python shared_scripts/openalex_mexico_cli.py validate-query \
   --query "SELECT title, publication_year FROM rag.works_academic_all WHERE has(institution_rors, 'https://ror.org/01tmp8f25') LIMIT 10" \
@@ -109,29 +111,29 @@ python shared_scripts/openalex_mexico_cli.py validate-query \
 
 ---
 
-## 5. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## 5. Common Mistakes and Anti-Patterns (Avoid Frequent Errors)
 
-- ❌ **Anti-patrón 1: Formular consultas con sentencias `JOIN`**  
-  Intentar cruzar `rag.works_academic_all` con `rag.authors_seed_mexico` usando `JOIN`. El motor de ClickHouse degrada su rendimiento y `openalex_mexico_cli.py` aborta la ejecución con `ValueError`.  
-  **Solución:** Consultar las columnas de arrays nativas pre-materializadas (`author_names`, `institution_rors`).
-- ❌ **Anti-patrón 2: Consultas `SELECT *` sin `--limit` ni `--output`**  
-  Intentar extraer cientos de miles de filas sin paginación ni límite, saturando la memoria del servidor y la consola.  
-  **Solución:** Especificar siempre un `--limit` deliberado (e.g. 50, 100) y escribir a un archivo estructurado mediante `--output`.
-- ❌ **Anti-patrón 3: Búsquedas de nombres sensibles a mayúsculas o sin diacríticos**  
-  Usar `author_name = 'Jose Lopez'` o `LIKE '%Lopez%'`. Omitir acentos o variaciones de capitalización omite hasta el 60% de los registros en nombres hispanos.  
-  **Solución:** Usar `positionCaseInsensitiveUTF8(x, 'López') > 0` o el subcomando `search-authors` que normaliza diacríticos automáticamente.
-- ❌ **Anti-patrón 4: Contar coautores internacionales como investigadoras/es mexicanas/os**  
-  Asumir que todos los autores de un artículo mexicano pertenecen a instituciones del país. Un artículo multicéntrico puede tener 20 coautores extranjeros y 1 mexicano.  
-  **Solución:** Desambiguar autores usando `rag.academics_all` o filtrando autores vinculados a RORs de México.
-- ❌ **Anti-patrón 5: Violación de File-Output First (Almacenar en `/tmp/`)**  
-  Guardar los resultados en directorios temporales globales del sistema operativo que pueden ser borrados o inaccesibles.  
-  **Solución:** Guardar siempre los resultados dentro del workspace actual (`./data/` o en `scratch/` del artefacto).
+- ❌ **Anti-pattern 1: Formulating queries with `JOIN` statements**  
+  Attempting to join `rag.works_academic_all` with `rag.authors_seed_mexico` using `JOIN`. The ClickHouse engine degrades performance, and `openalex_mexico_cli.py` aborts execution with a `ValueError`.  
+  **Solution:** Query the pre-materialized native array columns (`author_names`, `institution_rors`).
+- ❌ **Anti-pattern 2: `SELECT *` queries without `--limit` or `--output`**  
+  Attempting to extract hundreds of thousands of rows without pagination or limits, saturating server memory and the console.  
+  **Solution:** Always specify a deliberate `--limit` (e.g., 50, 100) and write to a structured file via `--output`.
+- ❌ **Anti-pattern 3: Case-sensitive or diacritic-naive name searches**  
+  Using `author_name = 'Jose Lopez'` or `LIKE '%Lopez%'`. Omitting accents or capitalization variations misses up to 60% of records in Hispanic names.  
+  **Solution:** Use `positionCaseInsensitiveUTF8(x, 'López') > 0` or the `search-authors` subcommand, which normalizes diacritics automatically.
+- ❌ **Anti-pattern 4: Counting international co-authors as Mexican researchers**  
+  Assuming that all authors of a Mexican paper belong to domestic institutions. A multi-center paper may have 20 foreign co-authors and 1 Mexican author.  
+  **Solution:** Disambiguate authors using `rag.academics_all` or by filtering authors linked to Mexican RORs.
+- ❌ **Anti-pattern 5: Violating File-Output First (Storing in `/tmp/`)**  
+  Saving results in global operating system temporary directories that may be deleted or inaccessible.  
+  **Solution:** Always save results inside the current workspace (`./data/` or in the artifact's `scratch/` folder).
 
 ---
 
-## 6. Referencias Técnicas
+## 6. Technical References
 
-- [OpenAlex México CLI Engine](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/shared_scripts/openalex_mexico_cli.py)
-- [Query Architect (Guardián CERO JOINs)](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md)
+- [OpenAlex Mexico CLI Engine](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/shared_scripts/openalex_mexico_cli.py)
+- [Query Architect (ZERO JOINs Guardian)](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-query-architect/SKILL.md)
 - [Aggregations Engine](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/openalex-mexico-clickhouse/openalex-mexico-aggregations/SKILL.md)
-- [Estándar Canónico de Diseño de Skills](file:///mnt/expansion/desplegados/sos-mcp-services/docs/estandar_diseno_skills_cientificas.md)
+- [Canonical Scientific Skills Design Standard](file:///mnt/expansion/desplegados/sos-mcp-services/docs/estandar_diseno_skills_cientificas.md)

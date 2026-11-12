@@ -1,21 +1,21 @@
-# Políticas de Cuota y Respuestas HTTP 429 de Elsevier
+# Elsevier Quota Policies and HTTP 429 Responses
 
-Elsevier aplica límites de tasa y cuotas semanales/mensuales sobre las claves de API registradas en el Portal de Desarrolladores de Elsevier.
-
----
-
-## 1. Límites Típicos de la API de Scopus
-
-- **Frecuencia por segundo:** Típicamente entre 2 a 5 solicitudes por segundo para licencias estándar.
-- **Límite semanal:** Depende del nivel de suscripción institucional (Institutional Subscription vs Non-Commercial Free tier).
-- **Tamaño de lote (`count`):** El máximo permitido en una sola llamada de búsqueda es 25 para vistas estándar y 10 para vistas completas.
+Elsevier enforces rate limits and weekly/monthly quotas on API keys registered in the Elsevier Developer Portal.
 
 ---
 
-## 2. Gestión de Errores HTTP 429 (Too Many Requests)
+## 1. Typical Scopus API Limits
 
-Cuando la cuota temporal o de ráfaga se agota:
-1. El servidor devuelve código de estado `429 Too Many Requests`.
-2. El cliente CLI detecta automáticamente el código 429.
-3. Se aplica una pausa de espera exponencial (backoff de 5 segundos) antes de reintentar la solicitud.
-4. Si la cuota mensual institucional está completamente agotada, se notifica en `stderr` para advertir al agente.
+- **Rate per second:** Typically 2 to 5 requests per second for standard licenses.
+- **Weekly quota:** Depends on the institutional subscription tier (Institutional Subscription vs. Non-Commercial Free tier).
+- **Batch size (`count`):** The maximum allowed in a single search request is 25 for standard views and 10 for complete views.
+
+---
+
+## 2. Handling HTTP 429 Errors (Too Many Requests)
+
+When the burst or temporary quota is exhausted:
+1. The server returns status code `429 Too Many Requests`.
+2. The CLI client automatically detects status code 429.
+3. A 5-second backoff pause is applied before retrying the request.
+4. If the institutional monthly quota is completely exhausted, a warning is written to `stderr` to alert the agent.

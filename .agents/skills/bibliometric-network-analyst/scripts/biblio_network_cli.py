@@ -676,15 +676,30 @@ def generate_knomap_force_html(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]],
     title: str = "Bibliometric Network",
-    subtitle: Optional[str] = None
+    subtitle: Optional[str] = None,
+    lang: str = "en"
 ) -> str:
     """Generates a standalone, beautiful D3.js interactive Force Graph HTML matching KnoMap design."""
     nodes_json = json.dumps(nodes, ensure_ascii=False)
     edges_json = json.dumps(edges, ensure_ascii=False)
-    sub_text = subtitle or "KnoMap Interactive Force-Directed Graph"
+    is_es = (lang == "es")
+    sub_text = subtitle or ("Grafo Interactivo Dirigido por Fuerzas KnoMap" if is_es else "KnoMap Interactive Force-Directed Graph")
+
+    lbl_nodes = "Nodos" if is_es else "Nodes"
+    lbl_edges = "Aristas" if is_es else "Edges"
+    lbl_comms = "Comunidades" if is_es else "Communities"
+    lbl_search_title = "Búsqueda de Término" if is_es else "Term Search"
+    lbl_search_ph = "Filtrar por etiqueta..." if is_es else "Filter by label..."
+    lbl_lcc = "Solo Componente Conexo (LCC)" if is_es else "Giant Component Only (LCC)"
+    lbl_reset = "Reset Vista" if is_es else "Reset View"
+    lbl_export_svg = "Exportar SVG" if is_es else "Export SVG"
+    lbl_node_details = "Detalles del Nodo" if is_es else "Node Details"
+    lbl_hover_node = "Pase el cursor sobre un nodo" if is_es else "Hover over a node"
+    lbl_freq = "Frecuencia" if is_es else "Frequency"
+    lbl_wdeg = "Grado Ponderado" if is_es else "Weighted Degree"
 
     html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -991,41 +1006,41 @@ def generate_knomap_force_html(
             <div class="badge-pill">knoMap Engine</div>
         </div>
         <div class="top-stats">
-            <div>Nodos: <span class="top-stat-val" id="stat-nodes">0</span></div>
-            <div>Aristas: <span class="top-stat-val" id="stat-edges">0</span></div>
-            <div>Comunidades: <span class="top-stat-val" id="stat-comms">0</span></div>
+            <div>{lbl_nodes}: <span class="top-stat-val" id="stat-nodes">0</span></div>
+            <div>{lbl_edges}: <span class="top-stat-val" id="stat-edges">0</span></div>
+            <div>{lbl_comms}: <span class="top-stat-val" id="stat-comms">0</span></div>
         </div>
     </header>
 
     <main>
         <div class="controls-overlay">
             <div class="control-group">
-                <span class="control-label">Búsqueda de Término</span>
-                <input type="text" id="search-input" class="search-input" placeholder="Filtrar por etiqueta...">
+                <span class="control-label">{lbl_search_title}</span>
+                <input type="text" id="search-input" class="search-input" placeholder="{lbl_search_ph}">
             </div>
             <div class="control-group">
                 <div class="toggle-row">
-                    <span>Solo Componente Conexo (LCC)</span>
+                    <span>{lbl_lcc}</span>
                     <input type="checkbox" id="toggle-lcc">
                 </div>
             </div>
             <div class="btn-row">
-                <button class="btn" id="btn-reset-zoom">Reset Vista</button>
-                <button class="btn" id="btn-export-svg">Export SVG</button>
+                <button class="btn" id="btn-reset-zoom">{lbl_reset}</button>
+                <button class="btn" id="btn-export-svg">{lbl_export_svg}</button>
             </div>
         </div>
 
         <div id="inspector" class="inspector-card">
-            <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Detalles del Nodo</div>
-            <div id="inspector-name" class="inspector-title">Pase el cursor sobre un nodo</div>
+            <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">{lbl_node_details}</div>
+            <div id="inspector-name" class="inspector-title">{lbl_hover_node}</div>
             <div id="inspector-badge" style="display:none;" class="badge-pill">Cluster 1</div>
             <div class="metric-grid" id="inspector-metrics" style="display:none;">
                 <div class="metric-box">
-                    <div class="metric-lbl">Frecuencia</div>
+                    <div class="metric-lbl">{lbl_freq}</div>
                     <div class="metric-val" id="m-freq">-</div>
                 </div>
                 <div class="metric-box">
-                    <div class="metric-lbl">Grado Ponderado</div>
+                    <div class="metric-lbl">{lbl_wdeg}</div>
                     <div class="metric-val" id="m-deg">-</div>
                 </div>
                 <div class="metric-box">
@@ -1227,14 +1242,30 @@ def generate_knomap_force_html(
 def generate_vosviewer_html(
     vos_data: Dict[str, Any],
     title: str = "VOSviewer Map",
-    subtitle: Optional[str] = None
+    subtitle: Optional[str] = None,
+    lang: str = "en"
 ) -> str:
     """Generates a standalone, beautiful HTML visualizer reproducing the VOSviewer experience (Network, Overlay & Density)."""
     vos_json_str = json.dumps(vos_data, ensure_ascii=False)
-    sub_text = subtitle or "VOSviewer Engine - Network, Overlay & Density Visualizations"
+    is_es = (lang == "es")
+    sub_text = subtitle or ("Motor VOSviewer - Visualizaciones de Red, Superposición y Densidad" if is_es else "VOSviewer Engine - Network, Overlay & Density Visualizations")
+
+    lbl_tab_net = "● Red (Network)" if is_es else "● Network"
+    lbl_tab_ovl = "◐ Superposición (Overlay)" if is_es else "◐ Overlay"
+    lbl_tab_den = "◎ Densidad (Density)" if is_es else "◎ Density"
+    lbl_dl_json = "Descargar vosviewer.json" if is_es else "Download vosviewer.json"
+    lbl_open_vos = "Abrir VOSviewer Online ↗" if is_es else "Open VOSviewer Online ↗"
+    lbl_search_ph = "Buscar elemento en mapa..." if is_es else "Search item in map..."
+    lbl_sel_item = "Elemento Seleccionado" if is_es else "Selected Item"
+    lbl_hover_node = "Pase el cursor sobre un nodo" if is_es else "Hover over a node"
+    lbl_occ = "Ocurrencias:" if is_es else "Occurrences:"
+    lbl_links = "Enlaces (Links):" if is_es else "Links:"
+    lbl_score = "Puntuación:" if is_es else "Score:"
+    lbl_ovl_score = "Puntuación de Superposición" if is_es else "Overlay Score"
+    lbl_matches = "coincidencias" if is_es else "matches"
 
     html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1464,37 +1495,37 @@ def generate_vosviewer_html(
         </div>
         
         <div class="mode-tabs">
-            <button class="mode-btn active" id="tab-net" onclick="setVisualMode('network')">● Red (Network)</button>
-            <button class="mode-btn" id="tab-overlay" onclick="setVisualMode('overlay')">◐ Superposición (Overlay)</button>
-            <button class="mode-btn" id="tab-density" onclick="setVisualMode('density')">◎ Densidad (Density)</button>
+            <button class="mode-btn active" id="tab-net" onclick="setVisualMode('network')">{lbl_tab_net}</button>
+            <button class="mode-btn" id="tab-overlay" onclick="setVisualMode('overlay')">{lbl_tab_ovl}</button>
+            <button class="mode-btn" id="tab-density" onclick="setVisualMode('density')">{lbl_tab_den}</button>
         </div>
 
         <div class="header-actions">
-            <button class="action-btn" id="btn-dl-json">Descargar vosviewer.json</button>
-            <a href="https://app.vosviewer.com" target="_blank" class="action-btn" style="color:#a5b4fc; border-color:#6366f1;">Abrir VOSviewer Online ↗</a>
+            <button class="action-btn" id="btn-dl-json">{lbl_dl_json}</button>
+            <a href="https://app.vosviewer.com" target="_blank" class="action-btn" style="color:#a5b4fc; border-color:#6366f1;">{lbl_open_vos}</a>
         </div>
     </header>
 
     <main id="canvas-container">
         <div class="search-panel">
-            <input type="text" id="search-box" class="search-input" placeholder="Buscar elemento en mapa...">
+            <input type="text" id="search-box" class="search-input" placeholder="{lbl_search_ph}">
             <span id="match-count" style="font-size:11px; color:var(--text-muted);"></span>
         </div>
 
         <div class="inspector-panel" id="inspector">
-            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Elemento Seleccionado</div>
-            <div class="inspector-title" id="insp-name">Pase el cursor sobre un nodo</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">{lbl_sel_item}</div>
+            <div class="inspector-title" id="insp-name">{lbl_hover_node}</div>
             <div id="insp-meta" style="display:none; flex-direction:column; gap:6px;">
                 <div class="meta-row"><span>Cluster:</span><span class="meta-val" id="insp-cluster">-</span></div>
-                <div class="meta-row"><span>Ocurrencias:</span><span class="meta-val" id="insp-occ">-</span></div>
+                <div class="meta-row"><span>{lbl_occ}</span><span class="meta-val" id="insp-occ">-</span></div>
                 <div class="meta-row"><span>Total Link Strength:</span><span class="meta-val" id="insp-tls">-</span></div>
-                <div class="meta-row"><span>Enlaces (Links):</span><span class="meta-val" id="insp-links">-</span></div>
-                <div class="meta-row" id="row-score" style="display:none;"><span>Puntuación:</span><span class="meta-val" id="insp-score">-</span></div>
+                <div class="meta-row"><span>{lbl_links}</span><span class="meta-val" id="insp-links">-</span></div>
+                <div class="meta-row" id="row-score" style="display:none;"><span>{lbl_score}</span><span class="meta-val" id="insp-score">-</span></div>
             </div>
         </div>
 
         <div class="overlay-colorbar" id="colorbar">
-            <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Puntuación de Superposición</div>
+            <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">{lbl_ovl_score}</div>
             <div class="colorbar-gradient"></div>
             <div class="colorbar-labels">
                 <span id="cb-min">0.00</span>
@@ -1763,7 +1794,7 @@ def generate_vosviewer_html(
                         document.getElementById('row-score').style.display = 'none';
                     }}
                 }} else {{
-                    document.getElementById('insp-name').textContent = 'Pase el cursor sobre un nodo';
+                    document.getElementById('insp-name').textContent = '{lbl_hover_node}';
                     document.getElementById('insp-meta').style.display = 'none';
                 }}
                 render();
@@ -1773,7 +1804,7 @@ def generate_vosviewer_html(
         document.getElementById('search-box').addEventListener('input', (e) => {{
             searchTerm = e.target.value.toLowerCase().trim();
             const count = searchTerm ? items.filter(it => it.label.toLowerCase().includes(searchTerm)).length : 0;
-            document.getElementById('match-count').textContent = searchTerm ? `${{count}} coincidencias` : '';
+            document.getElementById('match-count').textContent = searchTerm ? `${{count}} {lbl_matches}` : '';
             render();
         }});
 
@@ -1966,10 +1997,11 @@ def cmd_build(args):
     print(f"Built network ({net_type}, {unit}){p_str}: {len(nodes)} nodes, {len(edges)} edges. Output: {args.output}")
 
     # Generate visualizers if requested
+    lang = getattr(args, "lang", "en") or "en"
     if getattr(args, "html_knomap", None):
         title = f"{unit.capitalize()} {net_type.capitalize()} Network"
-        p_sub = f"Period: {period_meta.get('label')}" if period_meta.get("filter_applied") else "KnoMap Force-Directed Network"
-        html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=p_sub)
+        p_sub = (f"Periodo: {period_meta.get('label')}" if lang == "es" else f"Period: {period_meta.get('label')}") if period_meta.get("filter_applied") else ("Red Dirigida por Fuerzas KnoMap" if lang == "es" else "KnoMap Force-Directed Network")
+        html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=p_sub, lang=lang)
         os.makedirs(os.path.dirname(os.path.abspath(args.html_knomap)), exist_ok=True)
         with open(args.html_knomap, "w", encoding="utf-8") as f:
             f.write(html_code)
@@ -1984,8 +2016,8 @@ def cmd_build(args):
             print(f"Exported VOSviewer JSON: {args.vosviewer_json}")
         if getattr(args, "html_vosviewer", None):
             title = f"{unit.capitalize()} {net_type.capitalize()} VOS Map"
-            p_sub = f"Period: {period_meta.get('label')}" if period_meta.get("filter_applied") else None
-            html_vos = generate_vosviewer_html(vos_data, title=title, subtitle=p_sub)
+            p_sub = (f"Periodo: {period_meta.get('label')}" if lang == "es" else f"Period: {period_meta.get('label')}") if period_meta.get("filter_applied") else None
+            html_vos = generate_vosviewer_html(vos_data, title=title, subtitle=p_sub, lang=lang)
             os.makedirs(os.path.dirname(os.path.abspath(args.html_vosviewer)), exist_ok=True)
             with open(args.html_vosviewer, "w", encoding="utf-8") as f:
                 f.write(html_vos)
@@ -2286,13 +2318,14 @@ def cmd_centralities(args):
 
 def cmd_render_knomap(args):
     """Renders standalone KnoMap Force Graph HTML from a network JSON."""
+    lang = getattr(args, "lang", "en") or "en"
     with open(args.input, "r", encoding="utf-8") as f:
         net = json.load(f)
     nodes = net.get("nodes", net.get("nodes_with_community", []))
     edges = net.get("edges", [])
-    title = args.title or "Bibliometric Network"
-    subtitle = args.subtitle or "KnoMap Interactive Force-Directed Graph"
-    html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=subtitle)
+    title = args.title or ("Red Bibliométrica" if lang == "es" else "Bibliometric Network")
+    subtitle = args.subtitle or ("Grafo Interactivo Dirigido por Fuerzas KnoMap" if lang == "es" else "KnoMap Interactive Force-Directed Graph")
+    html_code = generate_knomap_force_html(nodes, edges, title=title, subtitle=subtitle, lang=lang)
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html_code)
@@ -2302,6 +2335,7 @@ def cmd_render_knomap(args):
 
 def cmd_render_vosviewer(args):
     """Renders standalone VOSviewer HTML visualizer and optional JSON."""
+    lang = getattr(args, "lang", "en") or "en"
     with open(args.input, "r", encoding="utf-8") as f:
         net = json.load(f)
     nodes = net.get("nodes", net.get("nodes_with_community", []))
@@ -2312,9 +2346,9 @@ def cmd_render_vosviewer(args):
         with open(args.output_json, "w", encoding="utf-8") as f:
             json.dump(vos_data, f, indent=2, ensure_ascii=False)
         print(f"Exported VOSviewer JSON: {args.output_json}")
-    title = args.title or "VOSviewer Map"
-    subtitle = args.subtitle or "VOSviewer Engine - Network, Overlay & Density Visualizations"
-    html_code = generate_vosviewer_html(vos_data, title=title, subtitle=subtitle)
+    title = args.title or ("Mapa VOSviewer" if lang == "es" else "VOSviewer Map")
+    subtitle = args.subtitle or ("Motor VOSviewer - Visualizaciones de Red, Superposición y Densidad" if lang == "es" else "VOSviewer Engine - Network, Overlay & Density Visualizations")
+    html_code = generate_vosviewer_html(vos_data, title=title, subtitle=subtitle, lang=lang)
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html_code)
@@ -2352,10 +2386,13 @@ def cmd_export(args):
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Bibliometric Network Analyst")
+    parser.set_defaults(lang="en")
+    parser.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language for labels and visualizers (default: en)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: build-network
     p_bld = subparsers.add_parser("build-network", help="Build bibliometric network from corpus with optional period filter")
+    p_bld.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_bld.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json, .txt)")
     p_bld.add_argument("--output", required=True, help="Path to output network JSON")
     p_bld.add_argument("--network-type", choices=["cooccurrence", "coauthorship", "coupling", "direct-citation"], default="cooccurrence")
@@ -2378,6 +2415,7 @@ def main():
 
     # Subcommand: render-knomap
     p_rkn = subparsers.add_parser("render-knomap", help="Render standalone KnoMap Force Graph HTML from network JSON")
+    p_rkn.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_rkn.add_argument("--input", required=True, help="Path to network JSON")
     p_rkn.add_argument("--output", required=True, help="Path to output HTML file")
     p_rkn.add_argument("--title", default=None, help="Visualizer title")
@@ -2386,6 +2424,7 @@ def main():
 
     # Subcommand: render-vosviewer
     p_rvos = subparsers.add_parser("render-vosviewer", help="Render standalone VOSviewer HTML visualizer from network JSON")
+    p_rvos.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_rvos.add_argument("--input", required=True, help="Path to network JSON")
     p_rvos.add_argument("--output", required=True, help="Path to output HTML file")
     p_rvos.add_argument("--output-json", default=None, help="Optional path to output vosviewer.json")
@@ -2395,6 +2434,7 @@ def main():
 
     # Subcommand: export-som-matrix
     p_esom = subparsers.add_parser("export-som-matrix", help="Export N x N adjacency/co-occurrence matrix for SOM training")
+    p_esom.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_esom.add_argument("--input", required=True, help="Path to network JSON")
     p_esom.add_argument("--output-csv", required=True, help="Path to output N x N CSV file")
     p_esom.add_argument("--output-json", default=None, help="Optional path to output sidecar JSON")
@@ -2403,6 +2443,7 @@ def main():
     # Subcommand: sequential-networks (alias period-networks)
     for sub_name in ["sequential-networks", "period-networks"]:
         p_seq = subparsers.add_parser(sub_name, help="Generate sequential longitudinal networks & SOM manifest")
+        p_seq.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
         p_seq.add_argument("--input", required=True, help="Path to corpus (.parquet, .csv, .json, .txt)")
         p_seq.add_argument("--output-dir", required=True, help="Output directory for period networks and sequence_manifest.json")
         p_seq.add_argument("--network-type", choices=["cooccurrence", "coauthorship", "coupling", "direct-citation"], default="cooccurrence")
@@ -2422,6 +2463,7 @@ def main():
 
     # Subcommand: detect-communities
     p_com = subparsers.add_parser("detect-communities", help="Detect communities with Leiden/Louvain")
+    p_com.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_com.add_argument("--input", required=True, help="Path to network JSON")
     p_com.add_argument("--output", required=True, help="Path to output communities JSON")
     p_com.add_argument("--algorithm", choices=["leiden", "louvain"], default="leiden")
@@ -2430,12 +2472,14 @@ def main():
 
     # Subcommand: calculate-centralities
     p_cen = subparsers.add_parser("calculate-centralities", help="Calculate Degree, Betweenness, PageRank")
+    p_cen.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_cen.add_argument("--input", required=True, help="Path to network JSON")
     p_cen.add_argument("--output", required=True, help="Path to output centralities JSON")
     p_cen.set_defaults(func=cmd_centralities)
 
     # Subcommand: export-graph
     p_exp = subparsers.add_parser("export-graph", help="Export network to GEXF, Pajek, or VOSviewer JSON")
+    p_exp.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_exp.add_argument("--input", required=True, help="Path to network JSON")
     p_exp.add_argument("--output", required=True, help="Path to output file (.gexf, .net, .json)")
     p_exp.add_argument("--format", choices=["gexf", "pajek", "vosviewer-json"], default="gexf")

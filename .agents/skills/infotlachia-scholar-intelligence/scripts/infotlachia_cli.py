@@ -2,7 +2,8 @@
 """
 CLI Helper: Info TlachIA Scholar Intelligence
 Fast read-only analytical queries on DuckDB (analytics_cache.duckdb, 14 tables)
-for Researcher, Entity, Institution, and National levels. Supports JSON and Markdown output.
+for Researcher, Entity, Institution, and National levels. Supports JSON and Markdown output
+with bilingual labeling (--lang en / --lang es).
 """
 
 import sys
@@ -24,10 +25,10 @@ def get_duckdb_conn(db_path: str = DEFAULT_DUCKDB_PATH) -> duckdb.DuckDBPyConnec
     return duckdb.connect(db_path, read_only=True)
 
 
-def format_markdown_table(headers: List[str], rows: List[List[Any]]) -> str:
+def format_markdown_table(headers: List[str], rows: List[List[Any]], lang: str = "en") -> str:
     """Formats a list of rows into GitHub Flavored Markdown table."""
     if not headers or not rows:
-        return "*Sin resultados.*"
+        return "*Sin resultados.*" if lang == "es" else "*No results found.*"
     md = "| " + " | ".join(headers) + " |\n"
     md += "| " + " | ".join(["---"] * len(headers)) + " |\n"
     for r in rows:
@@ -36,20 +37,24 @@ def format_markdown_table(headers: List[str], rows: List[List[Any]]) -> str:
     return md
 
 
-def save_output(data: Any, md_str: str, output_path: Optional[str], fmt: str):
+def save_output(data: Any, md_str: str, output_path: Optional[str], fmt: str, lang: str = "en"):
     """Outputs either JSON or Markdown to file or stdout."""
     content = md_str if fmt == "markdown" else json.dumps(data, indent=2, ensure_ascii=False)
     if output_path:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"Output saved in {fmt.upper()} format to {output_path}")
+        if lang == "es":
+            print(f"Salida guardada en formato {fmt.upper()} en {output_path}")
+        else:
+            print(f"Output saved in {fmt.upper()} format to {output_path}")
     else:
         print(content)
 
 
 def cmd_researcher(args):
     """Queries researcher profile in DuckDB."""
+    lang = getattr(args, "lang", "en")
     con = get_duckdb_conn(args.db_path)
     name = args.name.strip()
     query = """
@@ -65,12 +70,20 @@ def cmd_researcher(args):
     con.close()
 
     records = df.to_dict(orient="records")
-    headers = ["Investigador", "SNII", "Institución", "Docs", "Citas", "FWCI", "% Top 10%", "H-Index", "Gasto APC ($)", "Tópico Principal"]
+    if lang == "es":
+        headers = ["Investigador", "SNII", "Institución", "Docs", "Citas", "FWCI", "% Top 10%", "H-Index", "Gasto APC ($)", "Tópico Principal"]
+        yes_str, no_str = "Sí", "No"
+        title_prefix = "Perfil de Investigador"
+    else:
+        headers = ["Researcher", "SNII", "Institution", "Docs", "Citations", "FWCI", "% Top 10%", "H-Index", "APC Spend ($)", "Top Topic"]
+        yes_str, no_str = "Yes", "No"
+        title_prefix = "Researcher Profile"
+
     rows = []
     for r in records:
         rows.append([
             r.get("academic_name"),
-            "Sí" if r.get("is_snii") else "No",
+            yes_str if r.get("is_snii") else no_str,
             (r.get("institutions") or "")[:35],
             r.get("num_documents"),
             r.get("citations"),
@@ -81,13 +94,14 @@ def cmd_researcher(args):
             (r.get("top_topic") or "")[:30]
         ])
 
-    md = f"### Perfil de Investigador: {name}\n\n" + format_markdown_table(headers, rows)
-    save_output({"query": name, "total_found": len(records), "results": records}, md, args.output, args.format)
+    md = f"### {title_prefix}: {name}\n\n" + format_markdown_table(headers, rows, lang=lang)
+    save_output({"query": name, "total_found": len(records), "results": records}, md, args.output, args.format, lang=lang)
     sys.exit(0)
 
 
 def cmd_entity(args):
     """Queries subdependence / faculty metrics."""
+    lang = getattr(args, "lang", "en")
     con = get_duckdb_conn(args.db_path)
     entity = args.entity.strip()
     query = """
@@ -102,7 +116,13 @@ def cmd_entity(args):
     con.close()
 
     records = df.to_dict(orient="records")
-    headers = ["Institución", "Dependencia / Facultad", "Docs", "Citas", "FWCI", "% Top 10%", "% OA", "Gasto APC ($)"]
+    if lang == "es":
+        headers = ["Institución", "Dependencia / Facultad", "Docs", "Citas", "FWCI", "% Top 10%", "% OA", "Gasto APC ($)"]
+        title_prefix = "Métricas de Dependencia"
+    else:
+        headers = ["Institution", "Department / Faculty", "Docs", "Citations", "FWCI", "% Top 10%", "% OA", "APC Spend ($)"]
+        title_prefix = "Department / Faculty Metrics"
+
     rows = []
     for r in records:
         rows.append([
@@ -116,13 +136,14 @@ def cmd_entity(args):
             f"${r.get('apc_paid_usd', 0):,.0f}" if r.get("apc_paid_usd") is not None else "$0"
         ])
 
-    md = f"### Métricas de Dependencia: {entity}\n\n" + format_markdown_table(headers, rows)
-    save_output({"query": entity, "total_found": len(records), "results": records}, md, args.output, args.format)
+    md = f"### {title_prefix}: {entity}\n\n" + format_markdown_table(headers, rows, lang=lang)
+    save_output({"query": entity, "total_found": len(records), "results": records}, md, args.output, args.format, lang=lang)
     sys.exit(0)
 
 
 def cmd_institution(args):
     """Queries university / research center metrics."""
+    lang = getattr(args, "lang", "en")
     con = get_duckdb_conn(args.db_path)
     inst = args.institution.strip()
     query = """
@@ -138,7 +159,13 @@ def cmd_institution(args):
     con.close()
 
     records = df.to_dict(orient="records")
-    headers = ["Institución", "Docs", "Citas", "FWCI", "% Top 10%", "% OA", "Gasto APC ($)", "Colaboración Int.", "Top Dominio"]
+    if lang == "es":
+        headers = ["Institución", "Docs", "Citas", "FWCI", "% Top 10%", "% OA", "Gasto APC ($)", "Colaboración Int.", "Top Dominio"]
+        title_prefix = "Perfil Institucional"
+    else:
+        headers = ["Institution", "Docs", "Citations", "FWCI", "% Top 10%", "% OA", "APC Spend ($)", "Int. Collab.", "Top Domain"]
+        title_prefix = "Institutional Profile"
+
     rows = []
     for r in records:
         rows.append([
@@ -153,13 +180,14 @@ def cmd_institution(args):
             r.get("top_domain")
         ])
 
-    md = f"### Perfil Institucional: {inst}\n\n" + format_markdown_table(headers, rows)
-    save_output({"query": inst, "total_found": len(records), "results": records}, md, args.output, args.format)
+    md = f"### {title_prefix}: {inst}\n\n" + format_markdown_table(headers, rows, lang=lang)
+    save_output({"query": inst, "total_found": len(records), "results": records}, md, args.output, args.format, lang=lang)
     sys.exit(0)
 
 
 def cmd_national(args):
     """Generates national overview and summary statistics."""
+    lang = getattr(args, "lang", "en")
     con = get_duckdb_conn(args.db_path)
     res = con.execute("""
         SELECT count(*) as total_investigadores,
@@ -187,26 +215,37 @@ def cmd_national(args):
         "gasto_estimado_total_apc_usd": round(res[5], 2) if res[5] else 0.0
     }
 
-    md = "### Panorama Nacional de Ciencia en México (Padrón SNII & OpenAlex)\n\n"
-    md += f"- **Investigadores Registrados:** {summary['total_investigadores_registrados']:,}\n"
-    md += f"- **Miembros Acreditados SNII:** {summary['miembros_padron_snii']:,}\n"
-    md += f"- **Instituciones Mapeadas:** {summary['total_instituciones_mapeadas']:,}\n"
-    md += f"- **Artículos Analizados:** {summary['produccion_total_articulos']:,}\n"
-    md += f"- **Citas Totales:** {summary['citas_acumuladas']:,}\n"
-    md += f"- **FWCI Promedio Nacional:** {summary['fwci_promedio_nacional']}\n"
-    md += f"- **Gasto Estimado en APC (USD):** ${summary['gasto_estimado_total_apc_usd']:,.2f}\n"
+    if lang == "es":
+        md = "### Panorama Nacional de Ciencia en México (Padrón SNII & OpenAlex)\n\n"
+        md += f"- **Investigadores Registrados:** {summary['total_investigadores_registrados']:,}\n"
+        md += f"- **Miembros Acreditados SNII:** {summary['miembros_padron_snii']:,}\n"
+        md += f"- **Instituciones Mapeadas:** {summary['total_instituciones_mapeadas']:,}\n"
+        md += f"- **Artículos Analizados:** {summary['produccion_total_articulos']:,}\n"
+        md += f"- **Citas Totales:** {summary['citas_acumuladas']:,}\n"
+        md += f"- **FWCI Promedio Nacional:** {summary['fwci_promedio_nacional']}\n"
+        md += f"- **Gasto Estimado en APC (USD):** ${summary['gasto_estimado_total_apc_usd']:,.2f}\n"
+    else:
+        md = "### National Science Overview in Mexico (SNII Registry & OpenAlex)\n\n"
+        md += f"- **Registered Researchers:** {summary['total_investigadores_registrados']:,}\n"
+        md += f"- **SNII Accredited Members:** {summary['miembros_padron_snii']:,}\n"
+        md += f"- **Mapped Institutions:** {summary['total_instituciones_mapeadas']:,}\n"
+        md += f"- **Analyzed Articles:** {summary['produccion_total_articulos']:,}\n"
+        md += f"- **Total Citations:** {summary['citas_acumuladas']:,}\n"
+        md += f"- **National Average FWCI:** {summary['fwci_promedio_nacional']}\n"
+        md += f"- **Estimated APC Expenditure (USD):** ${summary['gasto_estimado_total_apc_usd']:,.2f}\n"
 
-    save_output(summary, md, args.output, args.format)
+    save_output(summary, md, args.output, args.format, lang=lang)
     sys.exit(0)
 
 
 def cmd_sql_safe(args):
     """Executes safe, read-only SQL queries on DuckDB."""
+    lang = getattr(args, "lang", "en")
     sql = args.query.strip()
     forbidden = ["DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "CREATE", "REPLACE"]
     first_word = sql.split()[0].upper()
     if first_word in forbidden or any(f" {f} " in f" {sql.upper()} " for f in forbidden):
-        sys.stderr.write(f"Error: Forbidden mutating SQL clause in read-only query.\n")
+        sys.stderr.write("Error: Forbidden mutating SQL clause in read-only query.\n")
         sys.exit(1)
 
     con = get_duckdb_conn(args.db_path)
@@ -216,15 +255,16 @@ def cmd_sql_safe(args):
     records = df.to_dict(orient="records")
     headers = list(df.columns)
     rows = df.values.tolist()
-    md = format_markdown_table(headers, rows[:50])
+    md = format_markdown_table(headers, rows[:50], lang=lang)
 
-    save_output({"query": sql, "rows_count": len(records), "data": records}, md, args.output, args.format)
+    save_output({"query": sql, "rows_count": len(records), "data": records}, md, args.output, args.format, lang=lang)
     sys.exit(0)
 
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Info TlachIA Scholar Intelligence")
     parser.add_argument("--db-path", default=DEFAULT_DUCKDB_PATH, help="Path to analytics_cache.duckdb")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Output language for labels/messages (default: en)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: query-researcher
@@ -233,6 +273,7 @@ def main():
     p_res.add_argument("--limit", type=int, default=10, help="Max rows")
     p_res.add_argument("--format", choices=["json", "markdown"], default="json")
     p_res.add_argument("--output", help="Output file path")
+    p_res.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_res.set_defaults(func=cmd_researcher)
 
     # Subcommand: query-entity
@@ -241,6 +282,7 @@ def main():
     p_ent.add_argument("--limit", type=int, default=10, help="Max rows")
     p_ent.add_argument("--format", choices=["json", "markdown"], default="json")
     p_ent.add_argument("--output", help="Output file path")
+    p_ent.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_ent.set_defaults(func=cmd_entity)
 
     # Subcommand: query-institution
@@ -249,12 +291,14 @@ def main():
     p_ins.add_argument("--limit", type=int, default=5, help="Max rows")
     p_ins.add_argument("--format", choices=["json", "markdown"], default="json")
     p_ins.add_argument("--output", help="Output file path")
+    p_ins.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_ins.set_defaults(func=cmd_institution)
 
     # Subcommand: national-overview
     p_nat = subparsers.add_parser("national-overview", help="National aggregate statistics")
     p_nat.add_argument("--format", choices=["json", "markdown"], default="json")
     p_nat.add_argument("--output", help="Output file path")
+    p_nat.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_nat.set_defaults(func=cmd_national)
 
     # Subcommand: sql-safe
@@ -262,6 +306,7 @@ def main():
     p_sql.add_argument("--query", required=True, help="SQL SELECT query")
     p_sql.add_argument("--format", choices=["json", "markdown"], default="json")
     p_sql.add_argument("--output", help="Output file path")
+    p_sql.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_sql.set_defaults(func=cmd_sql_safe)
 
     args = parser.parse_args()

@@ -1,18 +1,18 @@
-# Concepto de Citas Influyentes en Semantic Scholar
+# Influential Citations Concept in Semantic Scholar
 
-Semantic Scholar introduce la métrica de **Citas Influyentes** (*Influential Citations*) para distinguir citas sustanciales de menciones superficiales o de paso.
-
----
-
-## 1. Definición y Metodología de S2
-
-Un algoritmo de aprendizaje automático analiza el contexto textual donde aparece la cita dentro del cuerpo del artículo:
-- **Cita influyente:** El artículo citante adopta, extiende o refuta directamente los métodos, datos o conclusiones del trabajo citado.
-- **Cita incidental:** El artículo citado solo se menciona en una lista bibliográfica introductoria ("trabajos previos incluyen [1, 2, 3]").
+Semantic Scholar introduces the **Influential Citations** metric to distinguish substantive citations from superficial or incidental mentions.
 
 ---
 
-## 2. Aplicación en Análisis Cienciométrico Autónomo
+## 1. S2 Definition and Methodology
 
-- Permite a los agentes filtrar el ruido de citas no sustanciales.
-- Provee un indicador de impacto cualitativo sin depender de factores de impacto de revistas comerciales.
+A machine-learning model analyzes the textual context where a citation appears within the body of the citing paper:
+- **Influential citation:** The citing article directly adopts, extends, or refutes the methods, data, or conclusions of the cited work.
+- **Incidental citation:** The cited article is only mentioned in an introductory literature list ("prior work includes [1, 2, 3]").
+
+---
+
+## 2. Application in Autonomous Scientometric Analysis
+
+- Enables agents to filter out noise from non-substantive citations.
+- Provides a qualitative impact indicator without relying on commercial journal impact factors.

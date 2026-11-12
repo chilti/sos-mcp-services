@@ -1,24 +1,26 @@
 ---
 name: journal-editorial-intelligence
-description: Evaluación cienciométrica de revistas científicas (fuentes/sources), concentración de Bradford, Acceso Abierto Diamante vs APC comercial, endogamia institucional, indización DOAJ/SciELO/Latindex 2.0 y perfilado multidimensional de revistas en el SOM.
+description: Scientometric evaluation of scientific journals (sources), Bradford concentration zones, Diamond Open Access vs commercial APCs, institutional endogamy, DOAJ/SciELO/Latindex 2.0 indexing, and multidimensional journal profiling on the SOM. Respond and label outputs in the user's language.
 ---
 
 # Journal Editorial Intelligence
 
-Esta skill articula el análisis editorial y cienciométrico de revistas científicas combinando el análisis del corpus local (`./corpus.parquet`) con los motores especializados de evaluación editorial iberoamericana (`revistaslatam-editorial-intelligence` y `revistaslatam-indicators-engine`).
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-## 1. Flujo de Trabajo sobre el Workspace (`./corpus.parquet`)
+This skill orchestrates editorial and scientometric analysis of scientific journals by combining local corpus analysis (`./corpus.parquet`) with specialized Ibero-American editorial evaluation engines (`revistaslatam-editorial-intelligence` and `revistaslatam-indicators-engine`).
 
-### A. Demarcación de Zonas de Bradford (Revistas Núcleo vs Periferia)
-Utiliza `classical-bibliometrics-laws` sobre `./corpus.parquet`:
+## 1. Workspace Operational Workflow (`./corpus.parquet`)
+
+### A. Bradford Zone Demarcation (Core vs. Peripheral Journals)
+Use `classical-bibliometrics-laws` on `./corpus.parquet`:
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/classical-bibliometrics-laws/scripts/bibliometric_laws_cli.py bradford \
   --input ./corpus.parquet \
   --output ./reports/bradford_zones.json
 ```
 
-### B. Matriz Multidimensional de Revistas (`--level source`) y Proyección en el SOM
-Utiliza `tlachia-metrics-engine` para calcular los 35+ indicadores por revista (`source`) sin truncar columnas y proyectarlos en `som-methodological-expert`:
+### B. Multidimensional Journal Matrix (`--level source`) and SOM Projection
+Use `tlachia-metrics-engine` to compute the 35+ indicators per journal (`source`) without truncating columns and project them via `som-methodological-expert`:
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py by-entity \
   --input ./corpus.parquet \
@@ -32,7 +34,7 @@ Utiliza `tlachia-metrics-engine` para calcular los 35+ indicadores por revista (
   --html-out ./reports/som_revistas_dashboard.html
 ```
 
-### C. Auditoría Editorial Iberoamericana (Latindex 2.0, DOAJ, SciELO, Endogamia)
-Cuando se evalúan revistas latinoamericanas específicas, delegar en:
+### C. Ibero-American Editorial Audit (Latindex 2.0, DOAJ, SciELO, Endogamy)
+When evaluating specific Latin American or Ibero-American journals, delegate to:
 - [`revistaslatam-editorial-intelligence`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-editorial-intelligence/SKILL.md)
 - [`revistaslatam-indicators-engine`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/revistaslatam-indicators-engine/SKILL.md)

@@ -2,16 +2,16 @@
 """
 SDG Impact Intelligence CLI (sdg_impact_cli.py)
 -----------------------------------------------
-Mapeo, cuantificación y visualización de la alineación de la producción
-científica con los 17 Objetivos de Desarrollo Sostenible (ODS / SDG) de la ONU (Agenda 2030).
+Mapping, quantification, and visualization of scientific output alignment
+with the 17 United Nations Sustainable Development Goals (SDGs / 2030 Agenda).
 
-Principios y salidas:
-- Workspace-First: Consume `./corpus.parquet` directamente del workspace.
-- Salida Dual Científica:
-  1. `sdg_impact_dashboard.html`: Dashboard interactivo HTML para exploración (estética SinapsisAI).
-  2. `sdg_grid_es.png` (300 DPI): Cuadrícula pura de los 17 ODS para artículos en español.
-  3. `sdg_grid_en.png` (300 DPI): Cuadrícula pura de los 17 ODS para artículos científicos en inglés (e.g. Q1 journals).
-  4. `sdg_impact_summary.json` y `sdg_impact_report.md`: Tablas y métricas estructuradas.
+Principles and outputs:
+- Workspace-First: Directly consumes `./corpus.parquet` from the workspace.
+- Dual Scientific Output:
+  1. `sdg_impact_dashboard.html`: Interactive HTML dashboard for exploration (SinapsisAI aesthetic).
+  2. `sdg_grid_es.png` (300 DPI): Clean 17-SDG grid for articles in Spanish.
+  3. `sdg_grid_en.png` (300 DPI): Clean 17-SDG grid for scientific articles in English (e.g. Q1 journals).
+  4. `sdg_impact_summary.json` and `sdg_impact_report.md`: Structured tables and metrics.
 """
 
 from __future__ import annotations
@@ -39,26 +39,27 @@ ICONS_ES_DIR = RESOURCES_DIR / "icons_es"
 ICONS_EN_DIR = RESOURCES_DIR / "icons_en"
 
 SDG_INFO: Dict[int, Dict[str, str]] = {
-    1: {"name": "Fin de la Pobreza", "name_en": "No Poverty", "color": "#E5243B"},
-    2: {"name": "Hambre Cero", "name_en": "Zero Hunger", "color": "#DDA63A"},
-    3: {"name": "Salud y Bienestar", "name_en": "Good Health & Well-being", "color": "#4C9F38"},
-    4: {"name": "Educación de Calidad", "name_en": "Quality Education", "color": "#C5192D"},
-    5: {"name": "Igualdad de Género", "name_en": "Gender Equality", "color": "#FF3A21"},
-    6: {"name": "Agua Limpia y Saneamiento", "name_en": "Clean Water & Sanitation", "color": "#26BDE2"},
-    7: {"name": "Energía Asequible", "name_en": "Affordable & Clean Energy", "color": "#FCC30B"},
-    8: {"name": "Trabajo Decente", "name_en": "Decent Work & Economic Growth", "color": "#A21942"},
-    9: {"name": "Industria e Innovación", "name_en": "Industry, Innovation & Infra", "color": "#FD6925"},
-    10: {"name": "Reducción de Desigualdades", "name_en": "Reduced Inequalities", "color": "#DD1367"},
-    11: {"name": "Ciudades Sostenibles", "name_en": "Sustainable Cities & Communities", "color": "#FD9D24"},
-    12: {"name": "Producción Responsable", "name_en": "Responsible Consumption", "color": "#BF8B2E"},
-    13: {"name": "Acción por el Clima", "name_en": "Climate Action", "color": "#3F7E44"},
-    14: {"name": "Vida Submarina", "name_en": "Life Below Water", "color": "#0A97D9"},
-    15: {"name": "Vida de Ecosistemas", "name_en": "Life on Land", "color": "#56C02B"},
-    16: {"name": "Paz y Justicia", "name_en": "Peace, Justice & Institutions", "color": "#00689D"},
-    17: {"name": "Alianzas para los Objetivos", "name_en": "Partnerships for the Goals", "color": "#19486A"},
+    1: {"name_es": "Fin de la Pobreza", "name_en": "No Poverty", "color": "#E5243B"},
+    2: {"name_es": "Hambre Cero", "name_en": "Zero Hunger", "color": "#DDA63A"},
+    3: {"name_es": "Salud y Bienestar", "name_en": "Good Health & Well-being", "color": "#4C9F38"},
+    4: {"name_es": "Educación de Calidad", "name_en": "Quality Education", "color": "#C5192D"},
+    5: {"name_es": "Igualdad de Género", "name_en": "Gender Equality", "color": "#FF3A21"},
+    6: {"name_es": "Agua Limpia y Saneamiento", "name_en": "Clean Water & Sanitation", "color": "#26BDE2"},
+    7: {"name_es": "Energía Asequible", "name_en": "Affordable & Clean Energy", "color": "#FCC30B"},
+    8: {"name_es": "Trabajo Decente", "name_en": "Decent Work & Economic Growth", "color": "#A21942"},
+    9: {"name_es": "Industria e Innovación", "name_en": "Industry, Innovation & Infra", "color": "#FD6925"},
+    10: {"name_es": "Reducción de Desigualdades", "name_en": "Reduced Inequalities", "color": "#DD1367"},
+    11: {"name_es": "Ciudades Sostenibles", "name_en": "Sustainable Cities & Communities", "color": "#FD9D24"},
+    12: {"name_es": "Producción Responsable", "name_en": "Responsible Consumption", "color": "#BF8B2E"},
+    13: {"name_es": "Acción por el Clima", "name_en": "Climate Action", "color": "#3F7E44"},
+    14: {"name_es": "Vida Submarina", "name_en": "Life Below Water", "color": "#0A97D9"},
+    15: {"name_es": "Vida de Ecosistemas", "name_en": "Life on Land", "color": "#56C02B"},
+    16: {"name_es": "Paz y Justicia", "name_en": "Peace, Justice & Institutions", "color": "#00689D"},
+    17: {"name_es": "Alianzas para los Objetivos", "name_en": "Partnerships for the Goals", "color": "#19486A"},
 }
 
-BASE_IMG_URL = "https://open-sdg.github.io/sdg-translations/assets/img/goals/es"
+BASE_IMG_URL_EN = "https://open-sdg.github.io/sdg-translations/assets/img/goals/en"
+BASE_IMG_URL_ES = "https://open-sdg.github.io/sdg-translations/assets/img/goals/es"
 
 
 def resolve_input_path(workspace: Path, input_arg: Optional[str]) -> Path:
@@ -68,7 +69,7 @@ def resolve_input_path(workspace: Path, input_arg: Optional[str]) -> Path:
             p = (workspace / p).resolve()
         if p.exists():
             return p
-        raise FileNotFoundError(f"Archivo de entrada no encontrado: {p}")
+        raise FileNotFoundError(f"Input file not found: {p}")
 
     candidates = [
         workspace / "corpus.parquet",
@@ -80,8 +81,8 @@ def resolve_input_path(workspace: Path, input_arg: Optional[str]) -> Path:
         if c.exists():
             return c
     raise FileNotFoundError(
-        f"No se encontró corpus bibliográfico en {workspace}. "
-        "Asegúrate de que exista ./corpus.parquet o especifica --input."
+        f"No bibliographic corpus found in {workspace}. "
+        "Ensure ./corpus.parquet exists or specify --input."
     )
 
 
@@ -96,11 +97,11 @@ def load_corpus(path: Path) -> pd.DataFrame:
             return pd.read_json(path, lines=True)
     if suffix == ".csv":
         return pd.read_csv(path)
-    raise ValueError(f"Formato no soportado: {suffix}")
+    raise ValueError(f"Unsupported format: {suffix}")
 
 
 def extract_sdg_number(val: Any) -> List[int]:
-    """Extrae números de ODS (1 a 17) de cadenas, listas o arrays."""
+    """Extracts SDG numbers (1 to 17) from strings, lists, or arrays."""
     if val is None:
         return []
 
@@ -131,10 +132,11 @@ def extract_sdg_number(val: Any) -> List[int]:
     return list(set(found))
 
 
-def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) -> Dict[str, Any]:
-    """Calcula las métricas agregadas por cada uno de los 17 ODS."""
+def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None, lang: str = "en") -> Dict[str, Any]:
+    """Computes aggregated metrics for each of the 17 SDGs."""
     total_docs = len(df)
-    
+    is_es = (lang == "es")
+
     sdg_col = None
     if custom_sdg_col and custom_sdg_col in df.columns:
         sdg_col = custom_sdg_col
@@ -147,8 +149,9 @@ def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) 
     stats = {
         i: {
             "sdg_num": i,
-            "name": SDG_INFO[i]["name"],
+            "name": SDG_INFO[i]["name_es"] if is_es else SDG_INFO[i]["name_en"],
             "name_en": SDG_INFO[i]["name_en"],
+            "name_es": SDG_INFO[i]["name_es"],
             "color": SDG_INFO[i]["color"],
             "publications_count": 0,
             "total_citations": 0,
@@ -167,7 +170,7 @@ def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) 
             "docs_with_sdg": 0,
             "coverage_pct": 0.0,
             "sdg_stats": stats,
-            "note": "No se detectó columna de ODS en el corpus.",
+            "note": "No se detectó columna de ODS en el corpus." if is_es else "No SDG column detected in the corpus.",
         }
 
     docs_with_sdg = 0
@@ -179,6 +182,8 @@ def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) 
     doi_col = "doi" if "doi" in df.columns else None
     year_col = "publication_year" if "publication_year" in df.columns else ("year" if "year" in df.columns else None)
 
+    untitled_default = "Sin título" if is_es else "Untitled"
+
     for _, row in df.iterrows():
         sdgs_found = extract_sdg_number(row[sdg_col])
         if sdgs_found:
@@ -189,7 +194,7 @@ def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) 
             oa_val = str(row[oa_col]).lower() if oa_col and pd.notna(row[oa_col]) else ""
             is_oa = oa_val not in ("", "closed", "none")
             is_diamond = oa_val == "diamond"
-            t_str = str(row[title_col]) if title_col and pd.notna(row[title_col]) else "Sin título"
+            t_str = str(row[title_col]) if title_col and pd.notna(row[title_col]) else untitled_default
             d_str = str(row[doi_col]) if doi_col and pd.notna(row[doi_col]) else ""
             y_val = int(row[year_col]) if year_col and pd.notna(row[year_col]) else None
 
@@ -234,17 +239,15 @@ def compute_sdg_metrics(df: pd.DataFrame, custom_sdg_col: Optional[str] = None) 
 def render_sdg_grid_image(
     data: Dict[str, Any],
     out_png: Path,
-    lang: str = "es",
+    lang: str = "en",
     dpi: int = 300,
 ) -> None:
     """
-    Genera la cuadrícula limpia de los 17 ODS como imagen pura PNG de alta resolución (300 DPI)
-    diseñada para ser incrustada directamente en artículos científicos (sin bordes web, títulos ni tablas).
-    
-    Disposición: 6 columnas x 3 filas (17 ODS + 1 celda de resumen de la Agenda 2030).
+    Generates a clean 17-SDG grid as a high-resolution (300 DPI) standalone PNG image
+    designed to be embedded directly in scientific articles.
+    Layout: 6 columns x 3 rows (17 SDGs + 1 summary cell for the 2030 Agenda).
     """
     stats = data["sdg_stats"]
-    total_docs = data["total_docs"]
     icons_dir = ICONS_EN_DIR if lang == "en" else ICONS_ES_DIR
 
     n_cols = 6
@@ -263,15 +266,13 @@ def render_sdg_grid_image(
             cnt = s["publications_count"]
             pct = s["share_pct"]
             color = s["color"]
-            name = s["name_en"] if lang == "en" else s["name"]
+            name = s.get("name_en", s["name"]) if lang == "en" else s.get("name_es", s["name"])
 
-            # Cargar icono oficial
             icon_file = icons_dir / f"{i}.png"
             if icon_file.exists():
                 try:
                     img = Image.open(icon_file).convert("RGBA")
                     if cnt == 0:
-                        # Desaturar y atenuar si no tiene publicaciones en el corpus
                         gray = ImageOps.grayscale(img.convert("RGB"))
                         img = ImageEnhance.Brightness(gray.convert("RGBA")).enhance(0.85)
                         img.putalpha(80)
@@ -284,13 +285,11 @@ def render_sdg_grid_image(
                 ax.text(0.5, 0.65, str(i), ha="center", va="center", fontsize=28, fontweight="black", color="white")
                 ax.text(0.5, 0.25, name[:22], ha="center", va="center", fontsize=8, fontweight="bold", color="white")
 
-            # Superposición inferior de métricas (limpia y tipográficamente clara)
             overlay_h = 0.26
             overlay_color = "#0f172a" if cnt > 0 else "#64748b"
             rect_bg = patches.Rectangle((0, 0), 1, overlay_h, transform=ax.transAxes, facecolor=overlay_color, alpha=0.92, zorder=3)
             ax.add_patch(rect_bg)
 
-            # Texto de métrica en idioma correspondiente
             metric_text = f"{cnt:,} papers ({pct:.1f}%)" if lang == "en" else f"{cnt:,} docs ({pct:.1f}%)"
             if cnt == 0:
                 metric_text = "0 papers" if lang == "en" else "0 docs"
@@ -309,7 +308,7 @@ def render_sdg_grid_image(
             )
 
         else:
-            # Celda 18: Tarjeta de Resumen / Global UN 2030 Agenda
+            # Cell 18: Summary Card / Global UN 2030 Agenda
             active_count = sum(1 for s in stats.values() if s["publications_count"] > 0)
             cov_pct = data.get("coverage_pct", 0.0)
             rect = patches.FancyBboxPatch((0.02, 0.02), 0.96, 0.96, boxstyle="round,pad=0.03", facecolor="#1e293b", edgecolor="#0284c7", lw=1.5)
@@ -330,12 +329,15 @@ def render_sdg_grid_image(
     plt.close(fig)
 
 
-def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
-    """Renderiza el visualizador autónomo con la cuadrícula interactiva de 17 ODS de SinapsisAI."""
+def render_html_dashboard(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    """Renders the standalone visualizer with the SinapsisAI interactive 17-SDG grid."""
+    is_es = (lang == "es")
     stats = data["sdg_stats"]
     total_docs = data["total_docs"]
     docs_sdg = data["docs_with_sdg"]
     cov_pct = data["coverage_pct"]
+    base_img_url = BASE_IMG_URL_ES if is_es else BASE_IMG_URL_EN
+    sdg_prefix = "ODS" if is_es else "SDG"
 
     active_count = sum(1 for s in stats.values() if s["publications_count"] > 0)
     top_sdg = max(stats.values(), key=lambda x: x["publications_count"]) if active_count > 0 else None
@@ -350,15 +352,19 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
         cites = s["total_citations"]
         fwci = s["mean_fwci"]
         color = s["color"]
-        name = s["name"]
+        name = s.get("name_es", s["name"]) if is_es else s.get("name_en", s["name"])
 
         active_class = "" if cnt > 0 else "sdg-inactive"
-        img_url = f"{BASE_IMG_URL}/{i}.png"
-        tooltip = f"ODS {i}: {name} - {cnt:,} documentos ({pct:.1f}% del corpus)"
+        img_url = f"{base_img_url}/{i}.png"
+        tooltip = (
+            f"ODS {i}: {name} - {cnt:,} documentos ({pct:.1f}% del corpus)"
+            if is_es
+            else f"SDG {i}: {name} - {cnt:,} documents ({pct:.1f}% of corpus)"
+        )
 
         cards_html.append(f"""
         <div class="sdg-card {active_class}" style="background-color: {color};" title="{tooltip}">
-            <img src="{img_url}" class="sdg-img" alt="ODS {i}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="{img_url}" class="sdg-img" alt="{sdg_prefix} {i}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="sdg-fallback" style="display:none; background:{color};">
                 <span class="sdg-fallback-num">{i}</span>
                 <span class="sdg-fallback-name">{name}</span>
@@ -387,8 +393,53 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
         </tr>
         """)
 
+    if is_es:
+        ui = {
+            "tag": "Cienciometría & Agenda 2030 ONU · KnoMap / SinapsisAI",
+            "subtitle": "Monitoreo, cobertura e impacto científico normalizado en los 17 Objetivos de Desarrollo Sostenible.",
+            "kpi1": "Corpus Total Evaluado",
+            "kpi2": "Artículos con ODS Asignado",
+            "kpi3": "ODS con Presencia Activa",
+            "kpi4": "ODS Dominante",
+            "sec1_title": "Cuadrícula Interactiva de los 17 ODS",
+            "sec1_sub": "Pasa el cursor para ver detalles",
+            "sec2_title": "Distribución Detallada e Indicadores de Impacto Normalizado",
+            "th_sdg": "ODS",
+            "th_goal": "Objetivo de Desarrollo Sostenible",
+            "th_pubs": "Publicaciones",
+            "th_share": "% Corpus",
+            "th_cites": "Citas Totales",
+            "th_fwci": "FWCI Promedio",
+            "th_top10": "Top 10%",
+            "th_diamond": "OA Diamante",
+        }
+    else:
+        ui = {
+            "tag": "Scientometrics & UN 2030 Agenda · KnoMap / SinapsisAI",
+            "subtitle": "Monitoring, coverage, and field-normalized scientific impact across the 17 Sustainable Development Goals.",
+            "kpi1": "Total Evaluated Corpus",
+            "kpi2": "Articles with Assigned SDG",
+            "kpi3": "SDGs with Active Presence",
+            "kpi4": "Dominant SDG",
+            "sec1_title": "Interactive 17-SDG Grid",
+            "sec1_sub": "Hover over cards for details",
+            "sec2_title": "Detailed Distribution & Normalized Impact Indicators",
+            "th_sdg": "SDG",
+            "th_goal": "Sustainable Development Goal",
+            "th_pubs": "Publications",
+            "th_share": "% Corpus",
+            "th_cites": "Total Citations",
+            "th_fwci": "Mean FWCI",
+            "th_top10": "Top 10%",
+            "th_diamond": "Diamond OA",
+        }
+
+    top_sdg_name = ""
+    if top_sdg:
+        top_sdg_name = top_sdg.get("name_es", top_sdg["name"]) if is_es else top_sdg.get("name_en", top_sdg["name"])
+
     html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -569,26 +620,26 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
 <body>
     <div class="container">
         <header class="header-card">
-            <span class="tag">Cienciometría & Agenda 2030 ONU · KnoMap / SinapsisAI</span>
+            <span class="tag">{ui['tag']}</span>
             <h1>{title}</h1>
-            <p class="subtitle">Monitoreo, cobertura e impacto científico normalizado en los 17 Objetivos de Desarrollo Sostenible.</p>
+            <p class="subtitle">{ui['subtitle']}</p>
             <div class="kpi-grid">
                 <div class="kpi-card">
-                    <span class="kpi-label">Corpus Total Evaluado</span>
+                    <span class="kpi-label">{ui['kpi1']}</span>
                     <span class="kpi-val">{total_docs:,}</span>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Artículos con ODS Asignado</span>
+                    <span class="kpi-label">{ui['kpi2']}</span>
                     <span class="kpi-val">{docs_sdg:,} <span style="font-size: 0.85rem; color: #94a3b8;">({cov_pct:.1f}%)</span></span>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">ODS con Presencia Activa</span>
+                    <span class="kpi-label">{ui['kpi3']}</span>
                     <span class="kpi-val">{active_count} <span style="font-size: 0.85rem; color: #94a3b8;">/ 17</span></span>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">ODS Dominante</span>
+                    <span class="kpi-label">{ui['kpi4']}</span>
                     <span class="kpi-val" style="font-size: 1.15rem; color: {top_sdg['color'] if top_sdg else '#38bdf8'};">
-                        {f"ODS {top_sdg['sdg_num']}: {top_sdg['name'][:20]}" if top_sdg and top_sdg['publications_count'] > 0 else "N/A"}
+                        {f"{sdg_prefix} {top_sdg['sdg_num']}: {top_sdg_name[:20]}" if top_sdg and top_sdg['publications_count'] > 0 else "N/A"}
                     </span>
                 </div>
             </div>
@@ -596,8 +647,8 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
 
         <section class="sdg-section">
             <div class="section-title">
-                <span>Cuadrícula Interactiva de los 17 ODS</span>
-                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">Pasa el cursor para ver detalles</span>
+                <span>{ui['sec1_title']}</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">{ui['sec1_sub']}</span>
             </div>
             <div class="sdg-grid">
                 {''.join(cards_html)}
@@ -606,19 +657,19 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
 
         <section class="sdg-section">
             <div class="section-title">
-                <span>Distribución Detallada e Indicadores de Impacto Normalizado</span>
+                <span>{ui['sec2_title']}</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: center; width: 60px;">ODS</th>
-                        <th style="text-align: left;">Objetivo de Desarrollo Sostenible</th>
-                        <th style="text-align: right;">Publicaciones</th>
-                        <th style="text-align: right;">% Corpus</th>
-                        <th style="text-align: right;">Citas Totales</th>
-                        <th style="text-align: right;">FWCI Promedio</th>
-                        <th style="text-align: right;">Top 10%</th>
-                        <th style="text-align: right;">OA Diamante</th>
+                        <th style="text-align: center; width: 60px;">{ui['th_sdg']}</th>
+                        <th style="text-align: left;">{ui['th_goal']}</th>
+                        <th style="text-align: right;">{ui['th_pubs']}</th>
+                        <th style="text-align: right;">{ui['th_share']}</th>
+                        <th style="text-align: right;">{ui['th_cites']}</th>
+                        <th style="text-align: right;">{ui['th_fwci']}</th>
+                        <th style="text-align: right;">{ui['th_top10']}</th>
+                        <th style="text-align: right;">{ui['th_diamond']}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -633,40 +684,59 @@ def render_html_dashboard(data: Dict[str, Any], title: str) -> str:
     return html
 
 
-def generate_markdown_report(data: Dict[str, Any], title: str) -> str:
+def generate_markdown_report(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    is_es = (lang == "es")
     stats = data["sdg_stats"]
     total_docs = data["total_docs"]
     docs_sdg = data["docs_with_sdg"]
     cov_pct = data["coverage_pct"]
+    sdg_prefix = "ODS" if is_es else "SDG"
 
     active_sdgs = [s for s in stats.values() if s["publications_count"] > 0]
     active_sdgs.sort(key=lambda x: x["publications_count"], reverse=True)
 
-    lines = [
-        f"# {title}",
-        "",
-        "## Resumen Ejecutivo de Alineación ODS (Agenda 2030 ONU)",
-        f"- **Corpus Total Analizado:** {total_docs:,} publicaciones.",
-        f"- **Publicaciones vinculadas a ODS:** {docs_sdg:,} ({cov_pct:.2f}% de cobertura temática).",
-        f"- **ODS con Presencia Activa:** {len(active_sdgs)} de 17 objetivos.",
-        "",
-        "| ODS | Objetivo de Desarrollo Sostenible | Publicaciones | % del Total | Citas Totales | FWCI Promedio | Top 10% (%) | OA Diamante (%) |",
-        "|---|---|---:|---:|---:|---:|---:|---:|",
-    ]
+    if is_es:
+        lines = [
+            f"# {title}",
+            "",
+            "## Resumen Ejecutivo de Alineación ODS (Agenda 2030 ONU)",
+            f"- **Corpus Total Analizado:** {total_docs:,} publicaciones.",
+            f"- **Publicaciones vinculadas a ODS:** {docs_sdg:,} ({cov_pct:.2f}% de cobertura temática).",
+            f"- **ODS con Presencia Activa:** {len(active_sdgs)} de 17 objetivos.",
+            "",
+            "| ODS | Objetivo de Desarrollo Sostenible | Publicaciones | % del Total | Citas Totales | FWCI Promedio | Top 10% (%) | OA Diamante (%) |",
+            "|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    else:
+        lines = [
+            f"# {title}",
+            "",
+            "## Executive Summary of SDG Alignment (UN 2030 Agenda)",
+            f"- **Total Corpus Analyzed:** {total_docs:,} publications.",
+            f"- **Publications Linked to SDGs:** {docs_sdg:,} ({cov_pct:.2f}% thematic coverage).",
+            f"- **SDGs with Active Presence:** {len(active_sdgs)} of 17 goals.",
+            "",
+            "| SDG | Sustainable Development Goal | Publications | % of Total | Total Citations | Mean FWCI | Top 10% (%) | Diamond OA (%) |",
+            "|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
 
     for s in active_sdgs:
+        name = s.get("name_es", s["name"]) if is_es else s.get("name_en", s["name"])
         lines.append(
-            f"| **ODS {s['sdg_num']}** | {s['name']} | {s['publications_count']:,} | {s['share_pct']:.2f}% | "
+            f"| **{sdg_prefix} {s['sdg_num']}** | {name} | {s['publications_count']:,} | {s['share_pct']:.2f}% | "
             f"{s['total_citations']:,} | {s['mean_fwci']:.2f} | {s['top_10_pct']:.1f}% | {s['diamond_pct']:.1f}% |"
         )
 
     lines.append("")
-    lines.append("## Artículos Clave por ODS Prioritarios")
+    lines.append("## Artículos Clave por ODS Prioritarios" if is_es else "## Key Papers by Priority SDGs")
     for s in active_sdgs[:5]:
-        lines.append(f"### ODS {s['sdg_num']}: {s['name']} ({s['publications_count']} docs, FWCI={s['mean_fwci']:.2f})")
+        name = s.get("name_es", s["name"]) if is_es else s.get("name_en", s["name"])
+        lines.append(f"### {sdg_prefix} {s['sdg_num']}: {name} ({s['publications_count']} docs, FWCI={s['mean_fwci']:.2f})")
         for p in s["sample_papers"]:
             doi_str = f" [DOI: {p['doi']}]" if p.get("doi") else ""
-            lines.append(f"- *{p['title']}* ({p['year'] or 'S/A'}). Citas: {p['citations']}.{doi_str}")
+            cites_lbl = "Citas" if is_es else "Citations"
+            na_yr = "S/A" if is_es else "N/A"
+            lines.append(f"- *{p['title']}* ({p['year'] or na_yr}). {cites_lbl}: {p['citations']}.{doi_str}")
         lines.append("")
 
     return "\n".join(lines)
@@ -674,76 +744,99 @@ def generate_markdown_report(data: Dict[str, Any], title: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SDG Impact Intelligence CLI: Mapeo y generación dual (HTML interactivo + PNG 300 DPI ES/EN)."
+        description="SDG Impact Intelligence CLI: Mapping and dual generation (Interactive HTML + 300 DPI PNG ES/EN)."
+    )
+    parser.add_argument(
+        "subcommand",
+        nargs="?",
+        default=None,
+        help="Optional action name (e.g., profile).",
+    )
+    parser.add_argument(
+        "--lang",
+        choices=["en", "es"],
+        default="en",
+        help="Language for dashboard, report, and labels (default: en).",
     )
     parser.add_argument(
         "--workspace",
         "-w",
         default=".",
-        help="Directorio del workspace (default: directorio actual).",
+        help="Workspace directory (default: current directory).",
     )
     parser.add_argument(
         "--input",
         "-i",
         default=None,
-        help="Ruta al archivo tabular (.parquet, .json, .csv). Si se omite, busca corpus.parquet en el workspace.",
+        help="Path to tabular file (.parquet, .json, .csv). Defaults to corpus.parquet in workspace.",
     )
     parser.add_argument(
         "--sdg-col",
         default=None,
-        help="Nombre explícito de la columna de ODS (default: auto-detecta 'sdgs', 'sdg_ids', 'ODS_ID', etc.).",
+        help="Explicit SDG column name (default: auto-detects 'sdgs', 'sdg_ids', 'ODS_ID', etc.).",
     )
     parser.add_argument(
         "--title",
-        default="Alineación Científica con los 17 Objetivos de Desarrollo Sostenible (Agenda 2030)",
-        help="Título del reporte y dashboard HTML.",
+        default=None,
+        help="Title for the report and HTML dashboard.",
     )
     parser.add_argument(
         "--output-html",
         default=None,
-        help="Ruta del archivo HTML resultante (default: <workspace>/reportes/sdg_impact_dashboard.html).",
+        help="Path to resulting HTML file (default: <workspace>/reportes/sdg_impact_dashboard.html).",
     )
     parser.add_argument(
         "--output-png-es",
         default=None,
-        help="Ruta de la imagen de publicación en español (default: <workspace>/reportes/sdg_grid_es.png).",
+        help="Path to Spanish publication PNG image (default: <workspace>/reportes/sdg_grid_es.png).",
     )
     parser.add_argument(
         "--output-png-en",
         default=None,
-        help="Ruta de la imagen de publicación en inglés (default: <workspace>/reportes/sdg_grid_en.png).",
+        help="Path to English publication PNG image (default: <workspace>/reportes/sdg_grid_en.png).",
     )
     parser.add_argument(
         "--output-json",
+        "--output",
+        dest="output_json",
         default=None,
-        help="Ruta del archivo JSON de métricas (default: <workspace>/reportes/sdg_impact_summary.json).",
+        help="Path to JSON metrics file (default: <workspace>/reportes/sdg_impact_summary.json).",
     )
     parser.add_argument(
         "--output-md",
         default=None,
-        help="Ruta del archivo Markdown resultante (default: <workspace>/reportes/sdg_impact_report.md).",
+        help="Path to resulting Markdown file (default: <workspace>/reportes/sdg_impact_report.md).",
     )
     parser.add_argument(
         "--dpi",
         type=int,
         default=300,
-        help="Resolución DPI para las imágenes de publicación PNG (default: 300).",
+        help="DPI resolution for publication PNG images (default: 300).",
     )
 
     args = parser.parse_args()
+    lang = args.lang or "en"
+    is_es = (lang == "es")
+
+    default_title = (
+        "Alineación Científica con los 17 Objetivos de Desarrollo Sostenible (Agenda 2030)"
+        if is_es
+        else "Scientific Alignment with the 17 Sustainable Development Goals (2030 Agenda)"
+    )
+    title = args.title or default_title
 
     workspace = Path(args.workspace).resolve()
     reports_dir = workspace / "reportes"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     input_path = resolve_input_path(workspace, args.input)
-    print(f"[*] Leyendo corpus desde: {input_path}")
+    print(f"[*] Reading corpus from: {input_path}")
     df = load_corpus(input_path)
-    print(f"[*] Registros cargados: {len(df):,}")
+    print(f"[*] Loaded records: {len(df):,}")
 
-    data = compute_sdg_metrics(df, custom_sdg_col=args.sdg_col)
+    data = compute_sdg_metrics(df, custom_sdg_col=args.sdg_col, lang=lang)
     data["input_path"] = str(input_path)
-    data["title"] = args.title
+    data["title"] = title
 
     html_path = Path(args.output_html) if args.output_html else reports_dir / "sdg_impact_dashboard.html"
     png_es_path = Path(args.output_png_es) if args.output_png_es else reports_dir / "sdg_grid_es.png"
@@ -751,37 +844,41 @@ def main():
     json_path = Path(args.output_json) if args.output_json else reports_dir / "sdg_impact_summary.json"
     md_path = Path(args.output_md) if args.output_md else reports_dir / "sdg_impact_report.md"
 
-    # 1. Guardar JSON
+    # 1. Save JSON
+    json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"[+] Resumen JSON guardado en: {json_path}")
+    print(f"[+] JSON summary saved to: {json_path}")
 
-    # 2. Guardar Markdown
-    md_content = generate_markdown_report(data, args.title)
+    # 2. Save Markdown
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_content = generate_markdown_report(data, title, lang=lang)
     md_path.write_text(md_content, encoding="utf-8")
-    print(f"[+] Reporte Markdown guardado en: {md_path}")
+    print(f"[+] Markdown report saved to: {md_path}")
 
-    # 3. Guardar HTML Dashboard interactivo
-    html_content = render_html_dashboard(data, args.title)
+    # 3. Save interactive HTML Dashboard
+    html_path.parent.mkdir(parents=True, exist_ok=True)
+    html_content = render_html_dashboard(data, title, lang=lang)
     html_path.write_text(html_content, encoding="utf-8")
-    print(f"[+] Dashboard interactivo HTML guardado en: {html_path}")
+    print(f"[+] Interactive HTML dashboard saved to: {html_path}")
 
-    # 4. Guardar Cuadrículas PNG de Publicación a 300 DPI (ES y EN)
+    # 4. Save 300 DPI Publication PNG Grids (ES and EN)
     render_sdg_grid_image(data, png_es_path, lang="es", dpi=args.dpi)
-    print(f"[+] Cuadrícula PNG para publicación (ES, {args.dpi} DPI): {png_es_path}")
+    print(f"[+] Publication PNG grid (ES, {args.dpi} DPI): {png_es_path}")
 
     render_sdg_grid_image(data, png_en_path, lang="en", dpi=args.dpi)
-    print(f"[+] Cuadrícula PNG para publicación (EN, {args.dpi} DPI): {png_en_path}")
+    print(f"[+] Publication PNG grid (EN, {args.dpi} DPI): {png_en_path}")
 
-    print("\n--- RESUMEN EJECUTIVO ODS ---")
-    print(f"Total documentos: {data['total_docs']:,}")
-    print(f"Documentos con ODS: {data['docs_with_sdg']:,} ({data['coverage_pct']}%)")
+    sdg_prefix = "ODS" if is_es else "SDG"
+    print(f"\n--- {sdg_prefix} EXECUTIVE SUMMARY ---")
+    print(f"Total documents: {data['total_docs']:,}")
+    print(f"Documents with {sdg_prefix}: {data['docs_with_sdg']:,} ({data['coverage_pct']}%)")
     active_sdgs = sorted(
         [s for s in data["sdg_stats"].values() if s["publications_count"] > 0],
         key=lambda x: x["publications_count"],
         reverse=True,
     )
     for s in active_sdgs[:5]:
-        print(f"  - ODS {s['sdg_num']} ({s['name']}): {s['publications_count']:,} docs ({s['share_pct']}%), FWCI={s['mean_fwci']:.2f}")
+        print(f"  - {sdg_prefix} {s['sdg_num']} ({s['name']}): {s['publications_count']:,} docs ({s['share_pct']}%), FWCI={s['mean_fwci']:.2f}")
 
 
 if __name__ == "__main__":

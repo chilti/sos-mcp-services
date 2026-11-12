@@ -26,6 +26,31 @@ from services.knomap.tools.incites_tools import (
     compute_strategic_growth_matrix,
 )
 
+I18N = {
+    "en": {
+        "title": "Clarivate InCites Strategic Growth Matrix ({ind})",
+        "xlabel": "Current Volume ({ind})",
+        "ylabel": "Compound Annual Growth Rate - CAGR (%)",
+        "quad_labels": {
+            "Star Leaders (High Volume, High CAGR)": "Star Leaders (High Volume, High CAGR)",
+            "Emerging Stars (Moderate Volume, High CAGR)": "Emerging Stars (Moderate Volume, High CAGR)",
+            "Established Giants (High Volume, Low CAGR)": "Established Giants (High Volume, Low CAGR)",
+            "Low Priority (Low Volume, Low CAGR)": "Low Priority (Low Volume, Low CAGR)",
+        },
+    },
+    "es": {
+        "title": "Matriz de Crecimiento Estratégico Clarivate InCites ({ind})",
+        "xlabel": "Volumen Actual ({ind})",
+        "ylabel": "Tasa de Crecimiento Anual Compuesto - CAGR (%)",
+        "quad_labels": {
+            "Star Leaders (High Volume, High CAGR)": "Líderes Estrella",
+            "Emerging Stars (Moderate Volume, High CAGR)": "Estrellas Emergentes",
+            "Established Giants (High Volume, Low CAGR)": "Gigantes Consolidados",
+            "Low Priority (Low Volume, Low CAGR)": "Baja Prioridad",
+        },
+    },
+}
+
 
 def render_growth_matrix_figures(res: dict, plot_dir: str, dpi: int = 300):
     """Renders 300 DPI bilingual PNGs for Strategic Growth Matrix (CAGR % vs Volume)."""
@@ -43,24 +68,25 @@ def render_growth_matrix_figures(res: dict, plot_dir: str, dpi: int = 300):
     med_cagr = float(thresholds.get("cagr_pct_median", 0.0))
     ind_name = res.get("indicator", "Documents")
 
-    quad_styles = [
-        ("Star Leaders (High Volume, High CAGR)", "Líderes Estrella", "#10b981"),
-        ("Emerging Stars (Moderate Volume, High CAGR)", "Estrellas Emergentes", "#3b82f6"),
-        ("Established Giants (High Volume, Low CAGR)", "Gigantes Consolidados", "#f59e0b"),
-        ("Low Priority (Low Volume, Low CAGR)", "Baja Prioridad", "#94a3b8"),
+    quad_colors = [
+        ("Star Leaders (High Volume, High CAGR)", "#10b981"),
+        ("Emerging Stars (Moderate Volume, High CAGR)", "#3b82f6"),
+        ("Established Giants (High Volume, Low CAGR)", "#f59e0b"),
+        ("Low Priority (Low Volume, Low CAGR)", "#94a3b8"),
     ]
 
-    for lang in ["es", "en"]:
+    for lang in ["en", "es"]:
+        t = I18N[lang]
         fig, ax = plt.subplots(figsize=(10, 7), dpi=dpi, facecolor="white")
         ax.set_facecolor("white")
 
-        for key_en, label_es, color in quad_styles:
+        for key_en, color in quad_colors:
             pts = quads.get(key_en, [])
             if not pts:
                 continue
             xs = [float(e.get("current_volume", 0)) for e in pts]
             ys = [float(e.get("cagr_pct", 0)) for e in pts]
-            lbl = label_es if lang == "es" else key_en
+            lbl = t["quad_labels"].get(key_en, key_en)
             ax.scatter(xs, ys, c=color, s=75, alpha=0.85, edgecolors="#1e293b", linewidths=0.7, label=lbl, zorder=4)
             for e in pts[:12]:
                 ax.annotate(
@@ -75,12 +101,9 @@ def render_growth_matrix_figures(res: dict, plot_dir: str, dpi: int = 300):
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-        if lang == "es":
-            ax.set_xlabel(f"Volumen Actual ({ind_name})", fontsize=11, fontweight="bold", color="#0f172a")
-            ax.set_ylabel("Tasa de Crecimiento Anual Compuesto - CAGR (%)", fontsize=11, fontweight="bold", color="#0f172a")
-        else:
-            ax.set_xlabel(f"Current Volume ({ind_name})", fontsize=11, fontweight="bold", color="#0f172a")
-            ax.set_ylabel("Compound Annual Growth Rate - CAGR (%)", fontsize=11, fontweight="bold", color="#0f172a")
+        ax.set_title(t["title"].format(ind=ind_name), fontsize=12, fontweight="bold", color="#0f172a", pad=10)
+        ax.set_xlabel(t["xlabel"].format(ind=ind_name), fontsize=11, fontweight="bold", color="#0f172a")
+        ax.set_ylabel(t["ylabel"], fontsize=11, fontweight="bold", color="#0f172a")
 
         ax.legend(frameon=True, facecolor="white", edgecolor="#e2e8f0", fontsize=9, loc="best")
         out_path = os.path.join(plot_dir, f"incites_growth_matrix_{lang}.png")
@@ -90,11 +113,13 @@ def render_growth_matrix_figures(res: dict, plot_dir: str, dpi: int = 300):
 
 def main():
     parser = argparse.ArgumentParser(description="Standalone CLI for Clarivate InCites Benchmarking & Analytics")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Language for plot labels and output (default: en)")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     p_ins = subparsers.add_parser("inspect", help="Inspect InCites package or CSV")
     p_ins.add_argument("--input", required=True, help="Path to InCites .zip, directory, or .csv")
     p_ins.add_argument("--output", default=None, help="Optional JSON output file")
+    p_ins.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     p_mat = subparsers.add_parser("unit-matrix", help="Extract multidimensional matrix for SOM")
     p_mat.add_argument("--session-dir", required=True, help="Session dir or package path")
@@ -104,6 +129,7 @@ def main():
     p_mat.add_argument("--min-threshold", type=float, default=0.0, help="Minimum document threshold")
     p_mat.add_argument("--top-n", type=int, default=100, help="Top N entities")
     p_mat.add_argument("--output", required=True, help="Output file (.json or .parquet)")
+    p_mat.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     p_tr = subparsers.add_parser("trend", help="Extract annual Trend series with ECMA smoothing")
     p_tr.add_argument("--session-dir", required=True, help="Session dir or package path")
@@ -112,6 +138,7 @@ def main():
     p_tr.add_argument("--indicators", default=None, help="Comma-separated indicators")
     p_tr.add_argument("--smoothing", choices=["ecma3", "ecma5", "raw"], default="ecma3")
     p_tr.add_argument("--output", required=True, help="Output JSON file")
+    p_tr.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     p_gr = subparsers.add_parser("growth-matrix", help="Compute Strategic Growth Matrix (CAGR %% vs Volume)")
     p_gr.add_argument("--session-dir", required=True, help="Session dir or package path")
@@ -121,6 +148,7 @@ def main():
     p_gr.add_argument("--output", required=True, help="Output JSON file")
     p_gr.add_argument("--plot-dir", default=None, help="Directory to export 300 DPI bilingual figures")
     p_gr.add_argument("--dpi", type=int, default=300)
+    p_gr.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     args = parser.parse_args()
 

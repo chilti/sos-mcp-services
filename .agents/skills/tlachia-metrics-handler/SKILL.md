@@ -1,111 +1,113 @@
 ---
 name: tlachia-metrics-handler
 description: >-
-  Gestor integral de paquetes exportados de TlachIA Metrics (.zip y directorios). Inspecciona inventarios de unidades (Locations, Organizations, Sources, Topics), extrae matrices de indicadores cienciométricos listas para el entrenamiento del SOM y recupera el archivo canónico de metadatos de documentos para análisis de redes bibliométricas (coautoría, acoplamiento y coocurrencia).
+  Comprehensive handler for exported TlachIA Metrics packages (.zip and directories). Inspects unit inventories (Locations, Organizations, Sources, Topics), extracts scientometric indicator matrices ready for SOM training, and retrieves the canonical document metadata file for bibliometric network analysis (co-authorship, bibliographic coupling, and co-occurrence). Respond and label outputs in the user's language.
 ---
 
-# TlachIA Metrics Handler: Gestor de Paquetes y Extracción Analítica
+# TlachIA Metrics Handler: Package Manager and Analytical Extraction
 
-## 1. Propósito y Activación
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-Esta skill se activa cuando el usuario proporciona un **paquete exportado desde TlachIA Metrics** (archivo `.zip` o directorio descomprimido, por ejemplo `Artificial_Intelligence_in_Education.zip`) y requiere:
+## 1. Purpose and Activation
 
-1. **Inspeccionar el Inventario del Paquete:** Identificar las unidades analíticas disponibles (`Locations`, `Organizations`, `Publication Sources`, `Research Areas Topic`, `Corpus`), los periodos temporales y los metadatos generales del corpus.
-2. **Extraer Matrices Multidimensionales para el SOM:** Extraer perfiles tabulares limpios $[N \times D]$ de entidades específicas (ej. países en `Locations`, universidades en `Organizations`) seleccionando los indicadores cienciométricos deseados para enviarlos a [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md), [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md) o [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
-3. **Localizar y Preparar el Archivo de Metadatos de Obras (`works_file`):** Extraer y validar el archivo canónico de documentos (`*_openalex_works.csv` o `.parquet`) para su posterior consumo en análisis de redes complejas con [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) (coautoría, acoplamiento bibliográfico, cocitación y coocurrencia de palabras clave).
+This skill activates when the user provides a **package exported from TlachIA Metrics** (a `.zip` file or unpacked directory, e.g., `Artificial_Intelligence_in_Education.zip`) and requires:
+
+1. **Inspecting the Package Inventory:** Identifying available analytical units (`Locations`, `Organizations`, `Publication Sources`, `Research Areas Topic`, `Corpus`), temporal periods, and general corpus metadata.
+2. **Extracting Multidimensional Matrices for SOM:** Extracting clean $[N \times D]$ tabular profiles of specific entities (e.g., countries in `Locations`, universities in `Organizations`) by selecting desired scientometric indicators to feed into [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md), [`neural-longitudinal-mapping`](file:///home/labsom/knomap/.agents/skills/neural-longitudinal-mapping/SKILL.md), or [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
+3. **Locating and Preparing the Works Metadata File (`works_file`):** Extracting and validating the canonical documents file (`*_openalex_works.csv` or `.parquet`) for downstream complex network analysis with [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md) (co-authorship, bibliographic coupling, co-citation, and keyword co-occurrence).
 
 ---
 
-## 2. Anatomía de un Paquete TlachIA Metrics
+## 2. Anatomy of a TlachIA Metrics Package
 
-Los paquetes canónicos descargados de TlachIA Metrics contienen una arquitectura estandarizada en 5 niveles:
+Canonical packages downloaded from TlachIA Metrics follow a standardized 5-tier architecture:
 
 ```
-[Paquete TlachIA Metrics / .zip]
-├── manifest.json                                # Metadatos del corpus, fecha y parámetros de consulta
-├── LEEME_ESTRUCTURA.txt                         # Documentación de estructura y campos
-├── 01_Matrices_Desempeño_Longitudinal/          # Matrices con variaciones interperiódicas (Δ% Docs, Δ FWCI)
+[TlachIA Metrics Package / .zip]
+├── manifest.json                                # Corpus metadata, date, and query parameters
+├── LEEME_ESTRUCTURA.txt                         # Structure and field documentation
+├── 01_Matrices_Desempeño_Longitudinal/          # Matrices with inter-period variations (Δ% Docs, Δ FWCI)
 │   ├── Locations Performance Matrix.csv
 │   └── Organizations Performance Matrix.csv
-├── 02_Periodos_Consecutivos/                    # Tablas desagregadas por lustros o ventanas fijas
+├── 02_Periodos_Consecutivos/                    # Tables disaggregated by 5-year or fixed windows
 │   ├── Locations 2016-2020.csv
 │   └── Locations 2021-2026.csv
-├── 03_Historico_Completo/                       # Perfil acumulado de todo el horizonte temporal
-│   ├── Locations.csv                            # (150+ países con 30+ indicadores)
-│   └── Organizations.csv                        # (Universidades e institutos)
-├── 04_Tendencias_Anuales/                       # Series temporales año por año
-│   └── Locations Trend.csv                      # (Mediciones anuales para suavizado y trayectorias)
-└── 05_Tablas_Parquet_y_Datos/                   # Datos columnares y obras completas
-    ├── <Nombre_Corpus>_openalex_works.csv       # Archivo canónico de documentos enriquecidos
-    └── locations_full.parquet                   # Versión binaria de alta velocidad
+├── 03_Historico_Completo/                       # Cumulative profile across the full time horizon
+│   ├── Locations.csv                            # (150+ countries with 30+ indicators)
+│   └── Organizations.csv                        # (Universities and institutes)
+├── 04_Tendencias_Anuales/                       # Year-by-year time series
+│   └── Locations Trend.csv                      # (Annual measurements for smoothing and trajectories)
+└── 05_Tablas_Parquet_y_Datos/                   # Columnar data and full works
+    ├── <Corpus_Name>_openalex_works.csv         # Canonical enriched document file
+    └── locations_full.parquet                   # High-speed binary version
 ```
 
 ---
 
-## 3. Correspondencia con la Interfaz de Usuario en KnoMap
+## 3. Correspondence with the KnoMap User Interface
 
-Cuando este archivo se carga visualmente en la interfaz de KnoMap, el comportamiento del agente debe emular la experiencia del usuario en la plataforma:
+When this file is visually loaded into the KnoMap interface, the agent's behavior emulates the user's experience on the platform:
 
-| Pestaña en KnoMap | Entidad Canónica (`unit_name`) | Objeto de Análisis |
+| KnoMap Tab | Canonical Entity (`unit_name`) | Object of Analysis |
 | :--- | :--- | :--- |
-| **Locations** | `Locations` | Países y territorios (código ISO-2 / ISO-3) |
-| **Organizations** | `Organizations` | Universidades, centros de investigación y dependencias |
-| **Sources** | `Publication Sources` | Revistas científicas, conferencias y repositorios |
-| **Topics / Areas** | `Research Areas Topic` | Líneas de investigación temáticas (Topics OpenAlex) |
-| **Subfields / Fields**| `Research Areas Subfield` / `Field`| Taxonomía disciplinar superior |
-| **SDG** | `Research Areas SDG` | Objetivos de Desarrollo Sostenible (ODS 1–17) |
-| **Corpus** | `Corpus` | Indicadores macro agregados del campo completo |
+| **Locations** | `Locations` | Countries and territories (ISO-2 / ISO-3 code) |
+| **Organizations** | `Organizations` | Universities, research centers, and departments |
+| **Sources** | `Publication Sources` | Scientific journals, conferences, and repositories |
+| **Topics / Areas** | `Research Areas Topic` | Thematic research lines (OpenAlex Topics) |
+| **Subfields / Fields**| `Research Areas Subfield` / `Field`| Higher-level disciplinary taxonomy |
+| **SDG** | `Research Areas SDG` | Sustainable Development Goals (SDGs 1–17) |
+| **Corpus** | `Corpus` | Macro aggregate indicators of the entire field |
 
-* **Acción *«Send to SOM»*:** En KnoMap, al seleccionar una entidad y un conjunto de columnas numéricas en la tabla, el frontend envía los datos al motor SOM. El agente reproduce este flujo programáticamente mediante las herramientas MCP.
+* ***«Send to SOM»* Action:** In KnoMap, selecting an entity and a set of numeric columns in the table sends the data to the SOM engine. The agent reproduces this workflow programmatically via CLI or MCP tools.
 
 ---
 
-## 4. Protocolo MCP de Extracción y Modelado
+## 4. MCP Extraction and Modeling Protocol
 
-El agente ejecuta el siguiente flujo paso a paso:
+The agent executes the following step-by-step workflow:
 
 ```
 +-------------------------------------------------------------------------------+
-|                       FLUJO DE TRABAJO TLACHIA -> SOM & REDES                 |
+|                      TLACHIA -> SOM & NETWORKS WORKFLOW                       |
 +-------------------------------------------------------------------------------+
 | 1. inspect_tlachia_package(package_path="...")                                |
-|       ↓ (Retorna unidades disponibles, session_dir y works_file)              |
-| 2. DECISIÓN DEL USUARIO:                                                      |
-|       ├─ A. Modelado de Perfiles SOM:                                         |
+|       ↓ (Returns available units, session_dir, and works_file)                |
+| 2. USER DECISION:                                                             |
+|       ├─ A. SOM Profile Modeling:                                             |
 |       │     get_tlachia_unit_matrix(unit_name="Locations", indicators=[...])  |
-|       │     ↓ (Pasa data & labels a suggest_grid_size y train_som)            |
-|       │     Aplicar metodología en som-methodological-expert                  |
+|       │     ↓ (Passes data & labels to suggest_grid_size and train_som)       |
+|       │     Apply methodology in som-methodological-expert                    |
 |       │                                                                       |
-|       ├─ B. Trayectorias Temporales (Órbita de Países):                       |
+|       ├─ B. Temporal Trajectories (Country Orbits):                           |
 |       │     get_tlachia_temporal_evolution(entities=["RU","US","CN",...])     |
-|       │     ↓ (Aplicar splines cúbicos y medias móviles centradas)            |
-|       │     Aplicar metodología en som-trajectory-mapping (máx. 5 entidades)   |
+|       │     ↓ (Apply cubic splines and centered moving averages)              |
+|       │     Apply methodology in som-trajectory-mapping (max. 5 entities)     |
 |       │                                                                       |
-|       └─ C. Análisis de Redes Bibliométricas:                                 |
+|       └─ C. Bibliometric Network Analysis:                                    |
 |             get_tlachia_works_metadata(session_dir="...")                     |
-|             ↓ (Obtiene works_file_path con columnas de autores/referencias)   |
-|             Transferir a bibliometric-network-analyst                         |
+|             ↓ (Obtains works_file_path with author/reference columns)         |
+|             Hand off to bibliometric-network-analyst                          |
 +-------------------------------------------------------------------------------+
 ```
 
-### Paso 1: Inspeccionar el Paquete
-Invocar `knomap-som-engine -> inspect_tlachia_package`:
+### Step 1: Inspect the Package
+Invoke `knomap-som-engine -> inspect_tlachia_package`:
 ```python
-# Ejemplo de llamada MCP:
+# Example MCP call:
 inspect_tlachia_package(
     package_path=r"C:\Users\jlja\Downloads\Artificial_Intelligence_in_Education.zip"
 )
 ```
-* **Respuesta:** Devuelve `session_dir` (directorio temporal indexado), lista de `available_units` y metadatos del archivo de obras/artículos (`document_count`).
+* **Response:** Returns `session_dir` (indexed temporary directory), `available_units` list, and metadata for the works/articles file (`document_count`).
 
-### Paso 2: Extraer la Matriz de Desempeño (ej. Países en `Locations`)
-Invocar `knomap-som-engine -> get_tlachia_unit_matrix`:
+### Step 2: Extract the Performance Matrix (e.g., Countries in `Locations`)
+Invoke `knomap-som-engine -> get_tlachia_unit_matrix`:
 ```python
-# Extracción de países con indicadores balanceados:
+# Country extraction with balanced indicators:
 get_tlachia_unit_matrix(
     session_dir_or_zip=session_dir,
     unit_name="Locations",
-    period_mode="Whole",        # "Whole" (histórico) o "5Years" (reciente)
+    period_mode="Whole",        # "Whole" (historical) or "5Years" (recent)
     selected_indicators=[
         "Field-Weighted Citation Impact (FWCI)",
         "Citation Impact",
@@ -118,63 +120,63 @@ get_tlachia_unit_matrix(
         "% Industry Collaborations",
         "Share"
     ],
-    limit_top_n=50,             # Top 50 países líderes por volumen
-    min_documents=10.0          # Opcional: umbral mínimo de masa crítica
+    limit_top_n=50,             # Top 50 leading countries by volume
+    min_documents=10.0          # Optional: minimum critical mass threshold
 )
 ```
-* **Respuesta:** Devuelve `labels` (códigos de país), `indicators` y `data` (matriz $[N \times D]$ de números reales limpios sin NaNs).
+* **Response:** Returns `labels` (country codes), `indicators`, and `data` ($[N \times D]$ matrix of clean real numbers without NaNs).
 
-### Paso 3: Enviar al Pipeline SOM
-Una vez obtenida la matriz `data` y las etiquetas `labels`:
-1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para obtener el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
-2. **Entrenar SOM:** Invocar `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
-3. **Optimizar Clusters:** Invocar `knomap-som-engine -> evaluate_som_clusters` para calibrar el $K$ óptimo vía Silhouette Score.
-4. **Interpretar Resultados:** Examinar la U-Matrix y los mapas de componentes para identificar clusters de países con perfiles análogos (pares legítimos), polos de excelencia y perfiles atípicos.
+### Step 3: Send to the SOM Pipeline
+Once the `data` matrix and `labels` are obtained:
+1. **Compute Dimensions:** Invoke `knomap-som-engine -> suggest_grid_size(data=data)` to obtain the SVD aspect ratio ($\sigma_1/\sigma_2$) and over-grid size ($20N\text{--}30N$ neurons according to [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
+2. **Train SOM:** Invoke `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
+3. **Optimize Clusters:** Invoke `knomap-som-engine -> evaluate_som_clusters` to calibrate optimal $K$ via Silhouette Score.
+4. **Interpret Results:** Examine the U-Matrix and component planes to identify clusters of countries with analogous profiles (legitimate peers), poles of excellence, and outlier profiles.
 
-### Paso 4: Recuperar el Archivo de Obras para Redes Bibliométricas
-Si el usuario desea analizar redes de colaboración científica entre autores, instituciones o países, o bien redes de co-ocurrencia temática o acoplamiento bibliográfico:
-Invocar `knomap-som-engine -> get_tlachia_works_metadata`:
+### Step 4: Retrieve the Works File for Bibliometric Networks
+If the user wishes to analyze scientific collaboration networks among authors, institutions, or countries, or thematic co-occurrence / bibliographic coupling networks:
+Invoke `knomap-som-engine -> get_tlachia_works_metadata`:
 ```python
 get_tlachia_works_metadata(session_dir_or_zip=session_dir)
 ```
-* **Respuesta:** Proporciona la ruta absoluta `works_file_path` (ej. `.../Artificial_Intelligence_in_Education_openalex_works.csv`), confirma el volumen de documentos (e.g. 38,657) y valida que cuenta con las columnas requeridas:
-  * `author_names` / `author_ids` $\rightarrow$ Redes de coautoría.
-  * `institution_names` / `country_codes` $\rightarrow$ Redes de colaboración institucional y geopolítica.
-  * `referenced_works` $\rightarrow$ Acoplamiento bibliográfico y cocitación.
-  * `keywords` / `concepts` $\rightarrow$ Redes de coocurrencia conceptual.
-* Esta ruta queda lista para transferirse directamente a [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md).
+* **Response:** Provides the absolute `works_file_path` (e.g., `.../Artificial_Intelligence_in_Education_openalex_works.csv`), confirms document volume (e.g., 38,657), and validates that required columns are present:
+  * `author_names` / `author_ids` $\rightarrow$ Co-authorship networks.
+  * `institution_names` / `country_codes` $\rightarrow$ Institutional and geopolitical collaboration networks.
+  * `referenced_works` $\rightarrow$ Bibliographic coupling and co-citation.
+  * `keywords` / `concepts` $\rightarrow$ Conceptual co-occurrence networks.
+* This path is ready to be passed directly to [`bibliometric-network-analyst`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md).
 
 ---
 
-## 5. Batería de Indicadores Canónicos para `Locations` (Países)
+## 5. Canonical Indicator Suite for `Locations` (Countries)
 
-Al asesorar al usuario en la selección de indicadores para caracterizar el perfil de desempeño de los países, se recomienda la siguiente batería equilibrada de 4 dimensiones:
+When advising the user on selecting indicators to characterize country performance profiles, the following balanced 5-dimension suite is recommended:
 
-1. **Capacidad y Producción:**
-   * `Documents`: Volumen absoluto de artículos del país en el tema.
-   * `Share`: Porcentaje de participación sobre el total mundial del corpus.
-2. **Impacto Normalizado y Visibilidad:**
-   * `Field-Weighted Citation Impact (FWCI)`: Citas normalizadas por campo, año y tipo de documento (Mundial = 1.0).
-   * `Citation Impact`: Citas promedio por documento.
-   * `Average Percentile`: Percentil promedio en ranking de citas (Mundial = 50.0).
-3. **Excelencia Científica:**
-   * `% Documents in Top 10%`: Proporción de artículos en el decil superior mundial.
-   * `% Documents in Top 1%`: Proporción en el percentil de élite internacional.
-4. **Ciencia Abierta y Modalidad de Publicación:**
-   * `% All Open Access Documents`: Grado de apertura general.
-   * `% Free to Read / Diamond Documents`: Publicación en Acceso Abierto Diamante (sin cobro de APC).
-   * `Estimated Diamond Savings (USD)`: Ahorro acumulado generado por la vía Diamante.
-5. **Colaboración e Internacionalización:**
-   * `% International Collaborations`: Grado de inserción en redes transnacionales.
-   * `% Industry Collaborations`: Vínculo con empresas y sector productivo.
-   * `% Global South Collaborations`: Colaboración intrarregional o con países del Sur Global.
+1. **Capacity and Output:**
+   * `Documents`: Absolute volume of articles from the country in the topic.
+   * `Share`: Percentage share of total global corpus output.
+2. **Normalized Impact and Visibility:**
+   * `Field-Weighted Citation Impact (FWCI)`: Citations normalized by field, year, and document type (World = 1.0).
+   * `Citation Impact`: Average citations per document.
+   * `Average Percentile`: Average citation ranking percentile (World = 50.0).
+3. **Scientific Excellence:**
+   * `% Documents in Top 10%`: Proportion of articles in the top global decile.
+   * `% Documents in Top 1%`: Proportion in the international elite percentile.
+4. **Open Science and Publishing Mode:**
+   * `% All Open Access Documents`: Overall degree of openness.
+   * `% Free to Read / Diamond Documents`: Publishing in Diamond Open Access (no APC charged).
+   * `Estimated Diamond Savings (USD)`: Cumulative savings generated via the Diamond route.
+5. **Collaboration and Internationalization:**
+   * `% International Collaborations`: Degree of insertion in transnational networks.
+   * `% Industry Collaborations`: Linkages with industry and the productive sector.
+   * `% Global South Collaborations`: Intra-regional collaboration or collaboration with Global South countries.
 
 ---
 
-## 6. Referencias Técnicas
+## 6. Technical References
 
 - [SOM Methodological Expert](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
 - [SOM Trajectory Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
-- [Neural Longitudinal Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md)
+- [Neural Longitudinal Mapping](file:///home/labsom/knomap/.agents/skills/neural-longitudinal-mapping/SKILL.md)
 - [Bibliometric Network Analyst](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-network-analyst/SKILL.md)
 - [KnoMap Engine Tlachia Parser](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/tlachia_parser.py)

@@ -2,9 +2,9 @@
 """
 arXiv Data Harvester CLI
 ------------------------
-Herramienta autónoma para la consulta y descarga de metadatos de preprints desde
-el API Atom XML de arXiv (export.arxiv.org/api/query), con respeto del retardo
-obligatorio de cortesía de 3.0 segundos y normalización al esquema tabular canónico.
+Standalone tool for querying and downloading preprint metadata from the
+arXiv Atom XML API (export.arxiv.org/api/query), enforcing the mandatory
+3.0-second courtesy delay and normalizing records into the canonical tabular schema.
 """
 
 import sys
@@ -24,23 +24,42 @@ ATOM_NS = {
     "arxiv": "http://arxiv.org/schemas/atom"
 }
 
+MESSAGES = {
+    "en": {
+        "query_error": "[arXiv Harvester] Query error: {e}\n",
+        "saved": "[Success] {n} arXiv preprints saved to {path}",
+        "missing_criteria": "[Error] You must specify at least one criterion (--query, --category, --author, --title).\n",
+        "querying": "[arXiv Harvester] Querying: {q} (Limit: {limit})",
+        "downloading_ids": "[arXiv Harvester] Downloading IDs: {ids}",
+        "no_results": "[Notice] No preprints found in arXiv.",
+    },
+    "es": {
+        "query_error": "[arXiv Harvester] Error de consulta: {e}\n",
+        "saved": "[Éxito] {n} preprints de arXiv guardados en {path}",
+        "missing_criteria": "[Error] Debes especificar al menos un criterio (--query, --category, --author, --title).\n",
+        "querying": "[arXiv Harvester] Consultando: {q} (Límite: {limit})",
+        "downloading_ids": "[arXiv Harvester] Descargando IDs: {ids}",
+        "no_results": "[Aviso] No se encontraron preprints en arXiv.",
+    }
+}
+
 def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
-    """Convierte un elemento XML <entry> de arXiv al esquema tabular canónico."""
-    # 1. Identificador
+    """Convert an arXiv XML <entry> element into the canonical tabular schema."""
+    # 1. Identifier
     id_elem = entry.find("atom:id", ATOM_NS)
     raw_id = id_elem.text.strip() if id_elem is not None and id_elem.text else ""
-    # Extraer formato limpio e.g. '2101.12345'
+    # Extract clean ID format e.g. '2101.12345'
     arxiv_id = raw_id.split("/abs/")[-1] if "/abs/" in raw_id else raw_id
     
-    # 2. Título
+    # 2. Title
     title_elem = entry.find("atom:title", ATOM_NS)
     title = " ".join(title_elem.text.split()) if title_elem is not None and title_elem.text else ""
     
-    # 3. Resumen
+    # 3. Abstract
     summary_elem = entry.find("atom:summary", ATOM_NS)
     abstract = " ".join(summary_elem.text.split()) if summary_elem is not None and summary_elem.text else ""
     
-    # 4. Fecha y Año
+    # 4. Date and Year
     pub_elem = entry.find("atom:published", ATOM_NS)
     year = None
     if pub_elem is not None and pub_elem.text:
@@ -49,7 +68,7 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
         except ValueError:
             year = None
             
-    # 5. Autores y Afiliaciones
+    # 5. Authors and Affiliations
     authors_list = []
     affiliations_list = []
     for author_node in entry.findall("atom:author", ATOM_NS):
@@ -62,7 +81,7 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
             if aff_text and aff_text not in affiliations_list:
                 affiliations_list.append(aff_text)
                 
-    # 6. Categorías y Tópicos
+    # 6. Categories and Topics
     categories = []
     primary_cat = ""
     prim_elem = entry.find("arxiv:primary_category", ATOM_NS)
@@ -75,7 +94,7 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
         if term and term not in categories:
             categories.append(term)
             
-    # 7. DOI y Referencia de Revista
+    # 7. DOI and Journal Reference
     doi = ""
     doi_elem = entry.find("arxiv:doi", ATOM_NS)
     if doi_elem is not None and doi_elem.text:
@@ -87,8 +106,8 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
         journal_ref = jref_elem.text.strip()
     source_title = journal_ref if journal_ref else f"arXiv:{primary_cat}"
     
-    # 8. Metadatos de Ciencia Abierta
-    # Los preprints de arXiv constituyen Acceso Abierto por vía Verde (Green OA)
+    # 8. Open Science Metadata
+    # arXiv preprints constitute Green Open Access (Green OA)
     oa_status = "green"
     is_oa = 1
     
@@ -100,7 +119,7 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
         "author_ids": "",
         "year": year,
         "source_title": source_title,
-        "citations": 0,  # arXiv no provee conteo nativo de citas
+        "citations": 0,  # arXiv does not provide native citation counts
         "doi": doi,
         "keywords_author": primary_cat,
         "keywords_plus": "; ".join(categories),
@@ -108,17 +127,18 @@ def parse_arxiv_entry_to_canonical(entry: ET.Element) -> Dict[str, Any]:
         "country_codes": "",
         "oa_status": oa_status,
         "is_oa": is_oa,
-        "fwci": None,  # Reporte conforme a la respuesta del usuario
+        "fwci": None,
         "percentile": None,
-        "apc_paid_usd": 0.0,  # Depósito sin costo APC en arXiv
+        "apc_paid_usd": 0.0,  # Zero APC deposit in arXiv
         "language": "en",
         "references": ""
     }
 
 def fetch_arxiv_records(search_query: str, id_list: Optional[str],
-                        limit: int, batch_size: int = 100) -> List[Dict[str, Any]]:
-    """Descarga registros del API Atom XML de arXiv respetando el delay de 3 segundos."""
+                        limit: int, batch_size: int = 100, lang: str = "en") -> List[Dict[str, Any]]:
+    """Download records from the arXiv Atom XML API enforcing the 3-second courtesy delay."""
     headers = {"User-Agent": "KnoMap-ArXivHarvester/1.0 (mailto:admin@knomap.org)"}
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     
     results = []
     start = 0
@@ -146,7 +166,7 @@ def fetch_arxiv_records(search_query: str, id_list: Optional[str],
                 
             for e in entries:
                 rec = parse_arxiv_entry_to_canonical(e)
-                # Omitir entradas dummy sin id
+                # Skip dummy entries without id
                 if rec["id"]:
                     results.append(rec)
                     
@@ -155,17 +175,18 @@ def fetch_arxiv_records(search_query: str, id_list: Optional[str],
             if len(entries) < max_results:
                 break
                 
-            # Regla de cortesía estricta de arXiv: pausa de 3.0 segundos
+            # Strict arXiv courtesy rule: 3.0-second pause
             time.sleep(3.0)
             
         except Exception as e:
-            sys.stderr.write(f"[arXiv Harvester] Error de consulta: {e}\n")
+            sys.stderr.write(msg["query_error"].format(e=e))
             break
             
     return results[:limit]
 
-def save_canonical_records(records: List[Dict[str, Any]], output_path: str) -> None:
-    """Guarda registros normalizados en Parquet, JSON o CSV."""
+def save_canonical_records(records: List[Dict[str, Any]], output_path: str, lang: str = "en") -> None:
+    """Save normalized records in Parquet, JSON, or CSV format."""
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(records)
@@ -180,29 +201,40 @@ def save_canonical_records(records: List[Dict[str, Any]], output_path: str) -> N
     else:
         df.to_parquet(out.with_suffix(".parquet"), index=False, engine="pyarrow")
         
-    print(f"[Éxito] {len(df)} preprints de arXiv guardados en {output_path}")
+    print(msg["saved"].format(n=len(df), path=output_path))
 
 def main():
     parser = argparse.ArgumentParser(
-        description="arXiv Harvester CLI: Descarga y normalización de preprints desde el API de arXiv."
+        description="arXiv Harvester CLI: Download and normalize preprints from the arXiv API."
+    )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for labels/messages (en or es)"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     
     # 1. search
-    p_search = subparsers.add_parser("search", help="Búsqueda temática o categórica en arXiv.")
-    p_search.add_argument("--query", type=str, help="Términos generales de búsqueda (en todos los campos)")
-    p_search.add_argument("--category", type=str, help="Categoría arXiv (ej. cs.AI, stat.ML, physics.soc-ph)")
-    p_search.add_argument("--author", type=str, help="Nombre del autor")
-    p_search.add_argument("--title", type=str, help="Términos en el título")
-    p_search.add_argument("--limit", type=int, default=50, help="Límite máximo de preprints (default: 50)")
-    p_search.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida (.parquet, .json, .csv)")
+    p_search = subparsers.add_parser("search", help="Thematic or categorical search in arXiv.")
+    p_search.add_argument("--query", type=str, help="General search terms (across all fields)")
+    p_search.add_argument("--category", type=str, help="arXiv category (e.g., cs.AI, stat.ML, physics.soc-ph)")
+    p_search.add_argument("--author", type=str, help="Author name")
+    p_search.add_argument("--title", type=str, help="Terms in the title")
+    p_search.add_argument("--limit", type=int, default=50, help="Maximum number of preprints (default: 50)")
+    p_search.add_argument("--output", type=str, required=True, help="Output file path (.parquet, .json, .csv)")
+    p_search.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     
     # 2. fetch-by-ids
-    p_ids = subparsers.add_parser("fetch-by-ids", help="Descarga preprints específicos por lista de IDs de arXiv.")
-    p_ids.add_argument("--id-list", type=str, required=True, help="Lista de IDs separados por coma (ej. '2101.12345,2304.01234')")
-    p_ids.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida")
+    p_ids = subparsers.add_parser("fetch-by-ids", help="Download specific preprints by a list of arXiv IDs.")
+    p_ids.add_argument("--id-list", type=str, required=True, help="Comma-separated list of IDs (e.g., '2101.12345,2304.01234')")
+    p_ids.add_argument("--output", type=str, required=True, help="Output file path")
+    p_ids.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
 
     args = parser.parse_args()
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     
     if args.command == "search":
         query_parts = []
@@ -216,23 +248,23 @@ def main():
             query_parts.append(f"ti:{args.title}")
             
         if not query_parts:
-            sys.stderr.write("[Error] Debes especificar al menos un criterio (--query, --category, --author, --title).\n")
+            sys.stderr.write(msg["missing_criteria"])
             sys.exit(1)
             
         full_query = " AND ".join(query_parts)
-        print(f"[arXiv Harvester] Consultando: {full_query} (Límite: {args.limit})")
-        records = fetch_arxiv_records(search_query=full_query, id_list=None, limit=args.limit)
+        print(msg["querying"].format(q=full_query, limit=args.limit))
+        records = fetch_arxiv_records(search_query=full_query, id_list=None, limit=args.limit, lang=lang)
         
     elif args.command == "fetch-by-ids":
         cleaned_ids = ",".join([i.strip() for i in args.id_list.split(",") if i.strip()])
-        print(f"[arXiv Harvester] Descargando IDs: {cleaned_ids}")
-        records = fetch_arxiv_records(search_query="", id_list=cleaned_ids, limit=len(cleaned_ids.split(",")))
+        print(msg["downloading_ids"].format(ids=cleaned_ids))
+        records = fetch_arxiv_records(search_query="", id_list=cleaned_ids, limit=len(cleaned_ids.split(",")), lang=lang)
         
     if not records:
-        print("[Aviso] No se encontraron preprints en arXiv.")
+        print(msg["no_results"])
         sys.exit(0)
         
-    save_canonical_records(records, args.output)
+    save_canonical_records(records, args.output, lang=lang)
 
 if __name__ == "__main__":
     main()

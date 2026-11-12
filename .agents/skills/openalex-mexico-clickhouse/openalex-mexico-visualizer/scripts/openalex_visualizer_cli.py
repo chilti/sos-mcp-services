@@ -45,30 +45,205 @@ THEME_TEXT = "#F9FAFB"
 THEME_ACCENT = "#38BDF8"
 
 SDG_INFO = {
-    1: {"name": "Fin de la Pobreza", "color": "#E5243B"},
-    2: {"name": "Hambre Cero", "color": "#DDA63A"},
-    3: {"name": "Salud y Bienestar", "color": "#4C9F38"},
-    4: {"name": "Educación de Calidad", "color": "#C5192D"},
-    5: {"name": "Igualdad de Género", "color": "#FF3A21"},
-    6: {"name": "Agua Limpia y Saneamiento", "color": "#26BDE2"},
-    7: {"name": "Energía Asequible y No Contaminante", "color": "#FCC30B"},
-    8: {"name": "Trabajo Decente y Crecimiento Económico", "color": "#A21942"},
-    9: {"name": "Industria, Innovación e Infraestructura", "color": "#FD6925"},
-    10: {"name": "Reducción de las Desigualdades", "color": "#DD1367"},
-    11: {"name": "Ciudades y Comunidades Sostenibles", "color": "#FD9D24"},
-    12: {"name": "Producción y Consumo Responsables", "color": "#BF8B2E"},
-    13: {"name": "Acción por el Clima", "color": "#3F7E44"},
-    14: {"name": "Vida Submarina", "color": "#0A97D9"},
-    15: {"name": "Vida de Ecosistemas Terrestres", "color": "#56C02B"},
-    16: {"name": "Paz, Justicia e Instituciones Sólidas", "color": "#00689D"},
-    17: {"name": "Alianzas para Lograr los Objetivos", "color": "#19486A"}
+    1: {"name": "No Poverty", "name_es": "Fin de la Pobreza", "color": "#E5243B"},
+    2: {"name": "Zero Hunger", "name_es": "Hambre Cero", "color": "#DDA63A"},
+    3: {"name": "Good Health and Well-being", "name_es": "Salud y Bienestar", "color": "#4C9F38"},
+    4: {"name": "Quality Education", "name_es": "Educación de Calidad", "color": "#C5192D"},
+    5: {"name": "Gender Equality", "name_es": "Igualdad de Género", "color": "#FF3A21"},
+    6: {"name": "Clean Water and Sanitation", "name_es": "Agua Limpia y Saneamiento", "color": "#26BDE2"},
+    7: {"name": "Affordable and Clean Energy", "name_es": "Energía Asequible y No Contaminante", "color": "#FCC30B"},
+    8: {"name": "Decent Work and Economic Growth", "name_es": "Trabajo Decente y Crecimiento Económico", "color": "#A21942"},
+    9: {"name": "Industry, Innovation and Infrastructure", "name_es": "Industria, Innovación e Infraestructura", "color": "#FD6925"},
+    10: {"name": "Reduced Inequalities", "name_es": "Reducción de las Desigualdades", "color": "#DD1367"},
+    11: {"name": "Sustainable Cities and Communities", "name_es": "Ciudades y Comunidades Sostenibles", "color": "#FD9D24"},
+    12: {"name": "Responsible Consumption and Production", "name_es": "Producción y Consumo Responsables", "color": "#BF8B2E"},
+    13: {"name": "Climate Action", "name_es": "Acción por el Clima", "color": "#3F7E44"},
+    14: {"name": "Life Below Water", "name_es": "Vida Submarina", "color": "#0A97D9"},
+    15: {"name": "Life on Land", "name_es": "Vida de Ecosistemas Terrestres", "color": "#56C02B"},
+    16: {"name": "Peace, Justice and Strong Institutions", "name_es": "Paz, Justicia e Instituciones Sólidas", "color": "#00689D"},
+    17: {"name": "Partnerships for the Goals", "name_es": "Alianzas para Lograr los Objetivos", "color": "#19486A"}
 }
 
+def get_sdg_name(num: int, lang: str = "en") -> str:
+    info = SDG_INFO.get(num, {})
+    if lang == "es":
+        return info.get("name_es") or info.get("name") or f"ODS {num}"
+    return info.get("name") or f"SDG {num}"
+
+
+
+
+I18N = {
+    "en": {
+        "no_data_plot": "No data available to plot.",
+        "top_ranking_title": "Capacity & Performance: Top {n} {by} in '{query}'",
+        "avg_fwci": "Mean FWCI",
+        "prod": "Output",
+        "cum_pubs": "Cumulative Publications",
+        "mx_badge": "Mexico",
+        "intl_badge": "International",
+        "no_inst": "No registered institution",
+        "tag_artifact": "OpenAlex Mexico · Scientometric Artifact",
+        "eval_sub": "Assessment of installed capacity and normalized relative impact.",
+        "eval_entities": "Evaluated Entities",
+        "detail_ind": "Granular Indicator Details",
+        "col_name": "Name / Entity",
+        "col_inst": "Institution",
+        "col_pubs": "Publications",
+        "col_cites": "Citations",
+        "no_ts": "No time-series data available.",
+        "ts_title": "Chronological Evolution of Scientific Output & Impact",
+        "world_avg": "World Mean (1.00)",
+        "pub_year": "Publication Year",
+        "pub_arts": "Published Articles",
+        "norm_fwci": "Normalized FWCI",
+        "tag_ts": "OpenAlex Mexico · Temporal Trajectory",
+        "tot_pubs": "Total Publications",
+        "cum_cites": "Cumulative Citations",
+        "est_apc": "Estimated APC Spend",
+        "oa_title": "Open Access Pathways Distribution & APC Expenditure",
+        "tag_oa": "OpenAlex Mexico · Open Access Policy",
+        "via_dia": "Diamond Route (Non-commercial)",
+        "via_gold": "Gold Route (With APC)",
+        "tot_apc": "Total APC Expenditure",
+        "dossier_title": "Scientific Publications Dossier: {q}",
+        "works_rec": "Works Retrieval",
+        "unlisted_auth": "Authorship not broken down",
+        "sim_lbl": "Similarity",
+        "tag_dossier": "OpenAlex Mexico · Works Dossier",
+        "listed_works": "Listed Works",
+        "tot_cites": "Total Citations",
+        "top10_arts": "Top 10% Articles",
+        "sci_pubs": "Scientific Publications",
+        "col_title_auth": "Title & Disambiguated Authors",
+        "col_year": "Year",
+        "col_oa": "OA Route",
+        "col_metric": "Metric",
+        "no_sunburst": "No data available to generate taxonomic Sunburst.",
+        "unclassified": "Unclassified",
+        "sunburst_title": "Scientific Specialization Structure (Hierarchical Taxonomy)",
+        "tag_sunburst": "OpenAlex Mexico · Taxonomy & Specialization",
+        "sunburst_sub": "Multi-level hierarchical exploration: Domain → Field → Subfield → Topic. Click concentric sectors to zoom.",
+        "works_anal": "Analyzed Works",
+        "domains": "Domains",
+        "fields": "Disciplinary Fields",
+        "topics": "Specialized Topics",
+        "top20_topics": "Top 20 Most Active Scientific Topics",
+        "col_topic": "Specialized Topic",
+        "col_subfield": "Subfield",
+        "col_field": "Field",
+        "sdg_title": "Scientific Alignment with the 17 UN Sustainable Development Goals (SDGs)",
+        "sdg_prefix": "SDG",
+        "sdg_img_lang": "en",
+        "tag_sdg": "OpenAlex Mexico · UN 2030 Agenda",
+        "sdg_sub": "Quantification of scientific research contribution and alignment across sustainable development goals.",
+        "sdg_pubs": "SDG Publications",
+        "sdg_active": "Active SDGs",
+        "sdg_cites": "SDG Thematic Citations",
+        "sdg_cov": "Agenda Coverage",
+        "sdg_matrix": "Official 17-Goal Matrix",
+        "sdg_balance": "Quantitative Breakdown by Sustainable Development Goal",
+        "col_sdg_name": "Goal Name",
+        "col_rel_pct": "Relative %",
+        "no_pyvis": "pyvis is not installed to render networks.",
+        "net_title": "Scientific Collaboration Network",
+        "png_top": "Top {n} Entities in '{q}'",
+        "png_oa": "Open Access Pathways Distribution",
+        "png_ts": "Chronological Publications Trajectory",
+        "png_sunburst": "Top Specialization Topics",
+        "png_sdg": "Top Sustainable Development Goals (SDGs)",
+        "png_summary": "Visual Summary Generated",
+        "pubs_hover": "Publications",
+        "arts_lbl": "Articles"
+    },
+    "es": {
+        "no_data_plot": "No hay datos disponibles para graficar.",
+        "top_ranking_title": "Capacidad y Desempeño: Top {n} {by} en '{query}'",
+        "avg_fwci": "FWCI Promedio",
+        "prod": "Producción",
+        "cum_pubs": "Publicaciones Acumuladas",
+        "mx_badge": "México",
+        "intl_badge": "Internacional",
+        "no_inst": "Sin institución registrada",
+        "tag_artifact": "{t['tag_artifact']}",
+        "eval_sub": "{t['eval_sub']}",
+        "eval_entities": "{t['eval_entities']}",
+        "detail_ind": "{t['detail_ind']}",
+        "col_name": "Nombre / Entidad",
+        "col_inst": "Institución",
+        "col_pubs": "Publicaciones",
+        "col_cites": "Citas",
+        "no_ts": "No hay datos de series temporales.",
+        "ts_title": "Evolución Cronológica de la Producción Científica e Impacto",
+        "world_avg": "Media Mundial (1.00)",
+        "pub_year": "Año de publicación",
+        "pub_arts": "Artículos Publicados",
+        "norm_fwci": "FWCI Normalizado",
+        "tag_ts": "{t['tag_ts']}",
+        "tot_pubs": "{t['tot_pubs']}",
+        "cum_cites": "{t['cum_cites']}",
+        "est_apc": "{t['est_apc']}",
+        "oa_title": "Distribución de Vías de Acceso Abierto y Gasto en APC",
+        "tag_oa": "{t['tag_oa']}",
+        "via_dia": "{t['via_dia']}",
+        "via_gold": "{t['via_gold']}",
+        "tot_apc": "{t['tot_apc']}",
+        "dossier_title": "Dossier de Publicaciones Científicas: {q}",
+        "works_rec": "Recuperación de Obras",
+        "unlisted_auth": "Autoría no desglosada",
+        "sim_lbl": "Similitud",
+        "tag_dossier": "{t['tag_dossier']}",
+        "listed_works": "{t['listed_works']}",
+        "tot_cites": "{t['tot_cites']}",
+        "top10_arts": "{t['top10_arts']}",
+        "sci_pubs": "Publicaciones Científicas",
+        "col_title_auth": "Título y Autores Desambiguados",
+        "col_year": "Año",
+        "col_oa": "Vía OA",
+        "col_metric": "Métrica",
+        "no_sunburst": "No hay datos disponibles para generar el Sunburst taxonómico.",
+        "unclassified": "Sin clasificar",
+        "sunburst_title": "Estructura de Especialización Científica (Taxonomía Jerárquica)",
+        "tag_sunburst": "{t['tag_sunburst']}",
+        "sunburst_sub": "{t['sunburst_sub']}",
+        "works_anal": "{t['works_anal']}",
+        "domains": "{t['domains']}",
+        "fields": "{t['fields']}",
+        "topics": "{t['topics']}",
+        "top20_topics": "{t['top20_topics']}",
+        "col_topic": "Tópico Especializado",
+        "col_subfield": "Subcampo",
+        "col_field": "Campo",
+        "sdg_title": "Alineación Científica con los 17 Objetivos de Desarrollo Sostenible (ONU)",
+        "sdg_prefix": "ODS",
+        "sdg_img_lang": "es",
+        "tag_sdg": "{t['tag_sdg']}",
+        "sdg_sub": "{t['sdg_sub']}",
+        "sdg_pubs": "{t['sdg_pubs']}",
+        "sdg_active": "{t['sdg_active']}",
+        "sdg_cites": "{t['sdg_cites']}",
+        "sdg_cov": "{t['sdg_cov']}",
+        "sdg_matrix": "{t['sdg_matrix']}",
+        "sdg_balance": "{t['sdg_balance']}",
+        "col_sdg_name": "Nombre del Objetivo",
+        "col_rel_pct": "% Relativo",
+        "no_pyvis": "pyvis no está instalado para renderizar redes.",
+        "net_title": "Red de Colaboración Científica",
+        "png_top": "Top {n} Entidades en '{q}'",
+        "png_oa": "Distribución de Vías de Acceso Abierto",
+        "png_ts": "Trayectoria Cronológica de Publicaciones",
+        "png_sunburst": "Top Tópicos de Especialización",
+        "png_sdg": "Top Objetivos de Desarrollo Sostenible (ODS)",
+        "png_summary": "Resumen Visual Generado",
+        "pubs_hover": "Publicaciones",
+        "arts_lbl": "Artículos"
+    }
+}
 
 PLOTLY_CDN_URL = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
-def _compact_plotly_html(fig, div_id: str = "plot", default_height: int = 480) -> str:
+def _compact_plotly_html(fig, div_id: str = "plot", default_height: int = 480, lang: str = "en") -> str:
     """
     Serializa una figura Plotly como bloque HTML COMPACTO y autosuficiente.
 
@@ -122,7 +297,7 @@ def _compact_plotly_html(fig, div_id: str = "plot", default_height: int = 480) -
             idmap = {old: str(i) for i, old in enumerate(ids)}
             tr["ids"] = [str(i) for i in range(len(ids))]
             tr["parents"] = [idmap.get(p, "") for p in tr["parents"]]
-            tr["hovertemplate"] = "%{label}<br>Publicaciones: %{value}<extra></extra>"
+            tr["hovertemplate"] = f"%{{label}}<br>{I18N.get(lang, I18N['en'])['pubs_hover']}: %{{value}}<extra></extra>"
     layout = spec.get("layout", {}) or {}
     layout.pop("template", None)
     height = layout.get("height") or default_height
@@ -162,15 +337,16 @@ def detect_data_type(data: Dict[str, Any]) -> str:
     return "generic"
 
 
-def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
+def render_top_ranking_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera dashboard interactivo para rankings de autores o instituciones."""
     entities = data.get("top_entities", [])
     if not entities:
-        return "<p class='text-gray-400'>No hay datos disponibles para graficar.</p>"
+        return f"<p class='text-gray-400'>{t['no_data_plot']}</p>"
 
     query = data.get("query", "")
     by = data.get("by", "entidades")
-    title_text = title or f"Capacidad y Desempeño: Top {len(entities)} {by.capitalize()} en '{query}'"
+    title_text = title or t["top_ranking_title"].format(n=len(entities), by=by.capitalize(), query=query)
 
     names = [e.get("display_name") or e.get("institution") for e in entities][::-1]
     works = [e.get("total_works", 0) for e in entities][::-1]
@@ -187,17 +363,17 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
         marker=dict(
             color=fwci,
             colorscale="Viridis",
-            colorbar=dict(title="FWCI Promedio", len=0.8),
+            colorbar=dict(title=t["avg_fwci"], len=0.8),
             showscale=True
         ),
-        text=[f"Docs: {w} | Citas: {c} | FWCI: {f}" for w, c, f in zip(works, cites, fwci)],
+        text=[f"Docs: {w} | {t['col_cites']}: {c} | FWCI: {f}" for w, c, f in zip(works, cites, fwci)],
         hoverinfo="text+y",
-        name="Producción"
+        name=t["prod"]
     ))
 
     fig.update_layout(
         title=f"<b>{title_text}</b>",
-        xaxis_title="Publicaciones Acumuladas",
+        xaxis_title=t["cum_pubs"],
         yaxis_title="",
         template="plotly_dark",
         height=max(450, len(entities) * 32),
@@ -206,14 +382,14 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = _compact_plotly_html(fig)
+    plot_html = _compact_plotly_html(fig, lang=lang)
 
     # Tabla resumen de métricas
     table_rows = []
     for e in entities:
         is_mx = e.get("is_mexican_affiliated", True)
-        badge = '<span class="badge badge-mx">México</span>' if is_mx else '<span class="badge badge-ext">Internacional</span>'
-        inst_label = e.get("institution") or "Sin institución registrada"
+        badge = f'<span class="badge badge-mx">{t["mx_badge"]}</span>' if is_mx else f'<span class="badge badge-ext">{t["intl_badge"]}</span>'
+        inst_label = e.get("institution") or t["no_inst"]
         table_rows.append(f"""
         <tr>
             <td class="font-bold">{e.get("rank", "-")}</td>
@@ -228,7 +404,7 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -239,12 +415,12 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
             <header class="header-card mb-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <span class="tag">OpenAlex México · Artefacto Cienciométrico</span>
+                        <span class="tag">{t['tag_artifact']}</span>
                         <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
-                        <p class="text-sm text-gray-400 mt-1">Evaluación de capacidad instalada e impacto relativo normalizado.</p>
+                        <p class="text-sm text-gray-400 mt-1">{t['eval_sub']}</p>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Entidades Evaluadas</span>
+                        <span class="kpi-label">{t['eval_entities']}</span>
                         <span class="kpi-val">{len(entities)}</span>
                     </div>
                 </div>
@@ -255,17 +431,17 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
             </section>
 
             <section class="card">
-                <h3 class="text-lg font-bold text-white mb-3">Detalle Granular de Indicadores</h3>
+                <h3 class="text-lg font-bold text-white mb-3">{t['detail_ind']}</h3>
                 <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Nombre / Entidad</th>
-                                <th>Institución</th>
-                                <th class="text-right">Publicaciones</th>
-                                <th class="text-right">Citas</th>
-                                <th class="text-right">FWCI Promedio</th>
+                                <th>{t['col_name']}</th>
+                                <th>{t['col_inst']}</th>
+                                <th class="text-right">{t['col_pubs']}</th>
+                                <th class="text-right">{t['col_cites']}</th>
+                                <th class="text-right">{t['avg_fwci']}</th>
                                 <th class="text-right">Top 10%</th>
                             </tr>
                         </thead>
@@ -282,11 +458,12 @@ def render_top_ranking_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
+def render_timeseries_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera serie de tiempo dual: publicaciones anuales + FWCI."""
     results = data.get("results", [])
     if not results:
-        return "<p class='text-gray-400'>No hay datos de series temporales.</p>"
+        return f"<p class='text-gray-400'>{t['no_ts']}</p>"
 
     # Ordenar cronológicamente
     valid_results = [r for r in results if str(r.get("dimension", "")).isdigit()]
@@ -298,7 +475,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
     fwci = [r.get("avg_fwci", 0.0) for r in valid_results]
     apc = [r.get("total_apc_paid_usd", 0.0) for r in valid_results]
 
-    title_text = title or "Evolución Cronológica de la Producción Científica e Impacto"
+    title_text = title or t["ts_title"]
 
     # Gráfica dual: barras de publicaciones + línea de FWCI
     from plotly.subplots import make_subplots
@@ -308,7 +485,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
         go.Bar(
             x=years,
             y=works,
-            name="Publicaciones",
+            name=t["col_pubs"],
             marker=dict(color="#0284C7", opacity=0.85)
         ),
         secondary_y=False
@@ -318,7 +495,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
         go.Scatter(
             x=years,
             y=fwci,
-            name="FWCI Promedio",
+            name=t["avg_fwci"],
             mode="lines+markers",
             line=dict(color="#10B981", width=3),
             marker=dict(size=7, color="#34D399")
@@ -332,7 +509,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
         line_dash="dash",
         line_color="#EF4444",
         secondary_y=True,
-        annotation_text="Media Mundial (1.00)",
+        annotation_text=t["world_avg"],
         annotation_position="bottom right"
     )
 
@@ -344,11 +521,11 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)",
         legend=dict(orientation="h", y=1.1, x=0.3)
     )
-    fig.update_xaxes(title_text="Año de publicación", dtick=1 if len(years) < 15 else 2)
-    fig.update_yaxes(title_text="Artículos Publicados", secondary_y=False)
-    fig.update_yaxes(title_text="FWCI Normalizado", secondary_y=True)
+    fig.update_xaxes(title_text=t["pub_year"], dtick=1 if len(years) < 15 else 2)
+    fig.update_yaxes(title_text=t["pub_arts"], secondary_y=False)
+    fig.update_yaxes(title_text=t["norm_fwci"], secondary_y=True)
 
-    plot_html = _compact_plotly_html(fig)
+    plot_html = _compact_plotly_html(fig, lang=lang)
 
     tot_works = sum(works)
     tot_cites = sum(cites)
@@ -356,7 +533,7 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -365,19 +542,19 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
     <body class="bg-dark text-gray-100">
         <div class="container mx-auto p-6 max-w-6xl">
             <header class="header-card mb-6">
-                <span class="tag">OpenAlex México · Trayectoria Temporal</span>
+                <span class="tag">{t['tag_ts']}</span>
                 <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
                 <div class="grid grid-cols-3 gap-4 mt-4">
                     <div class="kpi-mini">
-                        <span class="kpi-label">Total Publicaciones</span>
+                        <span class="kpi-label">{t['tot_pubs']}</span>
                         <span class="kpi-val">{tot_works:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Citas Acumuladas</span>
+                        <span class="kpi-label">{t['cum_cites']}</span>
                         <span class="kpi-val">{tot_cites:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Gasto APC Estimado</span>
+                        <span class="kpi-label">{t['est_apc']}</span>
                         <span class="kpi-val text-amber-400">${tot_apc:,.0f} USD</span>
                     </div>
                 </div>
@@ -393,10 +570,11 @@ def render_timeseries_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_oa_donut_html(data: Dict[str, Any], title: str) -> str:
+def render_oa_donut_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera gráfico Donut de distribución por modalidades de Acceso Abierto."""
     results = data.get("results", [])
-    title_text = title or "Distribución de Vías de Acceso Abierto y Gasto en APC"
+    title_text = title or t["oa_title"]
 
     labels = []
     values = []
@@ -429,14 +607,14 @@ def render_oa_donut_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = _compact_plotly_html(fig)
+    plot_html = _compact_plotly_html(fig, lang=lang)
     total_apc = sum(apc_totals)
     diamond_works = sum(v for l, v in zip(labels, values) if l.lower() == "diamond")
     gold_works = sum(v for l, v in zip(labels, values) if l.lower() == "gold")
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -445,19 +623,19 @@ def render_oa_donut_html(data: Dict[str, Any], title: str) -> str:
     <body class="bg-dark text-gray-100">
         <div class="container mx-auto p-6 max-w-6xl">
             <header class="header-card mb-6">
-                <span class="tag">OpenAlex México · Política de Acceso Abierto</span>
+                <span class="tag">{t['tag_oa']}</span>
                 <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
                 <div class="grid grid-cols-3 gap-4 mt-4">
                     <div class="kpi-mini">
-                        <span class="kpi-label">Vía Diamante (No comercial)</span>
+                        <span class="kpi-label">{t['via_dia']}</span>
                         <span class="kpi-val text-emerald-400">{diamond_works:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Vía Dorada (Con APC)</span>
+                        <span class="kpi-label">{t['via_gold']}</span>
                         <span class="kpi-val text-amber-400">{gold_works:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Gasto Total en APC</span>
+                        <span class="kpi-label">{t['tot_apc']}</span>
                         <span class="kpi-val text-rose-400">${total_apc:,.0f} USD</span>
                     </div>
                 </div>
@@ -473,11 +651,12 @@ def render_oa_donut_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
+def render_dossier_works_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera dossier analítico interactivo con tabla de publicaciones y desglose de autores."""
     works = data.get("works") or data.get("results") or []
     query = data.get("query", "")
-    title_text = title or f"Dossier de Publicaciones Científicas: {query or 'Recuperación de Obras'}"
+    title_text = title or t["dossier_title"].format(q=query or t["works_rec"])
 
     # Construir filas de la tabla con coautoría desambiguada
     rows = []
@@ -514,7 +693,7 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
         sim_badge = ""
         if "semantic_similarity" in w:
             sim = w["semantic_similarity"]
-            sim_badge = f'<span class="badge badge-sim">Similitud: {sim:.2%}</span>'
+            sim_badge = f'<span class="badge badge-sim">{t["sim_lbl"]}: {sim:.2%}</span>'
 
         rows.append(f"""
         <tr>
@@ -522,7 +701,7 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
             <td>
                 <div class="font-semibold text-white">{w.get("title")}</div>
                 <div class="text-xs text-gray-400 mt-1">
-                    <span class="text-sky-300">{mx_names or 'Autoría no desglosada'}</span> {ext_badge}
+                    <span class="text-sky-300">{mx_names or t['unlisted_auth']}</span> {ext_badge}
                 </div>
             </td>
             <td>{w.get("publication_year", "-")}</td>
@@ -537,7 +716,7 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -546,15 +725,15 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
     <body class="bg-dark text-gray-100">
         <div class="container mx-auto p-6 max-w-6xl">
             <header class="header-card mb-6">
-                <span class="tag">OpenAlex México · Dossier de Obras</span>
+                <span class="tag">{t['tag_dossier']}</span>
                 <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
                 <div class="grid grid-cols-4 gap-4 mt-4">
                     <div class="kpi-mini">
-                        <span class="kpi-label">Obras Listadas</span>
+                        <span class="kpi-label">{t['listed_works']}</span>
                         <span class="kpi-val">{len(works)}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Citas Totales</span>
+                        <span class="kpi-label">{t['tot_cites']}</span>
                         <span class="kpi-val">{tot_cites:,}</span>
                     </div>
                     <div class="kpi-mini">
@@ -562,25 +741,25 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
                         <span class="kpi-val text-emerald-400">{avg_fwci:.2f}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Artículos Top 10%</span>
+                        <span class="kpi-label">{t['top10_arts']}</span>
                         <span class="kpi-val text-amber-400">{top10_count} ({top10_count/max(1, len(works)):.1%})</span>
                     </div>
                 </div>
             </header>
 
             <section class="card">
-                <h3 class="text-lg font-bold text-white mb-3">Publicaciones Científicas</h3>
+                <h3 class="text-lg font-bold text-white mb-3">{t['sci_pubs']}</h3>
                 <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Título y Autores Desambiguados</th>
-                                <th>Año</th>
-                                <th>Vía OA</th>
-                                <th class="text-right">Citas</th>
+                                <th>{t['col_title_auth']}</th>
+                                <th>{t['col_year']}</th>
+                                <th>{t['col_oa']}</th>
+                                <th class="text-right">{t['col_cites']}</th>
                                 <th class="text-right">FWCI</th>
-                                <th>Métrica</th>
+                                <th>{t['col_metric']}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -596,7 +775,8 @@ def render_dossier_works_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
+def render_sunburst_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera diagrama Sunburst interactivo para la taxonomía jerárquica de investigación."""
     import pandas as pd
 
@@ -614,20 +794,20 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
         ]
 
     if not results:
-        return "<p class='text-gray-400'>No hay datos disponibles para generar el Sunburst taxonómico.</p>"
+        return f"<p class='text-gray-400'>{t['no_sunburst']}</p>"
 
     df = pd.DataFrame(results)
     for col in ['domain', 'field', 'subfield', 'topic']:
         if col not in df.columns:
-            df[col] = "Sin clasificar"
+            df[col] = t["unclassified"]
         else:
-            df[col] = df[col].fillna("Sin clasificar").replace('', "Sin clasificar")
+            df[col] = df[col].fillna(t["unclassified"]).replace('', t["unclassified"])
 
     if 'total_works' not in df.columns:
         df['total_works'] = 1
 
     df = df.sort_values('total_works', ascending=False).head(40)
-    title_text = title or "Estructura de Especialización Científica (Taxonomía Jerárquica)"
+    title_text = title or t["sunburst_title"]
 
     fig = px.sunburst(
         df,
@@ -646,7 +826,7 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
         plot_bgcolor="rgba(17,24,39,0.7)"
     )
 
-    plot_html = _compact_plotly_html(fig)
+    plot_html = _compact_plotly_html(fig, lang=lang)
 
     total_works_sum = int(df['total_works'].sum())
     unique_domains = df['domain'].nunique()
@@ -672,7 +852,7 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -681,24 +861,24 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
     <body class="bg-dark text-gray-100">
         <div class="container mx-auto p-6 max-w-6xl">
             <header class="header-card mb-6">
-                <span class="tag">OpenAlex México · Taxonomía y Especialización</span>
+                <span class="tag">{t['tag_sunburst']}</span>
                 <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
-                <p class="text-sm text-gray-400 mt-1">Exploración jerárquica multinivel: Dominio → Campo → Subcampo → Tópico. Haz clic en los sectores concéntricos para hacer zoom.</p>
+                <p class="text-sm text-gray-400 mt-1">{t['sunburst_sub']}</p>
                 <div class="grid grid-cols-4 gap-4 mt-4">
                     <div class="kpi-mini">
-                        <span class="kpi-label">Obras Analizadas</span>
+                        <span class="kpi-label">{t['works_anal']}</span>
                         <span class="kpi-val">{total_works_sum:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Dominios</span>
+                        <span class="kpi-label">{t['domains']}</span>
                         <span class="kpi-val text-sky-400">{unique_domains}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Campos Disciplinares</span>
+                        <span class="kpi-label">{t['fields']}</span>
                         <span class="kpi-val text-emerald-400">{unique_fields}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Tópicos Especializados</span>
+                        <span class="kpi-label">{t['topics']}</span>
                         <span class="kpi-val text-amber-400">{unique_topics}</span>
                     </div>
                 </div>
@@ -709,18 +889,18 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
             </section>
 
             <section class="card">
-                <h3 class="text-lg font-bold text-white mb-3">Top 20 Tópicos de Mayor Actividad Científica</h3>
+                <h3 class="text-lg font-bold text-white mb-3">{t['top20_topics']}</h3>
                 <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Tópico Especializado</th>
-                                <th>Subcampo</th>
-                                <th>Campo</th>
-                                <th class="text-right">Publicaciones</th>
-                                <th class="text-right">Citas</th>
-                                <th class="text-right">FWCI Promedio</th>
+                                <th>{t['col_topic']}</th>
+                                <th>{t['col_subfield']}</th>
+                                <th>{t['col_field']}</th>
+                                <th class="text-right">{t['col_pubs']}</th>
+                                <th class="text-right">{t['col_cites']}</th>
+                                <th class="text-right">{t['avg_fwci']}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -736,7 +916,8 @@ def render_sunburst_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
+def render_sdg_grid_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera la matriz de los 17 Objetivos de Desarrollo Sostenible (ODS de la ONU)."""
     import re
 
@@ -781,25 +962,26 @@ def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
     total_works_all_sdgs = sum(r.get("total_works", 0) for r in sdg_map.values())
     total_citations_all_sdgs = sum(r.get("total_citations", 0) for r in sdg_map.values())
 
-    title_text = title or "Alineación Científica con los 17 Objetivos de Desarrollo Sostenible (ONU)"
+    title_text = title or t["sdg_title"]
 
     cards_html = []
     table_rows = []
 
     for i in range(1, 18):
-        info = SDG_INFO.get(i, {"name": f"ODS {i}", "color": "#1E293B"})
+        sdg_name = get_sdg_name(i, lang)
+        info = {"name": sdg_name, "color": SDG_INFO.get(i, {}).get("color", "#1E293B")}
         r = sdg_map.get(i, {"total_works": 0, "total_citations": 0, "avg_fwci": 0.0})
         count = r.get("total_works", 0)
         cites = r.get("total_citations", 0)
         fwci = r.get("avg_fwci", 0.0)
         pct = (count / total_works_all_sdgs * 100) if total_works_all_sdgs > 0 else 0.0
         active_class = "" if count > 0 else "sdg-inactive"
-        img_url = f"https://open-sdg.github.io/sdg-translations/assets/img/goals/es/{i}.png"
-        tooltip = f"ODS {i}: {info['name']} - {count:,} publicaciones ({pct:.1f}%)"
+        img_url = f"https://open-sdg.github.io/sdg-translations/assets/img/goals/{t['sdg_img_lang']}/{i}.png"
+        tooltip = f"{t['sdg_prefix']} {i}: {info['name']} - {count:,} {t['col_pubs'].lower()} ({pct:.1f}%)"
 
         cards_html.append(f"""
         <div class="sdg-card {active_class}" style="background-color: {info['color']};" title="{tooltip}">
-            <img src="{img_url}" class="sdg-img" alt="ODS {i}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <img src="{img_url}" class="sdg-img" alt="{t['sdg_prefix']} {i}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="sdg-fallback" style="display:none; background:{info['color']};">
                 <span class="sdg-fallback-num">{i}</span>
                 <span class="sdg-fallback-name">{info['name']}</span>
@@ -829,7 +1011,7 @@ def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
 
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="{lang}">
     <head>
         <meta charset="UTF-8">
         <title>{title_text}</title>
@@ -838,48 +1020,48 @@ def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
     <body class="bg-dark text-gray-100">
         <div class="container mx-auto p-6 max-w-6xl">
             <header class="header-card mb-6">
-                <span class="tag">OpenAlex México · Agenda 2030 ONU</span>
+                <span class="tag">{t['tag_sdg']}</span>
                 <h1 class="text-2xl font-black text-white mt-1">{title_text}</h1>
-                <p class="text-sm text-gray-400 mt-1">Cuantificación del aporte y alineación de la investigación científica en las metas de desarrollo sostenible.</p>
+                <p class="text-sm text-gray-400 mt-1">{t['sdg_sub']}</p>
                 <div class="grid grid-cols-4 gap-4 mt-4">
                     <div class="kpi-mini">
-                        <span class="kpi-label">Publicaciones en ODS</span>
+                        <span class="kpi-label">{t['sdg_pubs']}</span>
                         <span class="kpi-val text-sky-400">{total_works_all_sdgs:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">ODS con Presencia</span>
+                        <span class="kpi-label">{t['sdg_active']}</span>
                         <span class="kpi-val text-emerald-400">{active_sdg_count} / 17</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Citas en Temáticas ODS</span>
+                        <span class="kpi-label">{t['sdg_cites']}</span>
                         <span class="kpi-val text-purple-400">{total_citations_all_sdgs:,}</span>
                     </div>
                     <div class="kpi-mini">
-                        <span class="kpi-label">Cobertura de la Agenda</span>
+                        <span class="kpi-label">{t['sdg_cov']}</span>
                         <span class="kpi-val text-amber-400">{(active_sdg_count / 17.0 * 100):.1f}%</span>
                     </div>
                 </div>
             </header>
 
             <section class="card mb-6">
-                <h3 class="text-lg font-bold text-white mb-4">Matriz Oficial de los 17 Objetivos</h3>
+                <h3 class="text-lg font-bold text-white mb-4">{t['sdg_matrix']}</h3>
                 <div class="sdg-grid">
                     {''.join(cards_html)}
                 </div>
             </section>
 
             <section class="card">
-                <h3 class="text-lg font-bold text-white mb-3">Balance Cuantitativo por Objetivo de Desarrollo Sostenible</h3>
+                <h3 class="text-lg font-bold text-white mb-3">{t['sdg_balance']}</h3>
                 <div class="overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="text-center">ODS</th>
-                                <th>Nombre del Objetivo</th>
-                                <th class="text-right">Publicaciones</th>
-                                <th class="text-right">% Relativo</th>
-                                <th class="text-right">Citas</th>
-                                <th class="text-right">FWCI Promedio</th>
+                                <th class="text-center">{t['sdg_prefix']}</th>
+                                <th>{t['col_sdg_name']}</th>
+                                <th class="text-right">{t['col_pubs']}</th>
+                                <th class="text-right">{t['col_rel_pct']}</th>
+                                <th class="text-right">{t['col_cites']}</th>
+                                <th class="text-right">{t['avg_fwci']}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -895,14 +1077,15 @@ def render_sdg_grid_html(data: Dict[str, Any], title: str) -> str:
     return html_content
 
 
-def render_network_html(data: Dict[str, Any], title: str) -> str:
+def render_network_html(data: Dict[str, Any], title: str, lang: str = "en") -> str:
+    t = I18N.get(lang, I18N["en"])
     """Genera grafo interactivo de coautoría o colaboración institucional con PyVis."""
     try:
         from pyvis.network import Network
     except ImportError:
-        return "<p class='text-gray-400'>pyvis no está instalado para renderizar redes.</p>"
+        return f"<p class='text-gray-400'>{t['no_pyvis']}</p>"
 
-    title_text = title or "Red de Colaboración Científica"
+    title_text = title or t["net_title"]
     net = Network(height="600px", width="100%", bgcolor=THEME_CARD, font_color=THEME_TEXT)
     net.force_atlas_2based()
 
@@ -937,7 +1120,8 @@ def render_network_html(data: Dict[str, Any], title: str) -> str:
     return net_html
 
 
-def render_png_card(data: Dict[str, Any], output_png: str, title: str) -> None:
+def render_png_card(data: Dict[str, Any], output_png: str, title: str, lang: str = "en") -> None:
+    t = I18N.get(lang, I18N["en"])
     """Genera una tarjeta gráfica estática PNG con Matplotlib para incrustar en el chat."""
     if plt is None:
         return
@@ -953,8 +1137,8 @@ def render_png_card(data: Dict[str, Any], output_png: str, title: str) -> None:
         names = [(e.get("display_name") or e.get("institution") or "Entidad")[:25] for e in entities]
         works = [e.get("total_works", 0) for e in entities]
         bars = ax.barh(names, works, color="#38BDF8", edgecolor="#0284C7")
-        ax.set_title(title or f"Top {len(entities)} Entidades en '{data.get('query','')}'", fontsize=12, fontweight="bold", pad=12)
-        ax.set_xlabel("Publicaciones Acumuladas", fontsize=10)
+        ax.set_title(title or t["png_top"].format(n=len(entities), q=data.get('query','')), fontsize=12, fontweight="bold", pad=12)
+        ax.set_xlabel(t["cum_pubs"], fontsize=10)
 
     elif data_type == "oa-donut":
         results = [r for r in data.get("results", []) if r.get("dimension")]
@@ -962,7 +1146,7 @@ def render_png_card(data: Dict[str, Any], output_png: str, title: str) -> None:
         vals = [r.get("total_works", 0) for r in results]
         colors = [OA_COLORS.get(r["dimension"].lower(), "#64748B") for r in results]
         ax.pie(vals, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90, wedgeprops=dict(width=0.45, edgecolor=THEME_CARD))
-        ax.set_title(title or "Distribución de Vías de Acceso Abierto", fontsize=12, fontweight="bold")
+        ax.set_title(title or t["png_oa"], fontsize=12, fontweight="bold")
 
     elif data_type == "timeseries":
         results = [r for r in data.get("results", []) if str(r.get("dimension", "")).isdigit()]
@@ -971,31 +1155,31 @@ def render_png_card(data: Dict[str, Any], output_png: str, title: str) -> None:
         works = [r.get("total_works", 0) for r in results]
         ax.plot(years, works, marker="o", color="#38BDF8", linewidth=2.5, markersize=5)
         ax.fill_between(years, works, color="#38BDF8", alpha=0.15)
-        ax.set_title(title or "Trayectoria Cronológica de Publicaciones", fontsize=12, fontweight="bold", pad=12)
-        ax.set_xlabel("Año", fontsize=10)
-        ax.set_ylabel("Artículos", fontsize=10)
+        ax.set_title(title or t["png_ts"], fontsize=12, fontweight="bold", pad=12)
+        ax.set_xlabel(t["col_year"], fontsize=10)
+        ax.set_ylabel(t["arts_lbl"], fontsize=10)
 
     elif data_type == "sunburst":
         results = data.get("results", [])[:10][::-1]
         names = [r.get("topic", "Tópico")[:25] for r in results]
         works = [r.get("total_works", 0) for r in results]
         ax.barh(names, works, color="#38BDF8", edgecolor="#0284C7")
-        ax.set_title(title or "Top Tópicos de Especialización", fontsize=12, fontweight="bold", pad=12)
-        ax.set_xlabel("Publicaciones", fontsize=10)
+        ax.set_title(title or t["png_sunburst"], fontsize=12, fontweight="bold", pad=12)
+        ax.set_xlabel(t["col_pubs"], fontsize=10)
 
     elif data_type == "sdg-grid":
         results = [r for r in data.get("results", []) if r.get("total_works", 0) > 0]
         results.sort(key=lambda x: x.get("total_works", 0), reverse=True)
         top_sdgs = results[:10][::-1]
-        names = [f"ODS {r.get('sdg_num', r.get('dimension', ''))}: {SDG_INFO.get(int(r.get('sdg_num', r.get('dimension', 0))), {}).get('name', '')[:20]}" for r in top_sdgs]
+        names = [f"{t['sdg_prefix']} {r.get('sdg_num', r.get('dimension', ''))}: {get_sdg_name(int(r.get('sdg_num', r.get('dimension', 0))), lang)[:20]}" for r in top_sdgs]
         works = [r.get("total_works", 0) for r in top_sdgs]
         colors = [SDG_INFO.get(int(r.get("sdg_num", r.get("dimension", 0))), {}).get("color", "#38BDF8") for r in top_sdgs]
         ax.barh(names, works, color=colors, edgecolor="#1E293B")
-        ax.set_title(title or "Top Objetivos de Desarrollo Sostenible (ODS)", fontsize=12, fontweight="bold", pad=12)
-        ax.set_xlabel("Publicaciones", fontsize=10)
+        ax.set_title(title or t["png_sdg"], fontsize=12, fontweight="bold", pad=12)
+        ax.set_xlabel(t["col_pubs"], fontsize=10)
 
     else:
-        ax.text(0.5, 0.5, "Resumen Visual Generado", ha="center", va="center", color="#F9FAFB", fontsize=14)
+        ax.text(0.5, 0.5, t["png_summary"], ha="center", va="center", color="#F9FAFB", fontsize=14)
 
     plt.tight_layout()
     os.makedirs(os.path.dirname(os.path.abspath(output_png)), exist_ok=True)
@@ -1105,6 +1289,7 @@ def extract_summary_kpis(target_type: str, data: Dict[str, Any]) -> Dict[str, An
 def main():
     parser = argparse.ArgumentParser(description="CLI de Visualización y Generación de Artefactos de OpenAlex México (Tríada de Artefactos)")
     parser.add_argument("--input", required=True, help="Ruta al archivo JSON con los datos de entrada")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Language for labels/charts (default: en)")
     parser.add_argument("--type", choices=["auto", "top-ranking", "timeseries", "oa-donut", "dossier-works", "network", "sunburst", "sdg-grid"], default="auto", help="Tipo de visualización a forzar (default: auto)")
     parser.add_argument("--title", default="", help="Título personalizado para el artefacto")
     parser.add_argument("--output", required=True, help="Ruta de guardado para el archivo HTML interactivo autónomo")
@@ -1127,28 +1312,28 @@ def main():
             print(f"Tipo de datos detectado automáticamente: '{target_type}'")
 
     if target_type == "top-ranking" or target_type == "authors-ranking":
-        html_out = render_top_ranking_html(data, args.title)
+        html_out = render_top_ranking_html(data, args.title, lang=args.lang)
     elif target_type == "timeseries":
-        html_out = render_timeseries_html(data, args.title)
+        html_out = render_timeseries_html(data, args.title, lang=args.lang)
     elif target_type == "oa-donut":
-        html_out = render_oa_donut_html(data, args.title)
+        html_out = render_oa_donut_html(data, args.title, lang=args.lang)
     elif target_type == "dossier-works":
-        html_out = render_dossier_works_html(data, args.title)
+        html_out = render_dossier_works_html(data, args.title, lang=args.lang)
     elif target_type == "network":
-        html_out = render_network_html(data, args.title)
+        html_out = render_network_html(data, args.title, lang=args.lang)
     elif target_type == "sunburst":
-        html_out = render_sunburst_html(data, args.title)
+        html_out = render_sunburst_html(data, args.title, lang=args.lang)
     elif target_type == "sdg-grid":
-        html_out = render_sdg_grid_html(data, args.title)
+        html_out = render_sdg_grid_html(data, args.title, lang=args.lang)
     else:
-        html_out = render_top_ranking_html(data, args.title)
+        html_out = render_top_ranking_html(data, args.title, lang=args.lang)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html_out)
 
     if args.png:
-        render_png_card(data, args.png, args.title)
+        render_png_card(data, args.png, args.title, lang=args.lang)
 
     abs_output = os.path.abspath(args.output).replace("\\", "/")
     abs_png = os.path.abspath(args.png).replace("\\", "/") if args.png else ""

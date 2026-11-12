@@ -1,22 +1,22 @@
-# Permutaciones y Desambiguación de Nombres Hispanos
+# Hispanic Name Permutations and Disambiguation
 
-En bases de datos anglosajonas (Scopus, WoS, OpenAlex), los nombres iberoamericanos sufren inconsistencias sistemáticas en la indexación de los dos apellidos (paterno y materno) y nombres compuestos.
-
----
-
-## 1. Patrones de Variación Comunes
-
-Para un autor llamado `Rafael Torres Córdoba`:
-
-1. **Forma Directa:** `Rafael Torres Córdoba`
-2. **Forma Invertida con Coma:** `Torres Córdoba, Rafael`
-3. **Forma con Guion (Unificación Anglosajona):** `Rafael Torres-Córdoba`
-4. **Forma Invertida con Guion:** `Torres-Córdoba, Rafael`
-5. **Omisión del Apellido Materno:** `Torres, Rafael` o `Rafael Torres`
-6. **Abreviatura de Nombres Compuestos:** `Torres-Córdoba, R.` o `Torres, R.`
+In Anglo-Saxon bibliographic databases (Scopus, WoS, OpenAlex), Ibero-American names suffer from systematic indexing inconsistencies across dual surnames (paternal and maternal) and compound given names.
 
 ---
 
-## 2. Estrategia del CLI
+## 1. Common Variation Patterns
 
-El subcomando `search-authors` genera automáticamente estas permutaciones sintácticas y las consulta secuencialmente en ClickHouse mediante `positionCaseInsensitiveUTF8`, fusionando los resultados por ID unívoco para no perder publicaciones indexadas bajo distintas variantes.
+For an author named `Rafael Torres Córdoba`:
+
+1. **Direct Form:** `Rafael Torres Córdoba`
+2. **Inverted Form with Comma:** `Torres Córdoba, Rafael`
+3. **Hyphenated Form (Anglo-Saxon Unification):** `Rafael Torres-Córdoba`
+4. **Inverted Hyphenated Form:** `Torres-Córdoba, Rafael`
+5. **Omission of Maternal Surname:** `Torres, Rafael` or `Rafael Torres`
+6. **Abbreviation of Compound Given Names:** `Torres-Córdoba, R.` or `Torres, R.`
+
+---
+
+## 2. CLI Strategy
+
+The `search-authors` subcommand automatically generates these syntactic permutations and queries them sequentially in ClickHouse using `positionCaseInsensitiveUTF8`, merging results by unique ID so that publications indexed under different name variants are never lost.

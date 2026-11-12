@@ -1,53 +1,53 @@
-# Manual Matemático de Indicadores Cienciométricos TlachIA
+# Mathematical Handbook of TlachIA Scientometric Indicators
 
-Este manual documenta las fórmulas matemáticas y definiciones operativas de los indicadores implementados en `tlachia_metrics_cli.py`.
+This handbook documents the mathematical formulas and operational definitions of the indicators implemented in `tlachia_metrics_cli.py`.
 
 ---
 
-## 1. Volumen y Citación
+## 1. Volume and Citation
 
-### Índice H (Hirsch, 2005)
+### H-Index (Hirsch, 2005)
 $$h = \max \{ i \in \mathbb{N} : c_{(i)} \ge i \}$$
-donde $c_{(i)}$ es el vector de citas ordenado descendentemente.
+where $c_{(i)}$ is the vector of citations sorted in descending order.
 
-### Índice i10
-Cantidad de documentos con al menos 10 citas acumuladas:
+### i10-Index
+Number of documents with at least 10 cumulative citations:
 $$i10 = \sum_{k=1}^N \mathbb{I}(c_k \ge 10)$$
 
 ---
 
-## 2. Impacto Normalizado y Excelencia
+## 2. Normalized Impact and Excellence
 
 ### FWCI (Field-Weighted Citation Impact)
-Razón entre las citas reales recibidas por el artículo y el promedio esperado de citas para publicaciones del mismo año, tipo documental y disciplina:
-$$\text{FWCI} = \frac{c_{\text{obs}}}{e_{\text{esp}}}$$
-Un valor de $1.0$ representa el promedio mundial; valores $> 1.0$ denotan impacto por encima del estándar global.
+Ratio between the actual citations received by an article and the expected average citations for publications of the same year, document type, and discipline:
+$$\text{FWCI} = \frac{c_{\text{obs}}}{e_{\text{exp}}}$$
+A value of $1.0$ represents the world average; values $> 1.0$ denote impact above the global benchmark.
 
-### Percentiles y Excelencia (Top 10% y Top 1%)
-- **Top 10%:** Documentos cuyo percentil normalizado $\ge 90.0$.
-- **Top 1% Élite:** Documentos cuyo percentil normalizado $\ge 99.0$.
-
----
-
-## 3. Ciencia Abierta (Las 6 Vías)
-
-- **Gold:** Revista de acceso abierto con cobro de APC comercial.
-- **Diamond (Diamante):** Revista de acceso abierto sin cobro a autores ni lectores (financiada por universidades u organismos públicos).
-- **Hybrid:** Revista por suscripción donde el autor pagó un APC para liberar su artículo individual.
-- **Green (Verde):** Auto-archivo del pre-print o post-print en un repositorio institucional o temático (e.g. arXiv).
-- **Bronze:** Acceso libre temporal en la web del editor sin licencia abierta formal (Creative Commons).
-- **Closed:** Cerrado tras muro de pago (*paywall*).
+### Percentiles and Excellence (Top 10% and Top 1%)
+- **Top 10%:** Documents whose normalized percentile $\ge 90.0$.
+- **Top 1% Elite:** Documents whose normalized percentile $\ge 99.0$.
 
 ---
 
-## 4. Economía de la Publicación
+## 3. Open Science (The 6 Pathways)
 
-- **Gasto Estimado en APC (USD):** Suma directa de cargos de procesamiento pagados a editoriales comerciales.
-- **Ahorro por Publicación Diamante:** Se cuantifica asumiendo un costo medio de mercado de \$1,800 USD por cada artículo publicado en revistas Diamante:
-$$\text{Ahorro Diamante} = N_{\text{diamante}} \times \$1,800 \text{ USD}$$
+- **Gold:** Open access journal charging a commercial APC.
+- **Diamond:** Open access journal charging neither authors nor readers (funded by universities or public organizations).
+- **Hybrid:** Subscription journal where the author paid an APC to make an individual article open access.
+- **Green:** Self-archiving of a preprint or postprint in an institutional or thematic repository (e.g., arXiv).
+- **Bronze:** Free-to-read access on the publisher's website without a formal open license (Creative Commons).
+- **Closed:** Restricted behind a paywall.
 
 ---
 
-## 5. Coeficiente de Gini Temático
+## 4. Publication Economics
+
+- **Estimated APC Expenditure (USD):** Direct sum of article processing charges paid to commercial publishers.
+- **Diamond Publishing Savings:** Quantified assuming an average market cost of \$1,800 USD per article published in Diamond journals:
+$$\text{Diamond Savings} = N_{\text{diamond}} \times \$1,800 \text{ USD}$$
+
+---
+
+## 5. Thematic Gini Coefficient
 $$G = \frac{\sum_{i=1}^n \sum_{j=1}^n |x_i - x_j|}{2 n \sum_{i=1}^n x_i}$$
-Mide la concentración o diversificación de los tópicos de investigación en el corpus ($G \to 0$: diversificación homogénea; $G \to 1$: hiperespecialización monotemática).
+Measures the concentration or diversification of research topics in the corpus ($G \to 0$: homogeneous diversification; $G \to 1$: monothematic hyper-specialization).

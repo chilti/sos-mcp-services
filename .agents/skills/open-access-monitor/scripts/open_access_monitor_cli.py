@@ -66,6 +66,7 @@ def classify_oa_pathway(oa_raw: str, journal: str = "") -> str:
 
 def cmd_breakdown(args):
     """Calculates distribution of production across the 6 OA pathways."""
+    lang = getattr(args, "lang", "en") or "en"
     input_path = args.input
     if not os.path.exists(input_path):
         sys.stderr.write(f"Error: Input file does not exist: {input_path}\n")
@@ -91,10 +92,23 @@ def cmd_breakdown(args):
             "percentage": round((counts[p] / total * 100.0) if total > 0 else 0.0, 2)
         }
 
-    # Estimación de APC para anotación visual
+    # APC estimation for visual annotation
     gold_cost = getattr(args, "gold_apc_usd", DEFAULT_GOLD_APC_USD) or DEFAULT_GOLD_APC_USD
     hybrid_cost = getattr(args, "hybrid_apc_usd", DEFAULT_HYBRID_APC_USD) or DEFAULT_HYBRID_APC_USD
     est_apc_usd = counts["gold_apc"] * gold_cost + counts["hybrid"] * hybrid_cost
+
+    if lang == "es":
+        verdict = (
+            "Alta Soberanía Científica (Preponderancia Diamante)"
+            if counts["diamond"] > counts["gold_apc"]
+            else "Dependencia de Mercado Comercial (Preponderancia APC)"
+        )
+    else:
+        verdict = (
+            "High Scientific Sovereignty (Diamond Preponderance)"
+            if counts["diamond"] > counts["gold_apc"]
+            else "Commercial Market Dependency (APC Preponderance)"
+        )
 
     result = {
         "total_documents_analyzed": total,
@@ -102,12 +116,14 @@ def cmd_breakdown(args):
         "overall_open_access_rate_pct": round(oa_percentage, 2),
         "pathways_breakdown": breakdown_pct,
         "estimated_commercial_apc_usd": round(est_apc_usd, 2),
-        "sovereignty_verdict": "Alta Soberanía Científica (Preponderancia Diamante)" if counts["diamond"] > counts["gold_apc"] else "Dependencia de Mercado Comercial (Preponderancia APC)"
+        "sovereignty_verdict": verdict
     }
 
-    # Renderizado de Figuras Estáticas (300 DPI) para Publicación Científica (ES y EN)
+    # Static Publication Figures (300 DPI)
     dpi = getattr(args, "dpi", 300) or 300
     plot_paths = {}
+    if getattr(args, "plot", None):
+        plot_paths[lang] = args.plot
     if getattr(args, "plot_es", None):
         plot_paths["es"] = args.plot_es
     if getattr(args, "plot_en", None):
@@ -142,7 +158,7 @@ def cmd_breakdown(args):
     ordered_counts = [counts[p] for p in pathway_order]
     ordered_colors = [oa_colors[p] for p in pathway_order]
 
-    for lang, p_out in plot_paths.items():
+    for p_lang, p_out in plot_paths.items():
         os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
         fig = plt.figure(figsize=(10.5, 5.5), dpi=dpi)
         gs = fig.add_gridspec(1, 2, width_ratios=[1.2, 1.4], wspace=0.1)
@@ -152,7 +168,7 @@ def cmd_breakdown(args):
         ax_legend.set_ylim(0, 1)
         ax_legend.axis("off")
 
-        # Gráfica de Donas
+        # Donut Chart
         wedges, _ = ax_pie.pie(
             ordered_counts,
             colors=ordered_colors,
@@ -161,11 +177,11 @@ def cmd_breakdown(args):
             wedgeprops=dict(width=0.38, edgecolor="white", linewidth=2.0)
         )
         ax_pie.text(0, 0.08, f"{oa_percentage:.1f}%", ha="center", va="center", fontsize=22, fontweight="black", color="#0f172a")
-        sub_center = f"Acceso Abierto\nTotal: {total:,} docs" if lang == "es" else f"Open Access\nTotal: {total:,} docs"
+        sub_center = f"Acceso Abierto\nTotal: {total:,} docs" if p_lang == "es" else f"Open Access\nTotal: {total:,} docs"
         ax_pie.text(0, -0.12, sub_center, ha="center", va="center", fontsize=9, color="#64748b", fontweight="bold")
 
-        # Panel de leyenda lateral
-        panel_title = "DISTRIBUCIÓN DE LAS 6 VÍAS DE ACCESO ABIERTO" if lang == "es" else "DISTRIBUTION OF THE 6 OPEN ACCESS PATHWAYS"
+        # Side Legend Panel
+        panel_title = "DISTRIBUCIÓN DE LAS 6 VÍAS DE ACCESO ABIERTO" if p_lang == "es" else "DISTRIBUTION OF THE 6 OPEN ACCESS PATHWAYS"
         ax_legend.text(0.05, 0.98, panel_title, fontsize=10.5, fontweight="black", color="#0f172a", va="top")
 
         y_pos = 0.86
@@ -173,7 +189,7 @@ def cmd_breakdown(args):
             c = counts[p]
             pct = (c / total * 100.0) if total > 0 else 0.0
             col = oa_colors[p]
-            name = labels_es[p] if lang == "es" else labels_en[p]
+            name = labels_es[p] if p_lang == "es" else labels_en[p]
             ax_legend.plot(0.05, y_pos, marker="s", color=col, markersize=10, markeredgecolor="white")
             ax_legend.text(0.12, y_pos, name, fontsize=9.0, fontweight="bold", color="#1e293b", va="center")
             ax_legend.text(0.88, y_pos, f"{c:,} ({pct:.1f}%)", fontsize=9.0, fontweight="bold", color="#334155", va="center", ha="right")
@@ -181,7 +197,7 @@ def cmd_breakdown(args):
 
         apc_box_title = (
             f"Gasto Comercial Estimado en APC: ${est_apc_usd:,.0f} USD"
-            if lang == "es"
+            if p_lang == "es"
             else f"Estimated Commercial APC Spending: ${est_apc_usd:,.0f} USD"
         )
         ax_legend.text(
@@ -193,12 +209,18 @@ def cmd_breakdown(args):
         plt.savefig(p_out, dpi=dpi, bbox_inches="tight", facecolor="white")
         plt.close(fig)
 
-    # Gráfica interactiva Plotly si se especifica
+    # Interactive Plotly chart if specified
     plotly_html = getattr(args, "plotly_html", None)
     if plotly_html and HAS_PLOTLY:
         os.makedirs(os.path.dirname(os.path.abspath(plotly_html)), exist_ok=True)
+        active_labels = labels_es if lang == "es" else labels_en
+        fig_title = (
+            f"Distribución de Vías de Acceso Abierto ({oa_percentage:.1f}% OA)"
+            if lang == "es"
+            else f"Open Access Pathway Distribution ({oa_percentage:.1f}% OA)"
+        )
         fig_oa = go.Figure(data=[go.Pie(
-            labels=[labels_es[p] for p in pathway_order],
+            labels=[active_labels[p] for p in pathway_order],
             values=ordered_counts,
             hole=0.45,
             marker=dict(colors=ordered_colors, line=dict(color="#ffffff", width=2)),
@@ -206,7 +228,7 @@ def cmd_breakdown(args):
             hoverinfo="label+value+percent"
         )])
         fig_oa.update_layout(
-            title=f"Distribución de Vías de Acceso Abierto ({oa_percentage:.1f}% OA)",
+            title=fig_title,
             template="plotly_white",
             margin=dict(l=40, r=40, t=50, b=40)
         )
@@ -348,30 +370,45 @@ def cmd_trend(args):
     sys.exit(0)
 
 
+def _add_lang_arg(p: argparse.ArgumentParser, is_root: bool = False) -> None:
+    p.add_argument(
+        "--lang",
+        choices=["en", "es"],
+        default="en" if is_root else argparse.SUPPRESS,
+        help="Language for plot labels, titles, and verdicts (default: en)",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="CLI for Open Access Monitor")
+    _add_lang_arg(parser, is_root=True)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: breakdown
     p_brk = subparsers.add_parser("breakdown", help="Calculate distribution across 6 OA pathways")
+    _add_lang_arg(p_brk)
     p_brk.add_argument("--input", required=True, help="Path to corpus file")
     p_brk.add_argument("--output", required=True, help="Path to output JSON")
+    p_brk.add_argument("--plot", help="Optional path to publication PNG plot in selected --lang (300 DPI)")
     p_brk.add_argument("--plot-es", help="Optional path to Spanish publication PNG plot (300 DPI)")
     p_brk.add_argument("--plot-en", help="Optional path to English publication PNG plot (300 DPI)")
     p_brk.add_argument("--plotly-html", help="Optional path to interactive Plotly HTML")
     p_brk.add_argument("--dpi", type=int, default=300, help="DPI for publication plots (default: 300)")
     p_brk.set_defaults(func=cmd_breakdown)
 
-    # Subcommand: apc-spending
-    p_apc = subparsers.add_parser("apc-spending", help="Calculate estimated commercial APC expenditure")
-    p_apc.add_argument("--input", required=True, help="Path to corpus file")
-    p_apc.add_argument("--gold-apc-usd", type=float, default=DEFAULT_GOLD_APC_USD, help="Unit cost Gold APC (USD)")
-    p_apc.add_argument("--hybrid-apc-usd", type=float, default=DEFAULT_HYBRID_APC_USD, help="Unit cost Hybrid APC (USD)")
-    p_apc.add_argument("--output", required=True, help="Path to output JSON")
-    p_apc.set_defaults(func=cmd_apc)
+    # Subcommand: apc-spending (and alias apc)
+    for cmd_name in ("apc-spending", "apc"):
+        p_apc = subparsers.add_parser(cmd_name, help="Calculate estimated commercial APC expenditure")
+        _add_lang_arg(p_apc)
+        p_apc.add_argument("--input", required=True, help="Path to corpus file")
+        p_apc.add_argument("--gold-apc-usd", type=float, default=DEFAULT_GOLD_APC_USD, help="Unit cost Gold APC (USD)")
+        p_apc.add_argument("--hybrid-apc-usd", type=float, default=DEFAULT_HYBRID_APC_USD, help="Unit cost Hybrid APC (USD)")
+        p_apc.add_argument("--output", required=True, help="Path to output JSON")
+        p_apc.set_defaults(func=cmd_apc)
 
     # Subcommand: transition-trend
     p_tre = subparsers.add_parser("transition-trend", help="Analyze annual open access transition series")
+    _add_lang_arg(p_tre)
     p_tre.add_argument("--input", required=True, help="Path to corpus file")
     p_tre.add_argument("--output", required=True, help="Path to output JSON")
     p_tre.set_defaults(func=cmd_trend)

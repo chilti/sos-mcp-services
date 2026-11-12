@@ -1,41 +1,41 @@
-# Parámetros y Filtros de la API de OpenAlex
+# OpenAlex API Parameters and Filters
 
-OpenAlex (`https://api.openalex.org`) provee acceso abierto e indexado a más de 250 millones de obras científicas mundiales.
+OpenAlex (`https://api.openalex.org`) provides open, indexed access to over 250 million scholarly works worldwide.
 
 ---
 
-## 1. Estructura de Filtros
+## 1. Filter Structure
 
-Los filtros se combinan mediante una cadena delimitada por comas: `filter=campo:valor,campo2:valor2`.
+Filters are combined using a comma-delimited string: `filter=field:value,field2:value2`.
 
-### Filtros Principales por Entidad
+### Core Filters by Entity
 
-| Filtro | Descripción | Ejemplo de Sintaxis |
+| Filter | Description | Syntax Example |
 |---|---|---|
-| `author.id` | Identificador OpenAlex del autor | `author.id:A5023888391` |
-| `author.orcid` | ORCID del autor (con o sin prefijo https) | `author.orcid:0000-0002-1825-0097` |
-| `institutions.ror` | Identificador ROR de la institución | `institutions.ror:012gw1n35` (UNAM) |
-| `institutions.country_code` | Código ISO-3166-1 alpha-2 del país de la institución | `institutions.country_code:MX` |
-| `primary_location.source.issn` | ISSN de la revista fuente | `primary_location.source.issn:1386-4564` |
-| `primary_topic.id` | Identificador del clúster temático (Tópico) | `primary_topic.id:T10001` |
-| `open_access.oa_status` | Modalidad de acceso abierto | `open_access.oa_status:diamond` |
-| `publication_year` | Rango o año exacto de publicación | `publication_year:2020-2024` |
-| `from_publication_date` | Fecha inicial en formato YYYY-MM-DD | `from_publication_date:2023-01-01` |
-| `to_publication_date` | Fecha final en formato YYYY-MM-DD | `to_publication_date:2023-12-31` |
-| `is_retracted` | Filtro de obras retractadas | `is_retracted:true` |
+| `author.id` | Author OpenAlex identifier | `author.id:A5023888391` |
+| `author.orcid` | Author ORCID (with or without https prefix) | `author.orcid:0000-0002-1825-0097` |
+| `institutions.ror` | Institutional ROR identifier | `institutions.ror:012gw1n35` (UNAM) |
+| `institutions.country_code` | ISO-3166-1 alpha-2 country code of the institution | `institutions.country_code:MX` |
+| `primary_location.source.issn` | Source journal ISSN | `primary_location.source.issn:1386-4564` |
+| `primary_topic.id` | Thematic cluster (Topic) identifier | `primary_topic.id:T10001` |
+| `open_access.oa_status` | Open Access route | `open_access.oa_status:diamond` |
+| `publication_year` | Publication year or range | `publication_year:2020-2024` |
+| `from_publication_date` | Start date in YYYY-MM-DD format | `from_publication_date:2023-01-01` |
+| `to_publication_date` | End date in YYYY-MM-DD format | `to_publication_date:2023-12-31` |
+| `is_retracted` | Retracted works filter | `is_retracted:true` |
 
 ---
 
-## 2. Paginación Eficiente mediante Cursor
+## 2. Efficient Cursor Pagination
 
-Para conjuntos de más de 200 resultados, OpenAlex requiere paginación por cursor:
-1. Primera llamada: `cursor=*`
-2. El JSON retornado incluye en su bloque `meta` la clave `next_cursor`.
-3. Siguientes llamadas: `cursor=<next_cursor>` hasta que `next_cursor` sea `null` o el límite se haya satisfecho.
+For result sets exceeding 200 records, OpenAlex requires cursor pagination:
+1. First request: `cursor=*`
+2. The returned JSON includes the `next_cursor` key inside its `meta` block.
+3. Subsequent requests: `cursor=<next_cursor>` until `next_cursor` is `null` or the requested limit is satisfied.
 
 ---
 
-## 3. Clave de API y "Polite Pool"
+## 3. API Key and "Polite Pool"
 
-- **Con API Key (`OPENALEX_API_KEY`):** Se añade en la cabecera `api-key: <clave>`. Límite de hasta 10 req/s.
-- **Sin API Key (Polite Pool):** Se añade la cabecera `User-Agent: KnoMap-Harvester/1.0 (mailto:tu-correo@dominio.com)`. Límite recomendado: 5 req/s.
+- **With API Key (`OPENALEX_API_KEY`):** Added via the `api-key: <key>` header. Rate limit up to 10 req/s.
+- **Without API Key (Polite Pool):** Added via the `User-Agent: KnoMap-Harvester/1.0 (mailto:your-email@domain.com)` header. Recommended rate limit: 5 req/s.

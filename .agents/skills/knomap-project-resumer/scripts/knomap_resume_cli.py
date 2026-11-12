@@ -20,6 +20,68 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
+I18N = {
+    "en": {
+        "hub_hist_title": "# KnoMap Project Assistant & Report History: {name}",
+        "study_desc_hdr": "## Study Description",
+        "report_md_hdr": "## Report Markdown",
+        "web_hist_title": "# KnoMap Research & AI Assistant History: {title}",
+        "lbl_assistant_mode": "- **Assistant Mode:** `{mode}`",
+        "lbl_copilot_entries": "- **Copilot Entries:** {n}",
+        "lbl_agent_msgs": "- **Autonomous Agent Messages:** {n}",
+        "sec1_study_ctx": "## 1. Study Context",
+        "lbl_title": "**Title:** {title}",
+        "sec2_copilot": "## 2. Visual Copilot Analyses & Captures",
+        "lbl_created": "- **Created:** `{ts}`",
+        "lbl_source_tab": "- **Source Module / Tab:** `{tab}` (`{vs}`)",
+        "lbl_viz_view": "- **Visualization / View:** `{view}` (`{ct}`)",
+        "lbl_exp_model": "- **Experiment / Model:** {label}{id_str}{tag}",
+        "lbl_unit": "- **Unit of Analysis:** {unit}",
+        "lbl_src_file": "- **Source File:** `{file}`",
+        "lbl_figure": "- **Figure ({label}):** `{path}`",
+        "hdr_data_ctx": "#### Data Context",
+        "hdr_gen_analysis": "#### Generated Analysis & Dialogue",
+        "lbl_user": "> **User:** {content}",
+        "sec3_agent": "## 3. Autonomous Agent Thread & Artifacts",
+        "lbl_exec_tools": "**Executed Tools:**",
+        "lbl_html_art": "- Interactive HTML Artifact: `{path}`",
+        "lbl_svg_art": "- SVG Artifact: `{path}`",
+        "sec4_cached": "## 4. Cached Module AI Interpretations",
+        "welcome_agent": "Hello! This KnoMap project was packaged from a Scientific Agent investigation.",
+        "default_artifacts_msg": "Attached interactive artifacts generated in the workspace.",
+    },
+    "es": {
+        "hub_hist_title": "# Historial del Asistente y Reporte del Proyecto KnoMap: {name}",
+        "study_desc_hdr": "## Descripción del Estudio",
+        "report_md_hdr": "## Reporte Markdown",
+        "web_hist_title": "# Historial de Investigación y Asistente IA KnoMap: {title}",
+        "lbl_assistant_mode": "- **Modo del Asistente:** `{mode}`",
+        "lbl_copilot_entries": "- **Entradas del Copiloto:** {n}",
+        "lbl_agent_msgs": "- **Mensajes del Agente Autónomo:** {n}",
+        "sec1_study_ctx": "## 1. Contexto del Estudio",
+        "lbl_title": "**Título:** {title}",
+        "sec2_copilot": "## 2. Análisis y Capturas del Copiloto Visual",
+        "lbl_created": "- **Creado:** `{ts}`",
+        "lbl_source_tab": "- **Módulo / Pestaña Origen:** `{tab}` (`{vs}`)",
+        "lbl_viz_view": "- **Visualización / Vista:** `{view}` (`{ct}`)",
+        "lbl_exp_model": "- **Experimento / Modelo:** {label}{id_str}{tag}",
+        "lbl_unit": "- **Unidad de Análisis:** {unit}",
+        "lbl_src_file": "- **Archivo Origen:** `{file}`",
+        "lbl_figure": "- **Figura ({label}):** `{path}`",
+        "hdr_data_ctx": "#### Contexto de Datos",
+        "hdr_gen_analysis": "#### Análisis Generado y Diálogo",
+        "lbl_user": "> **Usuario:** {content}",
+        "sec3_agent": "## 3. Hilo del Agente Autónomo y Artefactos",
+        "lbl_exec_tools": "**Herramientas Ejecutadas:**",
+        "lbl_html_art": "- Artefacto HTML Interactivo: `{path}`",
+        "lbl_svg_art": "- Artefacto SVG: `{path}`",
+        "sec4_cached": "## 4. Interpretaciones IA en Caché por Módulo",
+        "welcome_agent": "¡Hola! Este proyecto KnoMap fue empaquetado tras una investigación del Agente Científico.",
+        "default_artifacts_msg": "Adjunto artefactos interactivos generados en el workspace.",
+    },
+}
+
+
 def safe_slug(text: str, max_len: int = 48) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(text or "item")).strip("_")
     return (cleaned[:max_len] or "item").lower()
@@ -723,7 +785,9 @@ def extract_assistant_bundle(
     data: Dict[str, Any],
     fmt: str,
     reports_dir: Path,
+    lang: str = "en",
 ) -> Dict[str, Any]:
+    t = I18N.get(lang, I18N["en"])
     figures_dir = reports_dir / "assistant_figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
     extracted_figures: List[str] = []
@@ -732,13 +796,13 @@ def extract_assistant_bundle(
         report_md = data.get("report_markdown") or ""
         meta = data.get("metadata") or {}
         md_lines = [
-            f"# KnoMap Project Assistant & Report History: {data.get('name', 'Untitled')}",
+            t["hub_hist_title"].format(name=data.get("name", "Untitled")),
             "",
         ]
         if meta.get("description"):
-            md_lines.extend(["## Study Description", "", str(meta["description"]), ""])
+            md_lines.extend([t["study_desc_hdr"], "", str(meta["description"]), ""])
         if report_md:
-            md_lines.extend(["## Report Markdown", "", str(report_md), ""])
+            md_lines.extend([t["report_md_hdr"], "", str(report_md), ""])
         md_path = reports_dir / "assistant_history.md"
         md_path.write_text("\n".join(md_lines), encoding="utf-8")
         json_path = write_json(reports_dir / "assistant_history.json", {
@@ -762,19 +826,19 @@ def extract_assistant_bundle(
 
     title = data.get("cloudProjectTitle") or data.get("fileName") or "KnoMap Project"
     md_lines = [
-        f"# KnoMap Research & AI Assistant History: {title}",
+        t["web_hist_title"].format(title=title),
         "",
-        f"- **Assistant Mode:** `{assistant_mode}`",
-        f"- **Copilot Entries:** {len(entries)}",
-        f"- **Autonomous Agent Messages:** {len(agent_msgs)}",
+        t["lbl_assistant_mode"].format(mode=assistant_mode),
+        t["lbl_copilot_entries"].format(n=len(entries)),
+        t["lbl_agent_msgs"].format(n=len(agent_msgs)),
         "",
     ]
 
     if isinstance(study_ctx, dict) and (study_ctx.get("title") or study_ctx.get("description")):
         md_lines.extend([
-            "## 1. Study Context",
+            t["sec1_study_ctx"],
             "",
-            f"**Title:** {study_ctx.get('title', '')}",
+            t["lbl_title"].format(title=study_ctx.get("title", "")),
             "",
             str(study_ctx.get("description", "")),
             "",
@@ -785,7 +849,7 @@ def extract_assistant_bundle(
     saved_runs = data.get("savedRuns") or []
     structured_entries = []
     if entries:
-        md_lines.extend(["## 2. Visual Copilot Analyses & Captures", ""])
+        md_lines.extend([t["sec2_copilot"], ""])
     for idx, entry in enumerate(entries, start=1):
         etitle = entry.get("title") or f"Visualization {idx}"
         badge = entry.get("badge") or "CHART"
@@ -819,35 +883,35 @@ def extract_assistant_bundle(
 
         md_lines.extend([f"### 2.{idx} {etitle} [{badge}]", ""])
         if entry.get("createdAt"):
-            md_lines.append(f"- **Created:** `{entry['createdAt']}`")
-        md_lines.append(f"- **Source Module / Tab:** `{src_prov.get('tab_label')}` (`{src_prov.get('view_source')}`)")
+            md_lines.append(t["lbl_created"].format(ts=entry["createdAt"]))
+        md_lines.append(t["lbl_source_tab"].format(tab=src_prov.get("tab_label"), vs=src_prov.get("view_source")))
         if src_prov.get("sub_view") or src_prov.get("chart_type"):
-            md_lines.append(f"- **Visualization / View:** `{src_prov.get('sub_view') or src_prov.get('chart_type')}` (`{src_prov.get('chart_type')}`)")
+            md_lines.append(t["lbl_viz_view"].format(view=src_prov.get("sub_view") or src_prov.get("chart_type"), ct=src_prov.get("chart_type")))
         if src_prov.get("experiment_name") or src_prov.get("experiment_id"):
             exp_label = src_prov.get("experiment_name") or ""
             exp_id = f" (`{src_prov['experiment_id']}`)" if src_prov.get("experiment_id") else ""
             run_tag = f" [Saved Run #{src_prov['matched_run_index']}]" if src_prov.get("matched_run_index") else ""
-            md_lines.append(f"- **Experiment / Model:** {exp_label}{exp_id}{run_tag}")
+            md_lines.append(t["lbl_exp_model"].format(label=exp_label, id_str=exp_id, tag=run_tag))
         if src_prov.get("unit_name"):
-            md_lines.append(f"- **Unit of Analysis:** {src_prov['unit_name']}")
+            md_lines.append(t["lbl_unit"].format(unit=src_prov["unit_name"]))
         if src_prov.get("file_name"):
-            md_lines.append(f"- **Source File:** `{src_prov['file_name']}`")
+            md_lines.append(t["lbl_src_file"].format(file=src_prov["file_name"]))
         for label, fpath in fig_files.items():
             if fpath:
-                md_lines.append(f"- **Figure ({label}):** `{fpath}`")
+                md_lines.append(t["lbl_figure"].format(label=label, path=fpath))
         md_lines.append("")
 
         if entry.get("dataContextPrompt"):
-            md_lines.extend(["#### Data Context", "", "```text", str(entry["dataContextPrompt"]), "```", ""])
+            md_lines.extend([t["hdr_data_ctx"], "", "```text", str(entry["dataContextPrompt"]), "```", ""])
 
         msgs = entry.get("messages") or []
         if msgs:
-            md_lines.extend(["#### Generated Analysis & Dialogue", ""])
+            md_lines.extend([t["hdr_gen_analysis"], ""])
             for m in msgs:
                 role = m.get("role", "assistant")
                 content = str(m.get("content", ""))
                 if role == "user":
-                    md_lines.extend([f"> **User:** {content}", ""])
+                    md_lines.extend([t["lbl_user"].format(content=content), ""])
                 else:
                     md_lines.extend([content, ""])
 
@@ -865,7 +929,7 @@ def extract_assistant_bundle(
 
     structured_agent_msgs = []
     if agent_msgs:
-        md_lines.extend(["## 3. Autonomous Agent Thread & Artifacts", ""])
+        md_lines.extend([t["sec3_agent"], ""])
     for m_idx, msg in enumerate(agent_msgs, start=1):
         role = msg.get("role", "assistant")
         ts = msg.get("timestamp", "")
@@ -876,7 +940,7 @@ def extract_assistant_bundle(
         md_lines.append(f"### 3.{m_idx} [{role.upper()}] ({ts})")
         md_lines.append("")
         if steps:
-            md_lines.append("**Executed Tools:**")
+            md_lines.append(t["lbl_exec_tools"])
             for st in steps:
                 md_lines.append(f"- `{st.get('tool')}` args=`{json.dumps(st.get('arguments', {}), ensure_ascii=False)}`")
             md_lines.append("")
@@ -892,13 +956,13 @@ def extract_assistant_bundle(
                 html_path.write_text(str(art["html"]), encoding="utf-8")
                 rec["html"] = str(html_path)
                 extracted_figures.append(str(html_path))
-                md_lines.append(f"- Interactive HTML Artifact: `{html_path}`")
+                md_lines.append(t["lbl_html_art"].format(path=html_path))
             if art.get("svg"):
                 svg_path = figures_dir / f"agent_m{m_idx:02d}_a{a_idx:02d}_{aslug}.svg"
                 svg_path.write_text(str(art["svg"]), encoding="utf-8")
                 rec["svg"] = str(svg_path)
                 extracted_figures.append(str(svg_path))
-                md_lines.append(f"- SVG Artifact: `{svg_path}`")
+                md_lines.append(t["lbl_svg_art"].format(path=svg_path))
             art_files.append(rec)
         if art_files:
             md_lines.append("")
@@ -912,7 +976,7 @@ def extract_assistant_bundle(
         })
 
     if incites_llm or tlachia_llm:
-        md_lines.extend(["## 4. Cached Module AI Interpretations", ""])
+        md_lines.extend([t["sec4_cached"], ""])
         for cache_name, cache_obj in [("InCites AI Cards", incites_llm), ("TlachIA Metrics AI Cards", tlachia_llm)]:
             if not cache_obj:
                 continue
@@ -1012,7 +1076,7 @@ def cmd_extract_workspace(args: argparse.Namespace) -> None:
             if data.get("clusters") and "clusters" not in som_state:
                 som_state["clusters"] = data["clusters"]
             artifacts["som_states"].append(write_json(reports_dir / "som_state.json", som_state))
-        artifacts["assistant"] = extract_assistant_bundle(data, fmt, reports_dir)
+        artifacts["assistant"] = extract_assistant_bundle(data, fmt, reports_dir, lang=getattr(args, "lang", "en"))
     else:
         labels = [str(x) for x in (data.get("labels") or [])]
         comp_names = [str(x) for x in (data.get("compNames") or [])]
@@ -1158,7 +1222,7 @@ def cmd_extract_workspace(args: argparse.Namespace) -> None:
         if data.get("tlachiaUnitCache"):
             artifacts["tlachia_units"] = extract_unit_cache(data["tlachiaUnitCache"], "tlachia", matrices_dir)
 
-        artifacts["assistant"] = extract_assistant_bundle(data, fmt, reports_dir)
+        artifacts["assistant"] = extract_assistant_bundle(data, fmt, reports_dir, lang=getattr(args, "lang", "en"))
 
     summary = summarize_project(data, fmt, src)
     manifest = {
@@ -1516,14 +1580,16 @@ def cmd_create_knomap(args: argparse.Namespace) -> None:
                 "html": hp.read_text(encoding="utf-8"),
             })
 
+    lang = getattr(args, "lang", "en") or "en"
+    t = I18N.get(lang, I18N["en"])
     agent_messages: List[Dict[str, Any]] = [{
         "id": "welcome-agent",
         "role": "assistant",
-        "content": "¡Hola! Este proyecto KnoMap fue empaquetado tras una investigación del Agente Científico.",
+        "content": t["welcome_agent"],
         "timestamp": now_iso,
     }]
     if args.report_md or agent_artifacts:
-        rep_txt = Path(args.report_md).read_text(encoding="utf-8") if args.report_md else "Adjunto artefactos interactivos generados en el workspace."
+        rep_txt = Path(args.report_md).read_text(encoding="utf-8") if args.report_md else t["default_artifacts_msg"]
         agent_messages.append({
             "id": f"agent-resp-{int(time.time() * 1000)}",
             "role": "assistant",
@@ -1660,16 +1726,19 @@ def cmd_create_knomap(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Resume and inspect KnoMap project files (.knoMap, .json.gz, .knomap)")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Language for generated assistant history and messages (default: en)")
     sub = parser.add_subparsers(dest="subcommand", required=True)
 
     p_ins = sub.add_parser("inspect", help="Inspect project structure and assistant history without dumping large matrices")
     p_ins.add_argument("--input", required=True, help="Path to .knoMap, .json.gz, or .knomap file")
     p_ins.add_argument("--output", required=True, help="Destination summary JSON path")
+    p_ins.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     p_ext = sub.add_parser("extract-workspace", help="Extract matrices, SOM states, networks, assistant text, and figures")
     p_ext.add_argument("--input", required=True, help="Path to .knoMap, .json.gz, or .knomap file")
     p_ext.add_argument("--workspace-dir", default=".", help="Target workspace root (creates matrices/, networks/, reports/)")
     p_ext.add_argument("--output", default=None, help="Destination extraction manifest JSON (default: <workspace>/reports/resume_manifest.json)")
+    p_ext.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language for generated assistant_history.md (default: en)")
 
     p_upd = sub.add_parser("update-knomap", help="Append new assistant notes, artifacts, or SOM state back into a .knoMap file")
     p_upd.add_argument("--input", required=True, help="Source .knoMap / .json.gz / .knomap file")
@@ -1682,6 +1751,7 @@ def main() -> None:
     p_upd.add_argument("--add-html-artifact", default=None, help="Optional HTML file to attach as agent artifact")
     p_upd.add_argument("--as-agent-message", action="store_true", help="Store appended note as an Autonomous Agent message")
     p_upd.add_argument("--som-state-file", default=None, help="Optional som_state.json to inject back into project result")
+    p_upd.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language (en or es)")
 
     p_crt = sub.add_parser("create-knomap", help="Create a brand-new .knoMap v2.1 (or .json.gz) project from agent workspace outputs")
     p_crt.add_argument("--workspace-dir", default=".", help="Source workspace root containing matrices/, networks/, reports/")
@@ -1699,6 +1769,7 @@ def main() -> None:
     p_crt.add_argument("--add-html-artifact", action="append", default=None, help="Repeatable HTML artifact path (Plotly, KnoMap dashboard, etc.)")
     p_crt.add_argument("--auto-attach-figures", action="store_true", help="Automatically attach PNGs in reports/assistant_figures/ and HTMLs in reports/")
     p_crt.add_argument("--active-tab", default=None, help="Initial tab in KnoMap Web (multidimensional, asistente, bibliometria, semantica)")
+    p_crt.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Language for default assistant messages (default: en)")
 
     args = parser.parse_args()
     if args.subcommand == "inspect":

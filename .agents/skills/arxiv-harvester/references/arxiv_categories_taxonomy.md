@@ -1,10 +1,10 @@
-# Taxonomía de Categorías Principales de arXiv
+# arXiv Core Categories Taxonomy
 
-arXiv clasifica sus documentos mediante códigos temáticos estándar por disciplina.
+arXiv classifies its documents using standard discipline-specific subject codes.
 
 ---
 
-## 1. Ciencias de la Computación (`cs`)
+## 1. Computer Science (`cs`)
 - `cs.AI`: Artificial Intelligence
 - `cs.LG`: Machine Learning
 - `cs.CV`: Computer Vision and Pattern Recognition
@@ -15,15 +15,15 @@ arXiv clasifica sus documentos mediante códigos temáticos estándar por discip
 
 ---
 
-## 2. Estadística y Física
-- `stat.ML`: Machine Learning (Estadística)
+## 2. Statistics and Physics
+- `stat.ML`: Machine Learning (Statistics)
 - `stat.TH`: Statistical Theory
-- `physics.soc-ph`: Physics and Society (Cienciometría, redes complejas)
+- `physics.soc-ph`: Physics and Society (Scientometrics, complex networks)
 - `quant-ph`: Quantum Physics
 
 ---
 
-## 3. Biología Cuantitativa y Finanzas
+## 3. Quantitative Biology and Finance
 - `q-bio.NC`: Neurons and Cognition
 - `q-fin.ST`: Statistical Finance
 - `econ.EM`: Econometrics

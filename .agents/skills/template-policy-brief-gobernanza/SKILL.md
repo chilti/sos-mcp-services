@@ -1,100 +1,103 @@
 ---
 name: template-policy-brief-gobernanza
 description: >-
-  Elaboración de resúmenes ejecutivos de política científica y tecnológica (Policy Briefs de 2 a 4 páginas) para rectorías, ministerios de ciencia (SECIHTI), comisiones legislativas y agencias de financiamiento. Opera bajo un protocolo en 2 etapas: I) Exploración empírica en el workspace mediante el menú de Agent Skills (agregaciones nacionales/institucionales, motor de 42+ indicadores, auditoría OA/APC, censo SNII, especialización AI/F-measure, frentes estratégicos, ODS y cartografía SOM), y II) Curaduría ejecutiva para seleccionar únicamente los 3 a 4 hallazgos empíricos más contundentes que sustentan las recomendaciones de política pública.
+  Preparation of executive science and technology policy briefs (2 to 4 pages) for university leadership, science ministries (SECIHTI), legislative committees, and funding agencies. Operates under a 2-stage protocol: I) Empirical workspace exploration across the menu of Agent Skills (national/institutional aggregations, 42+ indicator engine, OA/APC audit, SNII census, AI/F-measure specialization, strategic fronts, SDGs, and SOM cartography), and II) Executive curation to select strictly the 3 to 4 most compelling empirical findings that underpin public policy recommendations. Respond and label outputs in the user's language.
 ---
 
-# Plantilla Maestra: Policy Brief de Gobernanza, Políticas de Ciencia y Tecnología (C&T) y Evidencia Multidimensional SOM
-### *Especializada en síntesis ejecutiva basada en evidencia para tomadores de decisiones de alta dirección (2 a 4 páginas)*
+# Master Template: Governance Policy Brief, Science & Technology (S&T) Policy, and Multidimensional SOM Evidence
+### *Specialized in evidence-based executive synthesis for senior decision-makers (2 to 4 pages)*
 
-Esta plantilla guía la elaboración de un **POLICY BRIEF** conciso, directo y rigurosamente fundamentado en evidencia cuantitativa, dirigido a titulares de rectorías, la Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI), consejos de investigación y comisiones legislativas.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish). Write all section headers and prose of the generated Policy Brief in the user's language.
 
-Un Policy Brief efectivo **no es un volcado exhaustivo de todos los cálculos posibles**: requiere que el agente primero explore los datos con su menú de skills en el workspace (*Etapa I*) y luego realice una **curaduría ejecutiva estricta (*Etapa II*)** para seleccionar únicamente los hallazgos empíricos más contundentes y la configuración del **Mapa Autoorganizado de Kohonen (SOM)** (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017) que demuestre con mayor claridad por qué las políticas públicas deben diseñarse por perfiles y misiones diferenciadas en lugar de rankings unidimensionales (*pesar y sumar*).
+This template guides the preparation of a concise, direct, and rigorously evidence-based **POLICY BRIEF** addressed to university rectors, the Ministry of Science, Humanities, Technology, and Innovation (SECIHTI), research councils, and legislative committees.
 
----
-
-## Etapa I: Menú de Agent Skills para la Exploración de Evidencia (*Fase de Laboratorio*)
-
-El agente opera bajo el principio **Workspace-First** (`./corpus.parquet` $\to$ `./matrices/*.parquet` $\to$ `./reportes/`) y dispone del siguiente menú para construir la base de evidencia:
-
-1. **Extracción y Diagnóstico Cuantitativo Base:**
-   - [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) y [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md) (para política científica nacional/institucional sobre `rag.works_academic_all` con **CERO JOINs**), o [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) (`rag.works_flat`) y [`scientometrics-incites-expert`](../scientometrics-incites-expert/SKILL.md) para comparativas internacionales.
-   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Cálculo de la matriz completa de **46 columnas (42 indicadores numéricos + 4 metadatos)** sin truncar en `./matrices/`.
-2. **Menú de Dimensiones de Política Pública a Explorar:**
-   - **Evidencia Multidimensional SOM contra el Reduccionismo de Rankings:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md), [`som-trajectory-mapping`](../som-trajectory-mapping/SKILL.md) y [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md) para identificar tipologías de instituciones, estados o áreas temáticas según sus perfiles reales de desempeño.
-   - **Soberanía Editorial y Gasto en APC (USD):** [`open-access-monitor`](../open-access-monitor/SKILL.md) y [`journal-editorial-intelligence`](../journal-editorial-intelligence/SKILL.md) para cuantificar las 6 vías de Acceso Abierto y el gasto en cuotas comerciales APC frente a la vía Diamante.
-   - **Demografía Académica y Padrón SNII:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) e [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md) para evaluar masa crítica, descentralización territorial y relevo generacional.
-   - **Especialización Temática, Frentes Estratégicos y Agenda 2030 (ODS):** [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md), [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md), [`sdg-impact-intelligence`](../sdg-impact-intelligence/SKILL.md) e indicadores de priorización interna ($DShareC$, $AI$) vs. participación global ($CShareD$, $\text{F-measure}$) (Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2026).
+An effective Policy Brief is **not an exhaustive dump of every possible calculation**: it requires the agent to first explore the data using its menu of skills in the workspace (*Stage I*) and then perform **strict executive curation (*Stage II*)** to select only the most compelling empirical findings and the **Kohonen Self-Organizing Map (SOM)** configuration (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Villaseñor-García et al., 2017) that most clearly demonstrates why public policies must be designed around differentiated profiles and missions rather than one-dimensional rankings (*weighing and summing*).
 
 ---
 
-## Etapa II: Criterios de Curaduría Ejecutiva y Descarte
+## Stage I: Menu of Agent Skills for Evidence Exploration (*Laboratory Phase*)
 
-Para preservar la contundencia de un documento de 2 a 4 páginas para tomadores de decisiones, el agente aplica las siguientes reglas:
+The agent operates under the **Workspace-First** principle (`./corpus.parquet` $\to$ `./matrices/*.parquet` $\to$ `./reportes/`) and uses the following menu to build the evidence base:
 
-1. **Enfoque en el Problema de Política Pública:**
-   - Seleccionar del laboratorio **únicamente los indicadores y dimensiones que sustentan directamente la disyuntiva de política pública planteada por el usuario** (ej. si el Policy Brief trata sobre financiamiento a ciencia de frontera o sobre transición a Acceso Abierto Diamante, priorizar esas métricas y descartar del documento análisis accesorios que distraigan al decisor).
-2. **Selección de Dimensiones del SOM con Mayor Claridad Normativa:**
-   - Elegir en `--indicator-cols` el subconjunto de indicadores de `./matrices/` que produzca la tipología de clusters más nítida (mayor coeficiente Silhouette $s^*$) y que permita asociar cada cluster con un **instrumento de política pública diferenciado** (ej. *Cluster de Frontera Internacional*, *Cluster de Soberanía y Pertinencia Regional/Diamante*, *Cluster en Consolidación*).
-3. **Tablas Limpias sin Columnas `N/D`:**
-   - Presentar tablas compactas únicamente con variables verificadas y con señal real en el workspace. Prohibido incluir filas o columnas vacías con `N/D`.
-4. **Bitácora de Evidencia (`./reportes/exploration_log.md`):**
-   - Conservar en `./reportes/exploration_log.md` el registro de los cálculos realizados en el workspace para respaldo técnico ante comisiones revisoras.
-
----
-
-## Disponibilidad de Datos y Reglas Editoriales Estrictas
-
-- **Columnas verificadas en ClickHouse (`rag.works_academic_all` y `rag.works_flat`):** `publication_year`, `cited_by_count`, `is_oa`, `oa_status`, `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `keywords`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`.
-- **Lenguaje Ejecutivo, Sobrio y Propositivo:** Prohibición absoluta de adjetivos hiperbólicos (*"revolucionario"*, *"sin precedentes"*, *"espectacular"*). Cero menciones a prompts, tokens o comandos internos en el cuerpo del documento.
+1. **Baseline Quantitative Extraction and Diagnosis:**
+   - [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) and [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md) (for national/institutional science policy over `rag.works_academic_all` with **ZERO JOINs**), or [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) (`rag.works_flat`) and [`scientometrics-incites-expert`](../scientometrics-incites-expert/SKILL.md) for international comparisons.
+   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Computation of the full **46-column matrix (42 numerical indicators + 4 metadata columns)** without truncation in `./matrices/`.
+2. **Menu of Public Policy Dimensions to Explore:**
+   - **Multidimensional SOM Evidence Against Ranking Reductionism:** [`som-methodological-expert`](../som-methodological-expert/SKILL.md), [`som-trajectory-mapping`](../som-trajectory-mapping/SKILL.md), and [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md) to identify typologies of institutions, states, or thematic areas based on their real performance profiles.
+   - **Editorial Sovereignty and APC Expenditure (USD):** [`open-access-monitor`](../open-access-monitor/SKILL.md) and [`journal-editorial-intelligence`](../journal-editorial-intelligence/SKILL.md) to quantify the 6 Open Access routes and commercial APC fee expenditure versus the Diamond OA route.
+   - **Academic Demographics and SNII Registry:** [`snii-identity-resolver`](../snii-identity-resolver/SKILL.md) and [`infotlachia-scholar-intelligence`](../infotlachia-scholar-intelligence/SKILL.md) to evaluate critical mass, territorial decentralization, and generational renewal.
+   - **Thematic Specialization, Strategic Fronts, and Agenda 2030 (SDGs):** [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md), [`geopolitical-collaboration-analyst`](../geopolitical-collaboration-analyst/SKILL.md), [`sdg-impact-intelligence`](../sdg-impact-intelligence/SKILL.md), and indicators of internal prioritization ($DShareC$, $AI$) vs. global share ($CShareD$, $\text{F-measure}$) (Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2026).
 
 ---
 
-# Estructura Modular del Policy Brief
+## Stage II: Executive Curation and Pruning Criteria
 
-# [Título del Policy Brief: Evidencia Multidimensional y Opciones de Política Científica para [Tema / Subsistema / Institución]]
+To preserve the punchiness of a 2-to-4-page document for decision-makers, the agent applies the following rules:
 
-> ## SÍNTESIS EJECUTIVA PARA DECISORES
-> - **El Problema Estratégico:** Definición concisa (1 párrafo) de la tensión estructural o reto de gobernanza abordado.
-> - **La Evidencia Central:** 3 a 4 datos cuantitativos clave derivados del análisis cienciométrico y de la cartografía SOM en el workspace.
-> - **La Recomendación Principal:** Acción normativa o presupuestal prioritaria con mayor retorno epistémico, institucional y social.
-
----
-
-## 1. DIAGNÓSTICO CUANTITATIVO DEL PROBLEMA
-- **1.1. Contexto y Magnitud Empírica:**
-  * Síntesis de los hallazgos principales seleccionados tras la exploración del corpus.
-- **1.2. Tabla 1: Indicadores Diagnósticos Clave:**
-  * Tabla ejecutiva con las variables realmente calculadas y relevantes para el caso (ej. volumen e impacto autónomo, especialización $DShareC / CShareD$, vías de Acceso Abierto y gasto en APC en USD, colaboración o estructura del claustro SNII), su parámetro de comparación y su implicación operativa.
+1. **Focus on the Public Policy Problem:**
+   - Select from the laboratory **only the indicators and dimensions that directly underpin the public policy trade-off posed by the user** (e.g., if the Policy Brief addresses frontier science funding or transitioning to Diamond Open Access, prioritize those metrics and omit peripheral analyses that would distract the decision-maker).
+2. **Selection of SOM Dimensions with Maximum Normative Clarity:**
+   - Choose in `--indicator-cols` the subset of indicators from `./matrices/` that produces the sharpest cluster typology (highest Silhouette coefficient $s^*$) and allows associating each cluster with a **differentiated public policy instrument** (e.g., *International Frontier Cluster*, *Regional Relevance & Diamond Sovereignty Cluster*, *Consolidating Cluster*).
+3. **Clean Tables with Zero `N/D` / `N/A` Columns:**
+   - Present compact tables containing strictly verified variables with real signal in the workspace. Empty rows or columns filled with `N/D` or `N/A` are prohibited.
+4. **Evidence Log (`./reportes/exploration_log.md`):**
+   - Retain in `./reportes/exploration_log.md` the record of all calculations performed in the workspace as technical backing for review committees.
 
 ---
 
-## 2. EVIDENCIA MULTIDIMENSIONAL SOM PARA EL DISEÑO DE POLÍTICAS DIFERENCIADAS
-*Por qué los indicadores escalares únicos distorsionan la asignación de recursos (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2026; Manifiesto de Leiden, Hicks et al., 2015).*
+## Data Availability and Strict Editorial Rules
 
-- **2.1. Crítica Metodológica al Reduccionismo de Rankings ("Pesar y Sumar"):**
-  * Explicación concisa de cómo las clasificaciones unidimensionales castigan la diversidad de misiones institucionales y la investigación orientada a problemas estratégicos o regionales.
-- **2.2. Tabla 2: Tipología de Clusters Revelados por el SOM y Política Pública Diferenciada:**
-  * Presentar los clusters reales obtenidos en `./reportes/som_diagnosis.json` (con sus entidades o frentes representativos, fortalezas en zonas rojas, vulnerabilidades en zonas verdes y el instrumento de política diferenciada recomendado para cada perfil).
+- **Verified columns in ClickHouse (`rag.works_academic_all` and `rag.works_flat`):** `publication_year`, `cited_by_count`, `is_oa`, `oa_status`, `fwci`, `percentile`, `is_top_10`, `is_top_1`, `author_names`, `institution_rors`, `institution_names`, `country_code`, `all_country_codes`, `domain`, `field`, `subfield`, `topic`, `keywords`, `sdg_ids`, `apc_paid_usd`, `apc_list_usd`, `is_doaj_journal`, `is_core_journal`.
+- **Executive, Sober, and Action-Oriented Language:** Absolute prohibition of hyperbolic adjectives (*"revolutionary"*, *"unprecedented"*, *"spectacular"*, or their Spanish equivalents). Zero mentions of prompts, tokens, or internal commands in the body of the document.
 
 ---
 
-## 3. DISYUNTIVAS ESTRATÉGICAS (TRADE-OFFS) Y ESCENARIOS PROSPECTIVOS
-- Articulación de los **2 o 3 dilemas reales de gobernanza** respaldados por la evidencia del estudio (ej. *Visibilidad inducida vs. liderazgo propio y especialización*; *Drenaje presupuestal en cuotas APC comerciales vs. fortalecimiento de ecosistemas de Acceso Abierto Diamante y Verde*; *Concentración vs. articulación en redes interinstitucionales*).
-- Contraste conciso entre el **Escenario Inercial (Status Quo)** y el **Escenario de Intervención Basada en Perfiles Multidimensionales**.
+# Modular Structure of the Policy Brief
+*(Note: Write all section headers and prose in the user's language).*
+
+# [Policy Brief Title: Multidimensional Evidence and Science Policy Options for [Topic / Subsystem / Institution]]
+
+> ## EXECUTIVE SYNTHESIS FOR DECISION-MAKERS (SÍNTESIS EJECUTIVA PARA DECISORES)
+> - **The Strategic Problem:** Concise definition (1 paragraph) of the structural tension or governance challenge addressed.
+> - **Core Evidence:** 3 to 4 key quantitative facts derived from the scientometric analysis and SOM cartography in the workspace.
+> - **Primary Recommendation:** Priority regulatory or budgetary action offering the highest epistemic, institutional, and social return.
 
 ---
 
-## 4. MATRIZ DE RECOMENDACIONES PRIORITARIAS Y CURSOS DE ACCIÓN
-Presentar la **Tabla 3: Matriz de Recomendaciones Accionables para Órganos de Decisión**:
+## 1. QUANTITATIVE DIAGNOSIS OF THE PROBLEM (DIAGNÓSTICO CUANTITATIVO DEL PROBLEMA)
+- **1.1. Context and Empirical Magnitude:**
+  * Synthesis of the main findings selected after exploring the corpus.
+- **1.2. Table 1: Key Diagnostic Indicators:**
+  * Executive table featuring the variables actually computed and relevant to the case (e.g., autonomous volume and impact, $DShareC / CShareD$ specialization, Open Access routes and APC expenditure in USD, collaboration, or SNII faculty structure), their benchmark parameter, and their operational implication.
 
-| Nivel de Decisión / Órgano Responsable | Acción de Política Recomendada | Horizonte de Implementación | Indicador de Éxito / Meta Verificable |
+---
+
+## 2. MULTIDIMENSIONAL SOM EVIDENCE FOR DIFFERENTIATED POLICY DESIGN (EVIDENCIA MULTIDIMENSIONAL SOM PARA EL DISEÑO DE POLÍTICAS DIFERENCIADAS)
+*Why single scalar indicators distort resource allocation (Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025; Jiménez-Andrade, Arencibia-Jorge & Carrillo-Calvet, 2026; Leiden Manifesto, Hicks et al., 2015).*
+
+- **2.1. Methodological Critique of Ranking Reductionism ("Weighing and Summing"):**
+  * Concise explanation of how one-dimensional rankings penalize diversity of institutional missions and research oriented toward strategic or regional problems.
+- **2.2. Table 2: Cluster Typology Revealed by the SOM and Differentiated Public Policy:**
+  * Present the real clusters obtained in `./reportes/som_diagnosis.json` (including their representative entities or fronts, strengths in red zones, vulnerabilities in green zones, and the differentiated policy instrument recommended for each profile).
+
+---
+
+## 3. STRATEGIC TRADE-OFFS AND PROSPECTIVE SCENARIOS (DISYUNTIVAS ESTRATÉGICAS Y ESCENARIOS PROSPECTIVOS)
+- Articulation of the **2 or 3 real governance dilemmas** backed by the study's evidence (e.g., *Induced visibility vs. autonomous leadership and specialization*; *Budgetary drain in commercial APC fees vs. strengthening Diamond and Green Open Access ecosystems*; *Concentration vs. inter-institutional network articulation*).
+- Concise contrast between the **Inertial Scenario (Status Quo)** and the **Multidimensional Profile-Based Intervention Scenario**.
+
+---
+
+## 4. PRIORITY RECOMMENDATIONS MATRIX AND COURSES OF ACTION (MATRIZ DE RECOMENDACIONES PRIORITARIAS Y CURSOS DE ACCIÓN)
+Present **Table 3: Actionable Recommendations Matrix for Decision-Making Bodies**:
+
+| Decision Level / Responsible Body | Recommended Policy Action | Implementation Horizon | Success Indicator / Verifiable Target |
 | :--- | :--- | :--- | :--- |
-| **[Ej. Rectoría / SECIHTI / Dirección]** | [Acción concreta derivada de los datos] | Corto Plazo (0–12 meses) | [Métrica cuantitativa auditable] |
-| **[Ej. Consejos Técnicos / Comisiones Evaluadoras]** | [Adopción de evaluación por perfiles comparables SOM / criterios de especialización] | Corto–Mediano Plazo (1–2 años) | [Métrica o lineamiento verificable] |
-| **[Ej. Coordinaciones / Fondos Sectoriales]** | [Incentivo focalizado según los hallazgos del estudio] | Mediano Plazo (1–3 años) | [Meta de impacto, colaboración o ahorro] |
+| **[e.g., Rectorate / SECIHTI / Directorate]** | [Concrete data-driven action] | Short Term (0–12 months) | [Auditable quantitative metric] |
+| **[e.g., Technical Councils / Evaluation Committees]** | [Adoption of SOM comparable-profile evaluation / specialization criteria] | Short–Medium Term (1–2 years) | [Verifiable metric or guideline] |
+| **[e.g., Coordinations / Sectoral Funds]** | [Targeted incentive based on study findings] | Medium Term (1–3 years) | [Impact, collaboration, or cost-saving target] |
 
 ---
 
-## FICHA TÉCNICA Y FUENTES AUDITABLES
-- Declaración de las fuentes de datos (`rag.works_academic_all` / `rag.works_flat` / Padrón SNII), fecha de corte, parámetros de filtrado, artefactos reproducibles en `./matrices/` y `./reportes/` (incluyendo `som_dashboard.html` y `exploration_log.md`) y referencias metodológicas (Carrillo-Calvet et al., 2025; Jiménez-Andrade et al., 2024, 2025, 2026; Villaseñor-García et al., 2017; Hicks et al., 2015; Directriz GLOBAL - ISSI).
+## TECHNICAL FACT SHEET AND AUDITABLE SOURCES (FICHA TÉCNICA Y FUENTES AUDITABLES)
+- Declaration of data sources (`rag.works_academic_all` / `rag.works_flat` / SNII Registry), cutoff date, filtering parameters, reproducible artifacts in `./matrices/` and `./reportes/` (including `som_dashboard.html` and `exploration_log.md`), and methodological references (Carrillo-Calvet et al., 2025; Jiménez-Andrade et al., 2024, 2025, 2026; Villaseñor-García et al., 2017; Hicks et al., 2015; GLOBAL Guideline - ISSI).

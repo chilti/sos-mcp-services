@@ -1,28 +1,28 @@
-# Formulación Continua de la Ley de Bradford (Egghe, 1990)
+# Continuous Formulation of Bradford's Law (Egghe, 1990)
 
-La formulación de Leo Egghe modela la dispersión de artículos en revistas mediante una función continua acumulada.
-
----
-
-## 1. División en Zonas de Bradford
-
-Dada una disciplina con $T$ revistas ordenadas por producción decreciente y $A$ artículos totales:
-
-Las revistas se dividen en $p=3$ zonas que contienen aproximadamente el mismo número de artículos ($A/3$):
-* **Zona 1 (Núcleo o Core):** Un número pequeño de revistas altamente especializadas y productivas ($n_1$).
-* **Zona 2 (Zona Moderada):** Un número mayor de revistas de alcance medio ($n_2$).
-* **Zona 3 (Zona Periférica):** Gran masa de revistas de productividad baja o esporádica ($n_3$).
+Leo Egghe's formulation models the scattering of articles across journals via a continuous cumulative function.
 
 ---
 
-## 2. Multiplicador de Bradford ($k$)
+## 1. Division into Bradford Zones
 
-La proporción entre las zonas obedece la progresión geométrica:
+Given a discipline with $T$ journals ranked by decreasing productivity and $A$ total articles:
+
+The journals are divided into $p=3$ zones containing approximately the same number of articles ($A/3$):
+* **Zone 1 (Core):** A small number of highly specialized and productive journals ($n_1$).
+* **Zone 2 (Moderate Zone):** A larger number of medium-scope journals ($n_2$).
+* **Zone 3 (Peripheral Zone):** A large mass of low-productivity or sporadic journals ($n_3$).
+
+---
+
+## 2. Bradford's Multiplier ($k$)
+
+The ratio between zones follows the geometric progression:
 
 $$n_1 : n_2 : n_3 \approx 1 : k : k^2$$
 
-donde:
+where:
 $$k = \left( e^\gamma \cdot y_0 \right)^{1/p}$$
-con $\gamma \approx 0.5772$ (constante de Euler-Mascheroni) e $y_0$ el número de artículos en la revista de mayor producción.
+with $\gamma \approx 0.5772$ (Euler-Mascheroni constant) and $y_0$ representing the number of articles in the most productive journal.
 
-* **Aplicación Práctica:** Identificación de colecciones esenciales para bibliotecas universitarias y priorización de suscripciones indexadas.
+* **Practical Application:** Identification of core collections for university libraries and prioritization of indexed journal subscriptions.

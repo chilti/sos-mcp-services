@@ -1,33 +1,33 @@
-# Tipologías de Redes Bibliométricas e Indicadores Topológicos
+# Bibliometric Network Typologies and Topological Indicators
 
-Esta referencia define las tipologías de red generadas en KnoMap y sus interpretaciones cienciométricas.
+This reference defines the network typologies generated in KnoMap and their scientometric interpretations.
 
 ---
 
-## 1. Tipologías de Red
+## 1. Network Typologies
 
-| Tipo de Red | Unidad de Análisis | Significado Cienciométrico | Tipo de Estructura |
+| Network Type | Unit of Analysis | Scientometric Meaning | Structure Type |
 |---|---|---|---|
-| **Co-ocurrencia de Keywords** | Palabras clave (autor/plus) | Estructura conceptual, frentes temáticos y proximidad semántica | Conceptual |
-| **Coautoría** | Autores, instituciones, países | Redes de colaboración, capital social y comunidades invisibles | Social |
-| **Co-citación** | Referencias o autores citados | Base intelectual del campo y genealogía teórica compartida | Intelectual |
-| **Acoplamiento Bibliográfico** | Documentos, autores, fuentes | Frente de investigación activo (trabajos que citan las mismas fuentes) | Frente Activo |
-| **Citación Directa** | Trabajos, revistas | Flujo de conocimiento e impacto citacional acumulado | Histórica / Impacto |
+| **Keyword Co-occurrence** | Keywords (author/plus) | Conceptual structure, thematic fronts, and semantic proximity | Conceptual |
+| **Co-authorship** | Authors, institutions, countries | Collaboration networks, social capital, and invisible colleges | Social |
+| **Co-citation** | Cited references or cited authors | Intellectual base of the field and shared theoretical genealogy | Intellectual |
+| **Bibliographic Coupling** | Documents, authors, sources | Active research front (works citing the same sources) | Active Front |
+| **Direct Citation** | Works, journals | Knowledge flow and cumulative citation impact | Historical / Impact |
 
 ---
 
-## 2. Detección de Comunidades (Leiden vs Louvain)
+## 2. Community Detection (Leiden vs. Louvain)
 
-* **Algoritmo Leiden (Traag et al., 2019):** Es la evolución formal de Louvain. Garantiza que todas las comunidades detectadas estén topológicamente conectadas, evitando la creación de comunidades fragmentadas o subóptimas. Se utiliza como estándar predeterminado.
-* **Parámetro de Resolución ($\gamma$):**
-  * $\gamma = 1.0$: Partición estándar equilibrada.
-  * $\gamma > 1.0$: Partición fina (mayor número de micro-comunidades especializadas).
-  * $\gamma < 1.0$: Partición agregada (fusión de clusters en macro-áreas).
+* **Leiden Algorithm (Traag et al., 2019):** The formal evolution of Louvain. It guarantees that all detected communities are topologically connected, preventing the creation of fragmented or suboptimal communities. It is used as the default standard.
+* **Resolution Parameter ($\gamma$):**
+  * $\gamma = 1.0$: Balanced standard partition.
+  * $\gamma > 1.0$: Fine-grained partition (higher number of specialized micro-communities).
+  * $\gamma < 1.0$: Coarse partition (merges clusters into macro-areas).
 
 ---
 
-## 3. Métricas de Centralidad de Red
+## 3. Network Centrality Metrics
 
-* **Degree Centrality:** Volumen total de colaboraciones o co-ocurrencias de un nodo.
-* **Betweenness Centrality:** Mide la frecuencia con la que un nodo actúa como puente en los caminos más cortos entre otros nodos (identifica términos o autores interdisciplinares).
-* **PageRank:** Importancia recursiva de un nodo en función de la autoridad de sus vecinos.
+* **Degree Centrality:** Total volume of collaborations or co-occurrences of a node.
+* **Betweenness Centrality:** Measures how frequently a node acts as a bridge along the shortest paths between other nodes (identifies interdisciplinary terms or authors).
+* **PageRank:** Recursive importance of a node based on the authority of its neighbors.

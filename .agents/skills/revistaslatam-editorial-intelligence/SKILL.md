@@ -1,31 +1,33 @@
 ---
 name: revistaslatam-editorial-intelligence
-description: Diccionario exhaustivo de Revistas Latam (Catálogo de Revistas Iberoamericanas, evaluación editorial, checklist de indización DOAJ/SciELO/Redalyc/Latindex 2.0, Acceso Abierto Diamante y multilingüismo).
+description: Comprehensive dictionary and reference for Revistas Latam (Ibero-American Journal Catalog, editorial evaluation, DOAJ/SciELO/Redalyc/Latindex 2.0 indexing checklist, Diamond Open Access, and multilingualism). Respond and label outputs in the user's language.
 ---
 
 # Skill: Revistas Latam Editorial Intelligence
 
-## 1. Alcance y Evaluación Editorial Iberoamericana
-Se activa para diagnósticos cienciométricos de revistas científicas, políticas de Acceso Abierto Diamante ($0 APC), indización y visibilidad internacional en América Latina, el Caribe, España y Portugal.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+## 1. Scope and Ibero-American Editorial Evaluation
+Activated for scientometric assessments of scientific journals, Diamond Open Access policies (\$0 APC), indexing status, and international visibility across Latin America, the Caribbean, Spain, and Portugal.
 
 ---
 
-## 2. Indicadores y Checklist de Indización
-1. **Acceso Abierto Diamante vs Comercial:**
-   * Monitoreo de gratuidad total (sin cobro al autor ni al lector) frente al modelo APC comercial.
-2. **Matriz de Indización Internacional y Regional:**
-   * Índices globales: Scopus (SJR, Citescore, Cuartil Q1-Q4), Web of Science (JCR, ESCI).
-   * Índices de calidad regional: DOAJ (Directorio de Revistas de Acceso Abierto con Seal), SciELO (Scientific Electronic Library Online), Redalyc (Red de Revistas Científicas de ALyC), Latindex Catálogo 2.0 (cumplimiento de 38 criterios de calidad editorial), Dialnet, MIAR, AmeliCA.
-3. **Métricas de Internacionalización y Calidad:**
-   * Endogamia editorial: Porcentaje de autores y revisores externos a la institución editora.
-   * Internacionalización del Comité Editorial y de los autores firmantes.
-   * Flujo editorial: Días promedio de revisión por pares, tasa de aceptación/rechazo y periodicidad.
-4. **Multilingüismo y Políticas de Autoarchivo:**
-   * Distribución de artículos por idioma (Español, Portugués, Inglés).
-   * Políticas de autoarchivo y derechos de autor registradas en Sherpa Romeo y Diadorim (políticas Verde, Azul, Amarilla, etc.).
+## 2. Indicators and Indexing Checklist
+1. **Diamond Open Access vs. Commercial APC:**
+   * Monitoring full zero-fee access (no charges to authors or readers) versus the commercial APC model.
+2. **International and Regional Indexing Matrix:**
+   * Global indexes: Scopus (SJR, CiteScore, Quartiles Q1–Q4), Web of Science (JCR, ESCI).
+   * Regional quality indexes: DOAJ (Directory of Open Access Journals with DOAJ Seal), SciELO (Scientific Electronic Library Online), Redalyc (Network of Scientific Journals from Latin America and the Caribbean), Latindex Catalog 2.0 (compliance with 38 editorial quality criteria), Dialnet, MIAR, AmeliCA.
+3. **Internationalization and Editorial Quality Metrics:**
+   * Editorial endogamy: Percentage of authors and peer reviewers external to the publishing institution.
+   * Internationalization of the Editorial Board and contributing authors.
+   * Editorial workflow: Average peer-review turnaround days, acceptance/rejection rate, and publication periodicity.
+4. **Multilingualism and Self-Archiving Policies:**
+   * Distribution of articles by language (Spanish, Portuguese, English).
+   * Self-archiving and copyright policies registered in Sherpa Romeo and Diadorim (Green, Blue, Yellow policies, etc.).
 
 ---
 
-## 3. Fuentes de Datos y Microservicio
-* `revistaslatam-mcp` (Puerto 8013): Microservicio de consulta editorial y metadatos de revistas.
-* `pipeline_revistaslatam/`: Bases de datos locales de revistas, editoriales y cruces de indexación.
+## 3. Data Sources and Microservice
+* `revistaslatam-mcp` (Port 8013): Editorial query and journal metadata microservice.
+* `pipeline_revistaslatam/`: Local databases of journals, publishers, and indexing cross-references.

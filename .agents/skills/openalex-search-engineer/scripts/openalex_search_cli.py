@@ -40,9 +40,32 @@ try:
 except ImportError:
     pass
 
+MESSAGES = {
+    "en": {
+        "no_join_error": "Data policy violation: JOIN statements are strictly prohibited in ClickHouse.",
+        "author_done": "Author search completed for '{name}': {n} found. Output: {output}",
+        "sql_not_found": "Error: SQL file not found: {path}",
+        "ch_unavailable": "Error: ClickHouse client unavailable to execute --sql-file.",
+        "ch_fallback": "Warning: ClickHouse query failed ({e}). Falling back to OpenAlex API.",
+        "works_done": "Works search completed: {n} works retrieved. Saved to {output}",
+        "entity_done": "Entity {etype}/{eid} retrieved. Output: {output}",
+        "agg_done": "Aggregation by {group_by} on {etype} saved to {output}",
+    },
+    "es": {
+        "no_join_error": "Violación de política de datos: Las sentencias JOIN están estrictamente prohibidas en ClickHouse.",
+        "author_done": "Búsqueda de autores completada para '{name}': {n} encontrados. Salida: {output}",
+        "sql_not_found": "Error: Archivo SQL no encontrado: {path}",
+        "ch_unavailable": "Error: Cliente ClickHouse no disponible para ejecutar --sql-file.",
+        "ch_fallback": "Advertencia: Falló consulta ClickHouse ({e}). Usando API de OpenAlex como respaldo.",
+        "works_done": "Búsqueda de obras completada: {n} obras recuperadas. Guardado en {output}",
+        "entity_done": "Entidad {etype}/{eid} recuperada. Salida: {output}",
+        "agg_done": "Agregación por {group_by} en {etype} guardada en {output}",
+    }
+}
+
 
 def get_clickhouse_client():
-    """Obtiene un cliente ClickHouse conectado al host local/remoto configurado."""
+    """Obtain a ClickHouse client connected to the configured local/remote host."""
     if clickhouse_connect is None:
         return None
     host = os.getenv("CLICKHOUSE_HOST", os.getenv("CH_HOST", "10.90.0.87"))
@@ -66,10 +89,11 @@ def get_clickhouse_client():
         return None
 
 
-def sanitize_no_joins(sql: str) -> bool:
-    """Verifica que la consulta no contenga sentencias JOIN prohibidas."""
+def sanitize_no_joins(sql: str, lang: str = "en") -> bool:
+    """Verify that the query does not contain prohibited JOIN statements."""
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     if re.search(r"\bjoin\b", sql, re.IGNORECASE):
-        raise ValueError("Violación de política de datos: Las sentencias JOIN están estrictamente prohibidas en ClickHouse.")
+        raise ValueError(msg["no_join_error"])
     return True
 
 
@@ -103,7 +127,7 @@ def generate_hispanic_name_permutations(name: str) -> List[str]:
 
 
 def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """Asegura que un registro de obra (de ClickHouse o de la API pública de OpenAlex) tenga todas las columnas canónicas."""
+    """Ensure a work record (from ClickHouse or the public OpenAlex API) has all canonical columns."""
     rec = dict(raw)
     if not rec.get("title") and rec.get("display_name"):
         rec["title"] = rec["display_name"]
@@ -120,7 +144,7 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
     rec["doc_type"] = str(doc_type)
     rec["type"] = str(doc_type)
 
-    # Extraer authorships si viene de la API pública de OpenAlex
+    # Extract authorships if coming from the public OpenAlex API
     authorships = rec.get("authorships")
     if isinstance(authorships, list) and authorships and not rec.get("author_names"):
         a_names, i_names, i_rors, c_codes = [], [], [], []
@@ -150,7 +174,7 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
         rec["institution_rors"] = i_rors
         rec["all_country_codes"] = c_codes
 
-    # Extraer open_access si viene anidado de la API pública
+    # Extract open_access if nested from the public API
     oa_obj = rec.get("open_access")
     if isinstance(oa_obj, dict):
         if "is_oa" not in rec or rec["is_oa"] is None:
@@ -158,7 +182,7 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
         if not rec.get("oa_status"):
             rec["oa_status"] = oa_obj.get("oa_status", "closed")
 
-    # Extraer primary_topic si viene anidado
+    # Extract primary_topic if nested
     pt_obj = rec.get("primary_topic")
     if isinstance(pt_obj, dict):
         rec.setdefault("topic", pt_obj.get("display_name", ""))
@@ -166,7 +190,7 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
         rec.setdefault("field", (pt_obj.get("field") or {}).get("display_name", ""))
         rec.setdefault("domain", (pt_obj.get("domain") or {}).get("display_name", ""))
 
-    # Extraer APCs y SDGs si vienen anidados
+    # Extract APCs and SDGs if nested
     if isinstance(rec.get("apc_paid"), dict) and not rec.get("apc_paid_usd"):
         rec["apc_paid_usd"] = rec["apc_paid"].get("value_usd") or 0.0
     if isinstance(rec.get("apc_list"), dict) and not rec.get("apc_list_usd"):
@@ -232,7 +256,7 @@ def _normalize_work_record(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _save_works_output(records: List[Dict[str, Any]], output_path: str, meta: Dict[str, Any]) -> None:
-    """Guarda registros de obras en .parquet, .csv o .json de forma compatible con todo el ecosistema."""
+    """Save work records to .parquet, .csv, or .json in a format compatible across the entire ecosystem."""
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     ext = os.path.splitext(output_path)[1].lower()
     if ext == ".parquet":
@@ -255,6 +279,8 @@ def _save_works_output(records: List[Dict[str, Any]], output_path: str, meta: Di
 
 def cmd_search_authors(args):
     """Searches authors using permutations and ClickHouse tokenization."""
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     name = args.name
     limit = min(args.limit or 50, 1000)
     permutations = generate_hispanic_name_permutations(name) if name else []
@@ -334,27 +360,29 @@ def cmd_search_authors(args):
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"Author search completed for '{name}': {len(results)} found. Output: {args.output}")
+    print(msg["author_done"].format(name=name, n=len(results), output=args.output))
     sys.exit(0)
 
 
 def cmd_search_works(args):
     """Searches works in ClickHouse (rag.works_flat or rag.works_academic_all) or via --sql-file with NO JOINs."""
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     limit = min(args.limit or 500, 50000)
     client = get_clickhouse_client()
     records: List[Dict[str, Any]] = []
 
     if args.sql_file:
         if not os.path.exists(args.sql_file):
-            print(f"Error: SQL file not found: {args.sql_file}", file=sys.stderr)
+            print(msg["sql_not_found"].format(path=args.sql_file), file=sys.stderr)
             sys.exit(1)
         with open(args.sql_file, "r", encoding="utf-8") as f:
             sql = f.read().strip().rstrip(";")
-        sanitize_no_joins(sql)
+        sanitize_no_joins(sql, lang=lang)
         if args.limit and "LIMIT" in sql.upper():
             sql = re.sub(r"LIMIT\s+\d+", f"LIMIT {limit}", sql, flags=re.IGNORECASE)
         if client is None:
-            print("Error: ClickHouse client unavailable to execute --sql-file.", file=sys.stderr)
+            print(msg["ch_unavailable"], file=sys.stderr)
             sys.exit(1)
         res = client.query(sql)
         col_names = list(res.column_names)
@@ -393,7 +421,7 @@ def cmd_search_works(args):
             where_clauses.append(f"toUInt8OrZero(toString(is_oa)) = {val}")
 
         where_sql = " AND ".join(where_clauses)
-        sanitize_no_joins(where_sql)
+        sanitize_no_joins(where_sql, lang=lang)
         ref_expr = "referenced_works" if "works_flat" in table else "JSONExtract(raw_data, 'referenced_works', 'Array(String)') AS referenced_works"
 
         sql = f"""
@@ -416,7 +444,7 @@ def cmd_search_works(args):
                 row_dict = dict(zip(col_names, row))
                 records.append(_normalize_work_record(row_dict))
         except Exception as e:
-            print(f"Warning: ClickHouse query failed ({e}). Falling back to OpenAlex API.", file=sys.stderr)
+            print(msg["ch_fallback"].format(e=e), file=sys.stderr)
             records = []
 
     if not records and not args.sql_file:
@@ -438,23 +466,27 @@ def cmd_search_works(args):
         args.output,
         meta={"query": args.query, "sql_file": args.sql_file, "table": args.table, "limit": limit},
     )
-    print(f"Works search completed: {len(records)} works retrieved. Saved to {args.output}")
+    print(msg["works_done"].format(n=len(records), output=args.output))
     sys.exit(0)
 
 
 def cmd_get_entity(args):
     """Retrieves full normalized object by ID."""
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     res = openalex_get_entity_by_id(args.entity_type, args.id)
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
 
-    print(f"Entity {args.entity_type}/{args.id} retrieved. Output: {args.output}")
+    print(msg["entity_done"].format(etype=args.entity_type, eid=args.id, output=args.output))
     sys.exit(0)
 
 
 def cmd_aggregate(args):
     """Runs aggregate group-by query in ClickHouse."""
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     res = openalex_aggregate_group_by(
         entity_type=args.entity_type,
         filter_param=args.filter,
@@ -465,12 +497,19 @@ def cmd_aggregate(args):
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
 
-    print(f"Aggregation by {args.group_by} on {args.entity_type} saved to {args.output}")
+    print(msg["agg_done"].format(group_by=args.group_by, etype=args.entity_type, output=args.output))
     sys.exit(0)
 
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for OpenAlex Search Engineer")
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for labels/messages (en or es)"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: search-authors
@@ -480,6 +519,7 @@ def main():
     p_auth.add_argument("--institution-ror", help="Optional ROR filter")
     p_auth.add_argument("--limit", type=int, default=50, help="Max results (default: 50, max: 1000)")
     p_auth.add_argument("--output", required=True, help="Path to output JSON")
+    p_auth.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     p_auth.set_defaults(func=cmd_search_authors)
 
     # Subcommand: search-works
@@ -496,6 +536,7 @@ def main():
     p_wrk.add_argument("--is-oa", type=bool, default=None, help="Open Access flag")
     p_wrk.add_argument("--limit", type=int, default=500, help="Max works (default: 500, max: 50000)")
     p_wrk.add_argument("--output", required=True, help="Path to output (.parquet, .csv, or .json)")
+    p_wrk.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     p_wrk.set_defaults(func=cmd_search_works)
 
     # Subcommand: get-entity
@@ -503,6 +544,7 @@ def main():
     p_ent.add_argument("--entity-type", choices=["works", "authors", "institutions", "sources", "topics", "funders"], required=True)
     p_ent.add_argument("--id", required=True, help="OpenAlex ID, ROR, or ORCID")
     p_ent.add_argument("--output", required=True, help="Path to output JSON")
+    p_ent.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     p_ent.set_defaults(func=cmd_get_entity)
 
     # Subcommand: aggregate
@@ -511,6 +553,7 @@ def main():
     p_agg.add_argument("--group-by", choices=["publication_year", "oa_status", "type", "primary_topic_id", "country_code"], default="publication_year")
     p_agg.add_argument("--filter", help="SQL WHERE clause filter")
     p_agg.add_argument("--output", required=True, help="Path to output JSON")
+    p_agg.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     p_agg.set_defaults(func=cmd_aggregate)
 
     args = parser.parse_args()

@@ -2,9 +2,9 @@
 """
 PubMed Data Harvester CLI
 -------------------------
-Herramienta autónoma para la recolección, paginación y estandarización de
-literatura biomédica y clínica desde la API oficial NCBI E-utilities (PubMed)
-hacia el esquema tabular canónico (Parquet, JSON, CSV).
+Standalone tool for harvesting, paginating, and standardizing biomedical
+and clinical literature from the official NCBI E-utilities (PubMed) API
+into the canonical tabular schema (Parquet, JSON, CSV).
 """
 
 import sys
@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# Agregar el directorio raíz del proyecto para importar módulos compartidos
+# Add project root directory to import shared modules
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parents[2]
 if str(project_root) not in sys.path:
@@ -26,7 +26,7 @@ if str(project_root) not in sys.path:
 try:
     from shared.canonical_schema import save_canonical_corpus, normalize_record_to_canonical
 except ImportError:
-    # Fallback si se ejecuta de forma aislada
+    # Fallback when executed standalone
     def save_canonical_corpus(records, output_path, default_source="pubmed"):
         import pandas as pd
         df = pd.DataFrame(records)
@@ -40,9 +40,26 @@ except ImportError:
 
 BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
+MESSAGES = {
+    "en": {
+        "batch_error": "[PubMed Harvester] Error in batch {start}-{end}: {e}\n",
+        "querying": "[PubMed Harvester] Querying Entrez with: '{query}' (Limit: {limit})...\n",
+        "pmids_found": "[PubMed Harvester] {n} PMIDs found. Downloading document metadata...\n",
+        "no_results": "[PubMed Harvester] No matching records found.\n",
+        "saved": "[PubMed Harvester] Success: {n} records saved to '{path}'.\n",
+    },
+    "es": {
+        "batch_error": "[PubMed Harvester] Error en lote {start}-{end}: {e}\n",
+        "querying": "[PubMed Harvester] Consultando Entrez con: '{query}' (Límite: {limit})...\n",
+        "pmids_found": "[PubMed Harvester] {n} PMIDs encontrados. Descargando metadatos documentales...\n",
+        "no_results": "[PubMed Harvester] No se encontraron registros coincidentes.\n",
+        "saved": "[PubMed Harvester] Éxito: {n} registros guardados en '{path}'.\n",
+    }
+}
+
 
 def get_ncbi_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Obtiene claves desde variables de entorno o archivo .env."""
+    """Retrieve keys from environment variables or .env file."""
     if os.environ.get(key):
         return os.environ.get(key)
     env_file = project_root / ".env"
@@ -65,7 +82,7 @@ def search_pubmed_pmids(
     year_from: Optional[int] = None,
     year_to: Optional[int] = None
 ) -> List[str]:
-    """Ejecuta esearch.fcgi para obtener la lista de identificadores PMID."""
+    """Execute esearch.fcgi to retrieve the list of PMID identifiers."""
     params = {
         "db": "pubmed",
         "term": term,
@@ -97,9 +114,11 @@ def search_pubmed_pmids(
 def fetch_pubmed_summaries(
     pmids: List[str],
     api_key: Optional[str] = None,
-    batch_size: int = 150
+    batch_size: int = 150,
+    lang: str = "en"
 ) -> List[Dict[str, Any]]:
-    """Descarga los metadatos documentales de un lote de PMIDs mediante esummary.fcgi."""
+    """Download document metadata for a batch of PMIDs via esummary.fcgi."""
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     all_records = []
     total = len(pmids)
 
@@ -130,7 +149,7 @@ def fetch_pubmed_summaries(
                 if not doc:
                     continue
 
-                # Extraer DOI y PMCID de articleids
+                # Extract DOI and PMCID from articleids
                 doi = None
                 pmcid = None
                 for aid in doc.get("articleids", []):
@@ -141,7 +160,7 @@ def fetch_pubmed_summaries(
                     elif idtype in ("pmc", "pmcid") and not pmcid:
                         pmcid = val.replace("pmc-id: ", "").split(";")[0].strip()
 
-                # Extraer año de publicación
+                # Extract publication year
                 pubdate = doc.get("pubdate", "")
                 pub_year = None
                 for part in pubdate.split():
@@ -149,11 +168,11 @@ def fetch_pubmed_summaries(
                         pub_year = int(part)
                         break
 
-                # Autores
+                # Authors
                 authors = [a.get("name") for a in doc.get("authors", []) if a.get("name")]
 
-                # Estado de Acceso Abierto:
-                # Si tiene PMCID en PubMed Central, es Open Access disponible en repositorio público
+                # Open Access status:
+                # If a PMCID is available in PubMed Central, it is Green OA in a public repository
                 has_pmc = bool(pmcid)
                 oa_status = "green" if has_pmc else "closed"
 
@@ -204,9 +223,9 @@ def fetch_pubmed_summaries(
                 all_records.append(record)
 
         except Exception as e:
-            sys.stderr.write(f"[PubMed Harvester] Error en lote {i}-{i+batch_size}: {e}\n")
+            sys.stderr.write(msg["batch_error"].format(start=i, end=i+batch_size, e=e))
 
-        # Control de tasa de peticiones NCBI
+        # NCBI rate-limit control
         time.sleep(0.35 if not api_key else 0.12)
 
     return all_records
@@ -214,29 +233,40 @@ def fetch_pubmed_summaries(
 
 def main():
     parser = argparse.ArgumentParser(description="PubMed Data Harvester CLI (knoMap Scientometrics Suite)")
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for labels/messages (en or es)"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # 1. Subcomando: fetch-works
-    p_works = subparsers.add_parser("fetch-works", help="Recolecta publicaciones de PubMed por consulta temática")
-    p_works.add_argument("--query", "-q", type=str, required=True, help="Términos de búsqueda Entrez (ej. 'microplastics AND water')")
-    p_works.add_argument("--affiliation", "-a", type=str, help="Filtro de afiliación o país (ej. 'Mexico[Affiliation]')")
-    p_works.add_argument("--year-from", type=int, help="Año de inicio de publicación")
-    p_works.add_argument("--year-to", type=int, help="Año final de publicación")
-    p_works.add_argument("--limit", "-l", type=int, default=100, help="Límite máximo de obras a cosechar (default: 100)")
-    p_works.add_argument("--output", "-o", type=str, required=True, help="Ruta de salida (.parquet, .json, .csv)")
-    p_works.add_argument("--api-key", type=str, help="Clave de API NCBI (opcional)")
+    # 1. Subcommand: fetch-works
+    p_works = subparsers.add_parser("fetch-works", help="Harvest PubMed publications by thematic query")
+    p_works.add_argument("--query", "-q", type=str, required=True, help="Entrez search terms (e.g., 'microplastics AND water')")
+    p_works.add_argument("--affiliation", "-a", type=str, help="Affiliation or country filter (e.g., 'Mexico[Affiliation]')")
+    p_works.add_argument("--year-from", type=int, help="Start publication year")
+    p_works.add_argument("--year-to", type=int, help="End publication year")
+    p_works.add_argument("--limit", "-l", type=int, default=100, help="Maximum number of works to harvest (default: 100)")
+    p_works.add_argument("--output", "-o", type=str, required=True, help="Output file path (.parquet, .json, .csv)")
+    p_works.add_argument("--api-key", type=str, help="NCBI API Key (optional)")
+    p_works.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
 
-    # 2. Subcomando: fetch-author-works
-    p_author = subparsers.add_parser("fetch-author-works", help="Recolecta publicaciones de un autor específico")
-    p_author.add_argument("--author", type=str, required=True, help="Nombre del autor en formato PubMed (ej. 'Pardo Annie' o 'Pardo A')")
-    p_author.add_argument("--affiliation", type=str, help="Filtro opcional de institución (ej. 'UNAM' o 'Mexico')")
-    p_author.add_argument("--year-from", type=int, help="Año de inicio")
-    p_author.add_argument("--year-to", type=int, help="Año final")
-    p_author.add_argument("--limit", "-l", type=int, default=200, help="Límite de obras (default: 200)")
-    p_author.add_argument("--output", "-o", type=str, required=True, help="Ruta de salida (.parquet, .json, .csv)")
-    p_author.add_argument("--api-key", type=str, help="Clave de API NCBI (opcional)")
+    # 2. Subcommand: fetch-author-works
+    p_author = subparsers.add_parser("fetch-author-works", help="Harvest publications by a specific author")
+    p_author.add_argument("--author", type=str, required=True, help="Author name in PubMed format (e.g., 'Pardo Annie' or 'Pardo A')")
+    p_author.add_argument("--affiliation", type=str, help="Optional institution filter (e.g., 'UNAM' or 'Mexico')")
+    p_author.add_argument("--year-from", type=int, help="Start year")
+    p_author.add_argument("--year-to", type=int, help="End year")
+    p_author.add_argument("--limit", "-l", type=int, default=200, help="Maximum number of works (default: 200)")
+    p_author.add_argument("--output", "-o", type=str, required=True, help="Output file path (.parquet, .json, .csv)")
+    p_author.add_argument("--api-key", type=str, help="NCBI API Key (optional)")
+    p_author.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
 
     args = parser.parse_args()
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
 
     api_key = args.api_key or get_ncbi_env_variable("NCBI_API_KEY")
 
@@ -253,7 +283,7 @@ def main():
     else:
         full_query = ""
 
-    sys.stdout.write(f"[PubMed Harvester] Consultando Entrez con: '{full_query}' (Límite: {args.limit})...\n")
+    sys.stdout.write(msg["querying"].format(query=full_query, limit=args.limit))
     pmids = search_pubmed_pmids(
         term=full_query,
         limit=args.limit,
@@ -262,14 +292,14 @@ def main():
         year_to=args.year_to
     )
 
-    sys.stdout.write(f"[PubMed Harvester] {len(pmids)} PMIDs encontrados. Descargando metadatos documentales...\n")
+    sys.stdout.write(msg["pmids_found"].format(n=len(pmids)))
     if not pmids:
-        sys.stdout.write("[PubMed Harvester] No se encontraron registros coincidentes.\n")
+        sys.stdout.write(msg["no_results"])
         return
 
-    records = fetch_pubmed_summaries(pmids, api_key=api_key)
+    records = fetch_pubmed_summaries(pmids, api_key=api_key, lang=lang)
     out_file = save_canonical_corpus(records, args.output, default_source="pubmed")
-    sys.stdout.write(f"[PubMed Harvester] Éxito: {len(records)} registros guardados en '{out_file}'.\n")
+    sys.stdout.write(msg["saved"].format(n=len(records), path=out_file))
 
 
 if __name__ == "__main__":

@@ -1,23 +1,23 @@
-# Sintaxis de Consultas y Reglas de la API de arXiv
+# arXiv API Query Syntax and Rules
 
-La API de arXiv (`https://export.arxiv.org/api/query`) admite consultas booleanas y prefijos de campo.
+The arXiv API (`https://export.arxiv.org/api/query`) supports Boolean queries and field prefixes.
 
 ---
 
-## 1. Prefijos de Campo Admitidos
+## 1. Supported Field Prefixes
 
-| Prefijo | Descripción | Ejemplo |
+| Prefix | Description | Example |
 |---|---|---|
-| `ti` | Título | `ti:"neural network"` |
-| `au` | Autor | `au:LeCun` |
-| `abs` | Resumen | `abs:"self-organizing maps"` |
-| `cat` | Categoría temática | `cat:cs.AI` |
-| `all` | Todos los campos | `all:"complex networks"` |
-| `jr` | Referencia de revista | `jr:"Nature"` |
+| `ti` | Title | `ti:"neural network"` |
+| `au` | Author | `au:LeCun` |
+| `abs` | Abstract | `abs:"self-organizing maps"` |
+| `cat` | Subject Category | `cat:cs.AI` |
+| `all` | All fields | `all:"complex networks"` |
+| `jr` | Journal reference | `jr:"Nature"` |
 
 ---
 
-## 2. Regla de Cortesía Obligatoria
+## 2. Mandatory Courtesy Rate Limit
 
-El consorcio de arXiv exige formalmente que los clientes automatizados no ejecuten más de **1 solicitud cada 3 segundos** (`time.sleep(3.0)`).
-Violar este umbral provoca el bloqueo temporal de la dirección IP de origen por parte de los balanceadores de carga de arXiv.
+The arXiv consortium formally requires automated clients to execute no more than **1 request every 3 seconds** (`time.sleep(3.0)`).
+Violating this threshold triggers a temporary IP ban enforced by arXiv's load balancers.

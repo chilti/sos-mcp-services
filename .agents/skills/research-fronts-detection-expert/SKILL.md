@@ -1,17 +1,19 @@
 ---
 name: research-fronts-detection-expert
-description: Experto metodológico en detección multimodal de frentes de investigación (acoplamiento bibliográfico, cocitación, citación directa y OpenAlex Topics), partición Leiden CPM y evolución longitudinal aluvial con Información Mutua Ajustada (AMI). Delega la ejecución en topics-research-fronts-intelligence.
+description: Methodological expert in multimodal research front detection (bibliographic coupling, co-citation, direct citation, and OpenAlex Topics), Leiden CPM partitioning, and longitudinal alluvial evolution with Adjusted Mutual Information (AMI). Delegates execution to topics-research-fronts-intelligence. Respond and label outputs in the user's language.
 ---
 
 # Research Fronts Detection Expert
 
-Esta skill provee el marco metodológico para la identificación y seguimiento de **frentes de investigación (Research Fronts)** y actúa como puente directo hacia la implementación completa en [`topics-research-fronts-intelligence`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/SKILL.md).
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-## 1. Posición en la Cadena de Valor (Workspace-First)
+This skill provides the methodological framework for identifying and tracking **Research Fronts** and acts as a direct bridge to the full implementation in [`topics-research-fronts-intelligence`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/SKILL.md).
 
-1. **Entrada Principal:** Lee el corpus previamente cosechado en el Workspace (`./corpus.parquet`, `.csv` o `.json`) generado en la Etapa 1 por `openalex-search-engineer`, `openalex-mexico-works-search` o `openalex-harvester`.
-2. **Ejecución Operativa (Delegación a `topics-research-fronts-intelligence`):**
-   - **Detección por Redes Bibliométricas (Bottom-Up con Leiden CPM):**
+## 1. Position in the Value Chain (Workspace-First)
+
+1. **Primary Input:** Reads the corpus previously harvested into the Workspace (`./corpus.parquet`, `.csv`, or `.json`) generated in Stage 1 by `openalex-search-engineer`, `openalex-mexico-works-search`, or `openalex-harvester`.
+2. **Operational Execution (Delegated to `topics-research-fronts-intelligence`):**
+   - **Bibliometric Network Detection (Bottom-Up with Leiden CPM):**
      ```bash
      /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/build_bibliometric_fronts.py \
        --input ./corpus.parquet \
@@ -21,13 +23,13 @@ Esta skill provee el marco metodológico para la identificación y seguimiento d
        --output ./reports/fronts_coupling.json \
        --export-vosviewer ./reports/fronts_vosviewer.json
      ```
-   - **Perfilado Macro/Meso de Topics de OpenAlex (Top-Down CWTS):**
+   - **Macro/Meso OpenAlex Topics Profiling (Top-Down CWTS):**
      ```bash
      /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/extract_openalex_topics.py \
        --input ./corpus.parquet \
        --output ./reports/topics_profile.json
      ```
-   - **Seguimiento Longitudinal de Linajes con AMI y Diagrama Aluvial Interactivo:**
+   - **Longitudinal Lineage Tracking with AMI and Interactive Alluvial Diagram:**
      ```bash
      /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/track_longitudinal_lineages.py \
        --input ./corpus.parquet \
@@ -36,6 +38,6 @@ Esta skill provee el marco metodológico para la identificación y seguimiento d
        --output ./reports/lineages_ami.json \
        --html-out ./reports/alluvial_fronts.html
      ```
-3. **Conexión Downstream:**
-   - Visualización de redes en `bibliometric-network-analyst` (`--export-vosviewer`).
-   - Cartografía de frentes sobre SOM en `som-methodological-expert` (agregando el corpus por `topic` o `subfield` mediante `tlachia-metrics-engine`).
+3. **Downstream Connections:**
+   - Network visualization in `bibliometric-network-analyst` (`--export-vosviewer`).
+   - Mapping of fronts onto SOMs in `som-methodological-expert` (aggregating the corpus by `topic` or `subfield` via `tlachia-metrics-engine`).

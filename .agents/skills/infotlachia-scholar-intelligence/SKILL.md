@@ -1,6 +1,6 @@
 ---
 name: infotlachia-scholar-intelligence
-description: Acceso analítico de alta velocidad a la base DuckDB (analytics_cache.duckdb, 5.9 GB, 14 tablas) para consultar métricas precalculadas de investigadores SNII, dependencias académicas, universidades mexicanas y panorama nacional (FWCI, citas, APC USD, Gini).
+description: High-speed analytical access to the DuckDB database (analytics_cache.duckdb, 5.9 GB, 14 tables) to query precomputed metrics for SNII researchers, academic departments, Mexican universities, and the national landscape (FWCI, citations, APC USD, Gini). Respond and label outputs in the user's language.
 dependencies:
   - python: ">=3.10"
   - script: "scripts/infotlachia_cli.py"
@@ -8,54 +8,56 @@ dependencies:
 
 # Info TlachIA Scholar Intelligence
 
-Módulo analítico de inteligencia cienciométrica sobre investigadores acreditados en el SNII y dependencias universitarias de México utilizando DuckDB embebido.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Scientometric intelligence analytical module covering SNII-accredited researchers and university departments in Mexico using embedded DuckDB.
 
 ## Overview
-Contiene métricas consolidadas sobre más de 90,000 investigadores y 3,000 instituciones. A través de DuckDB en modo solo lectura (`read_only=True`), permite consultas analíticas de latencia inferior a 10 ms sobre series temporales, gasto estimado en APC, índice de Gini temático y colocación en el percentil de excelencia (Top 10%).
+Contains consolidated metrics for over 90,000 researchers and 3,000 institutions. Through DuckDB in read-only mode (`read_only=True`), it enables sub-10 ms analytical queries across time series, estimated APC expenditure, thematic Gini index, and placement in the excellence percentile (Top 10%).
 
 ## Dependencies
-- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
-- Base de datos DuckDB: `/home/sinapsisai/data/analytics_cache.duckdb`
-- Script ejecutable: [`scripts/infotlachia_cli.py`](file://scripts/infotlachia_cli.py)
+- **Python Environment:** Python 3.10+ (with required dependencies)
+- DuckDB database: `/home/sinapsisai/data/analytics_cache.duckdb`
+- Executable script: [`scripts/infotlachia_cli.py`](file://scripts/infotlachia_cli.py)
 
 ## Scripts & CLI Tools
 
-### Perfil de Investigador (`query-researcher`)
-Consulta el impacto consolidado de un científico mexicano:
+### Researcher Profile (`query-researcher`)
+Query the consolidated impact of a Mexican researcher:
 ```bash
 python scripts/infotlachia_cli.py query-researcher \
   --name "Torres, Rafael" \
   --format markdown \
-  --output /ruta/a/perfil_torres.md
+  --output /path/to/perfil_torres.md
 ```
 
-### Métricas de Facultad o Dependencia (`query-entity`)
-Analiza la producción y gasto de una dependencia universitaria:
+### Faculty or Department Metrics (`query-entity`)
+Analyze the scholarly output and APC expenditure of a university department or faculty:
 ```bash
 python scripts/infotlachia_cli.py query-entity \
   --entity "Facultad de Ciencias" \
   --format json \
-  --output /ruta/a/facultad_ciencias.json
+  --output /path/to/facultad_ciencias.json
 ```
 
-### Panorama Institucional (`query-institution`)
-Benchmarking general de una universidad completa:
+### Institutional Overview (`query-institution`)
+General benchmarking of an entire university or research institution:
 ```bash
 python scripts/infotlachia_cli.py query-institution \
   --institution "UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO" \
   --format markdown \
-  --output /ruta/a/reporte_unam.md
+  --output /path/to/reporte_unam.md
 ```
 
-### Panorama Nacional (`national-overview`)
-Estadísticas consolidadas del sistema científico mexicano:
+### National Overview (`national-overview`)
+Consolidated statistics for the Mexican scientific system:
 ```bash
 python scripts/infotlachia_cli.py national-overview \
   --format markdown
 ```
 
-### Consultas SQL Seguras (`sql-safe`)
-Ejecución de sentencias SELECT directas de solo lectura sobre las 14 tablas:
+### Safe SQL Queries (`sql-safe`)
+Execute direct read-only `SELECT` statements across the 14 tables:
 ```bash
 python scripts/infotlachia_cli.py sql-safe \
   --query "SELECT top_domain, count(*) FROM investigador_total GROUP BY top_domain ORDER BY count(*) DESC LIMIT 10" \
@@ -63,14 +65,14 @@ python scripts/infotlachia_cli.py sql-safe \
 ```
 
 ## Workflow Steps
-1. **Consultar Perfil:** Ejecutar `query-researcher` para extraer H-index, FWCI y estatus SNII.
-2. **Contextualizar en Dependencia:** Ejecutar `query-entity` para contrastar al investigador con su comunidad académica.
-3. **Reporte Formateado:** Usar `--format markdown` para insertar tablas comparativas directamente en los informes finales del agente.
+1. **Query Profile:** Run `query-researcher` to extract H-index, FWCI, and SNII status.
+2. **Contextualize within Department:** Run `query-entity` to benchmark the researcher against their academic department or faculty.
+3. **Formatted Report:** Use `--format markdown` (and `--lang es` if reporting in Spanish) to insert comparative tables directly into final agent reports.
 
 ## References
-- [Diccionario de las 14 Tablas de DuckDB](references/duckdb_14tables_dictionary.md)
-- [Estructura y Áreas del Padrón SNII](references/snii_ranking_structure.md)
+- [Dictionary of the 14 DuckDB Tables](references/duckdb_14tables_dictionary.md)
+- [SNII Registry Structure and Knowledge Areas](references/snii_ranking_structure.md)
 
 ## Troubleshooting & Edge Cases
-- **Múltiples Investigadores con Mismo Nombre:** La búsqueda por nombre utiliza coincidencia parcial `ILIKE %nombre%`. Si hay homónimos, el CLI retorna hasta 10 candidatos ordenados por volumen de documentos para que el agente filtre por institución u ORCID.
-- **Seguridad en Consultas SQL:** El subcomando `sql-safe` bloquea cualquier sentencia que contenga `DROP`, `DELETE`, `UPDATE`, `INSERT` o `ALTER`.
+- **Multiple Researchers with the Same Name:** Name search uses partial matching (`ILIKE %name%`). When homonyms exist, the CLI returns up to 10 candidates ordered by document volume so the agent can filter by institution or ORCID.
+- **SQL Query Safety:** The `sql-safe` subcommand blocks any statement containing `DROP`, `DELETE`, `UPDATE`, `INSERT`, or `ALTER`.

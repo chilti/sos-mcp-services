@@ -1,14 +1,14 @@
-# Esquema del Padrón Oficial SNII 2025
+# Official SNII 2025 Registry Schema
 
-El Padrón del Sistema Nacional de Investigadoras e Investigadores contiene el registro canónico de los académicos acreditados en México.
+The Registry of the National System of Researchers (*Padrón del Sistema Nacional de Investigadoras e Investigadores*, SNII) contains the canonical record of accredited scholars in Mexico.
 
 ---
 
-## 1. Atributos Canónicos
+## 1. Canonical Attributes
 
-* `official_snii_name`: Nombre oficial en el formato paterno, materno y nombres.
-* `snii_level`: Nivel de distinción (`Candidato`, `Nivel 1`, `Nivel 2`, `Nivel 3`, `Emérito`).
-* `conahcyt_area`: Área del conocimiento asignada por las comisiones dictaminadoras (Áreas I a IX).
-* `accreditation_institution`: Institución formal de adscripción acreditada ante CONAHCYT.
-* `validity_period`: Periodo de vigencia del nombramiento (ej. 2024-2028).
-* `orcid`: Identificador persistente ORCID verificado.
+* `official_snii_name`: Official name formatted as paternal surname, maternal surname, and given names.
+* `snii_level`: Distinction level (`Candidato`, `Nivel 1`, `Nivel 2`, `Nivel 3`, `Emérito`).
+* `conahcyt_area`: Knowledge area assigned by the evaluation committees (Areas I to IX).
+* `accreditation_institution`: Formal affiliating institution accredited before SECIHTI / CONAHCYT.
+* `validity_period`: Appointment validity period (e.g., 2024–2028).
+* `orcid`: Verified persistent ORCID identifier.

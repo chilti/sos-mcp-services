@@ -1,24 +1,24 @@
-# Esquema de Datos: Autores e Investigadores de México en ClickHouse
+# Data Schema: Authors and Researchers of Mexico in ClickHouse
 
-## 1. Tabla `rag.authors_seed_mexico` (2,572,943 registros)
-Catálogo unificado de autores asociados a México en OpenAlex con metadatos JSON completos:
-- `id` (String): URI canónica (`https://openalex.org/A...`).
-- `display_name` (String): Nombre principal reportado.
-- `orcid` (String): Enlace ORCID normalizado.
-- `raw_data` (String JSON): Objeto completo de OpenAlex con:
-  - `works_count` (Int): Producción total del autor.
-  - `cited_by_count` (Int): Citas totales acumuladas.
-  - `summary_stats.h_index` (Int): Índice h calculado.
-  - `last_known_institutions` (Array): Institución de adscripción más reciente con ROR.
-  - `topics` (Array): Áreas temáticas y subcampos de especialización.
+## 1. Table `rag.authors_seed_mexico` (2,572,943 records)
+Unified catalog of authors associated with Mexico in OpenAlex with full JSON metadata:
+- `id` (String): Canonical URI (`https://openalex.org/A...`).
+- `display_name` (String): Primary reported name.
+- `orcid` (String): Normalized ORCID link.
+- `raw_data` (String JSON): Complete OpenAlex object containing:
+  - `works_count` (Int): Total publication output of the author.
+  - `cited_by_count` (Int): Total cumulative citations.
+  - `summary_stats.h_index` (Int): Calculated h-index.
+  - `last_known_institutions` (Array): Most recent affiliated institution with ROR.
+  - `topics` (Array): Thematic areas and specialization subfields.
 
-## 2. Tabla `rag.academics_all` (431,697 registros)
-Padrón académico con resolución de dependencias institucionales y niveles SNII:
-- `id` (String): Identificador canónico.
-- `name` (String): Nombre completo.
-- `institution` (String): Institución de adscripción.
-- `dependency` (String): Facultad, centro o instituto (ej. `Facultad de Medicina`).
-- `subdependency` (String): Departamento o división interna.
-- `snii_level` (String): Nivel oficial (`Candidato`, `I`, `II`, `III`, `Emérito`).
-- `paper_count` (UInt32): Número de publicaciones.
-- `citation_count` (UInt32): Número de citas.
+## 2. Table `rag.academics_all` (431,697 records)
+Academic registry with resolution of institutional departments and SNII levels:
+- `id` (String): Canonical identifier.
+- `name` (String): Full name.
+- `institution` (String): Affiliated institution.
+- `dependency` (String): Faculty, center, or institute (e.g., `Facultad de Medicina`).
+- `subdependency` (String): Internal department or division.
+- `snii_level` (String): Official SNII level (`Candidato`, `I`, `II`, `III`, `Emérito`).
+- `paper_count` (UInt32): Number of publications.
+- `citation_count` (UInt32): Number of citations.

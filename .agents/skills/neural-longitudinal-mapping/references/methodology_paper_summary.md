@@ -1,94 +1,94 @@
-# Fundamentación Metodológica: Mapeo Longitudinal con SOM
+# Methodological Foundation: Longitudinal Mapping with SOM
 
-**Referencia Científica:**
+**Scientific Reference:**
 > **Jiménez-Andrade, J. L., Martí-Lahera, Y., & Carrillo-Calvet, H. (2024).** *Neural longitudinal mapping of multidimensional performance profiles of Latin American universities.* **Iberoamerican Journal of Science Measurement and Communication**, 4(1), 1–16. https://doi.org/10.47909/ijsmc.92
 
 ---
 
-## 1. El Problema Fundamental del Mapeo Temporal con SOM
+## 1. The Fundamental Problem of Temporal Mapping with SOM
 
-Las redes neuronales autoorganizadas de Kohonen (SOM) son técnicas no supervisadas ideales para proyectar espacios de alta dimensión ($D > 3$) en un plano bidimensional discreto (típicamente una malla hexagonal). Sin embargo, una aplicación directa e independiente del algoritmo SOM a diferentes cortes temporales sucesivos ($T_1, T_2, \dots, T_k$) produce resultados incoherentes para el análisis temporal:
+Kohonen Self-Organizing Maps (SOM) are unsupervised neural techniques ideal for projecting high-dimensional spaces ($D > 3$) onto a discrete two-dimensional plane (typically a hexagonal lattice). However, a direct, independent application of the SOM algorithm to successive temporal slices ($T_1, T_2, \dots, T_k$) produces inconsistent results for temporal analysis:
 
-1. **Estocasticidad e Invarianza Rotacional:** Dada la inicialización aleatoria y la estocasticidad en la presentación de los datos, mapas entrenados independientemente con datos muy similares (o incluso idénticos) adoptan orientaciones arbitrarias (rotaciones de 90°/180° o inversiones en espejo).
-2. **Imposibilidad de Comparación Visual Intertemporal:** Si la cartografía de referencia rota o permuta sus cuadrantes temáticos entre el año $t$ y el año $t+1$, es imposible rastrear trayectorias continuas o interpretar si un movimiento responde a una transformación real de la entidad o a un artefacto del algoritmo.
-
----
-
-## 2. La Solución: Encadenamiento Temporal (Warm-Start Chaining)
-
-El entrenamiento estándar de un SOM se conceptualiza en dos etapas:
-1. **Fase de Ordenamiento Global:** Con radios de vecindad grandes ($\sigma_0$) y tasas de aprendizaje altas ($\alpha_0$), donde se determina la topología macroscópica de la malla.
-2. **Fase de Refinamiento:** Con radios de vecindad reducidos ($\sigma \to 1$) y tasas de aprendizaje pequeñas ($\alpha \ll 1$), donde se ajustan los vectores de pesos sinápticos a un nivel fino sin alterar la orientación macroscópica.
-
-### Observación Empírica Clave:
-En sistemas bibliométricos, rankings universitarios o dinámicas de redes de investigación, **los perfiles de las entidades no cambian de forma caótica ni instantánea de un año al siguiente**. La distribución global se mantiene relativamente estable.
-
-Por lo tanto:
-- **Periodo 1 ($T_1$ - Full Training):** Se entrena un mapa completo desde cero para estructurar el espacio semántico base.
-- **Periodos Sucesivos ($T_2 \dots T_k$ - Refinement Only):** Se omiten por completo la inicialización aleatoria y la fase de ordenamiento global. La red en el tiempo $t$ se inicializa con los pesos resultantes del tiempo previo $W_{t-1}^*$, y se ejecuta **exclusivamente la fase de refinamiento** con vecindades y tasas de aprendizaje reducidas.
+1. **Stochasticity and Rotational Invariance:** Given random initialization and stochastic data presentation, maps trained independently on very similar (or even identical) data adopt arbitrary orientations (90°/180° rotations or mirror inversions).
+2. **Impossibility of Intertemporal Visual Comparison:** If the reference cartography rotates or permutes its thematic quadrants between year $t$ and year $t+1$, it becomes impossible to track continuous trajectories or determine whether a movement reflects a genuine transformation of the entity or an algorithmic artifact.
 
 ---
 
-## 3. Formulación Canónica de Hiperparámetros
+## 2. The Solution: Temporal Chaining (Warm-Start Chaining)
 
-Para una malla hexagonal de dimensiones $R \times C$:
+Standard SOM training is conceptualized in two stages:
+1. **Global Ordering Phase:** With large neighborhood radii ($\sigma_0$) and high learning rates ($\alpha_0$), where the macroscopic topology of the lattice is determined.
+2. **Refinement Phase:** With small neighborhood radii ($\sigma \to 1$) and small learning rates ($\alpha \ll 1$), where synaptic weight vectors are fine-tuned without altering the macroscopic orientation.
 
-$$\bar{D} = \frac{R + C}{2} \quad \text{(Tamaño promedio de la malla)}$$
+### Key Empirical Observation:
+In bibliometric systems, university rankings, or research network dynamics, **entity profiles do not change chaotically or instantaneously from one year to the next**. The global distribution remains relatively stable.
 
-| Fase | Épocas | Tasa de Aprendizaje Inicial ($\alpha$) | Radio de Vecindad Inicial ($\sigma$) | Inicialización de Pesos ($W_0$) |
-| :--- | :---: | :---: | :---: | :---: |
-| **Periodo 1 (Base)** | 1000 | $\alpha_0 = 0.9$ | $\sigma_{\text{base}} = \frac{1}{2} \bar{D} = \frac{R + C}{4}$ | Global (PCA o Aleatorio) |
-| **Periodos 2+ (Refinamiento)** | 200 | $\alpha = 0.1$ | $\sigma_{\text{refine}} = \frac{1}{8} \bar{D} = \frac{R + C}{16}$ | Pesos del periodo previo: $W_{t-1}^*$ |
-
-*Nota sobre decaimiento:* En el algoritmo secuencial/online de Kohonen, $\sigma(t)$ y $\alpha(t)$ decaen lineal o exponencialmente a lo largo de las épocas, convergiendo a $\sigma \to 1.0$ y $\alpha \to 0.02$.
+Therefore:
+- **Period 1 ($T_1$ - Full Training):** A complete map is trained from scratch to structure the base semantic space.
+- **Subsequent Periods ($T_2 \dots T_k$ - Refinement Only):** Random initialization and the global ordering phase are completely skipped. The network at time $t$ is initialized with the converged weights from the previous period $W_{t-1}^*$, and **only the refinement phase** is executed using reduced neighborhoods and learning rates.
 
 ---
 
-## 4. Marco de Análisis en Tres Niveles (Macro, Meso, Micro)
+## 3. Canonical Hyperparameter Formulation
 
-El artículo introduce una metodología rigurosa para interpretar la secuencia temporal de mapas de conocimiento resultantes:
+For a hexagonal lattice of dimensions $R \times C$:
+
+$$\bar{D} = \frac{R + C}{2} \quad \text{(Average grid dimension)}$$
+
+| Phase | Epochs | Initial Learning Rate ($\alpha$) | Initial Neighborhood Radius ($\sigma$) | Weight Initialization ($W_0$) |
+| :--- | :---: | :---: | :---: | :--- |
+| **Period 1 (Base)** | 1000 | $\alpha_0 = 0.9$ | $\sigma_{\text{base}} = \frac{1}{2} \bar{D} = \frac{R + C}{4}$ | Global (PCA or Random) |
+| **Periods 2+ (Refinement)** | 200 | $\alpha = 0.1$ | $\sigma_{\text{refine}} = \frac{1}{8} \bar{D} = \frac{R + C}{16}$ | Weights from previous period: $W_{t-1}^*$ |
+
+*Note on decay:* In Kohonen's sequential/online algorithm, $\sigma(t)$ and $\alpha(t)$ decay linearly or exponentially across epochs, converging to $\sigma \to 1.0$ and $\alpha \to 0.02$.
+
+---
+
+## 4. Three-Level Analytical Framework (Macro, Meso, Micro)
+
+The paper introduces a rigorous methodology for interpreting the resulting temporal sequence of knowledge maps:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  NIVEL MACRO: Tendencias Sistémicas y Mapas de Componentes  │
-│  - Desplazamiento de gradientes cromáticos (verde → rojo)   │
-│  - Homogeneización o diversificación regional/nacional      │
+│  MACRO LEVEL: Systemic Trends and Component Planes          │
+│  - Shift of chromatic gradients (green → red)               │
+│  - Regional/national homogenization or diversification      │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
-│  NIVEL MESO: Dinámica de Clusters (Vesanto)                 │
-│  - Escisión de clusters: Diferenciación de perfiles         │
-│  - Fusión de clusters: Homogeneización de perfiles          │
+│  MESO LEVEL: Cluster Dynamics (Vesanto)                     │
+│  - Cluster splitting: Profile differentiation               │
+│  - Cluster merging: Profile homogenization                  │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
-│  NIVEL MICRO: Dinámica Individual y Trayectorias            │
-│  - Desplazamiento Euclidiano (Δx, Δy) en la malla           │
-│  - Identificación de Perfiles Singulares (transitorios)     │
+│  MICRO LEVEL: Individual Dynamics and Trajectories          │
+│  - Euclidean displacement (Δx, Δy) on the lattice           │
+│  - Identification of Singular Profiles (transient)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Nivel Macro (Sistémico)
-- Se examinan los **mapas de dimensiones/componentes** (un mapa de calor por cada indicador evaluado, e.g., Docencia, Investigación, Citas).
-- Permite detectar evoluciones estructurales del conjunto (e.g., dominancia progresiva de zonas de alto rendimiento) y contrastes de especialización regional (e.g., perfiles con alta docencia e investigación vs. perfiles con altas citas e impacto internacional).
+### Macro Level (Systemic)
+- Examines the **dimension/component planes** (one heatmap per evaluated indicator, e.g., Teaching, Research, Citations).
+- Enables detection of structural evolutions across the cohort (e.g., progressive dominance of high-performance zones) and regional specialization contrasts (e.g., profiles with high teaching and research vs. profiles with high citations and international impact).
 
-### Nivel Meso (Dinámica de Clusters)
-- Aplica clustering jerárquico aglomerativo sobre los pesos de las neuronas (metodología de Vesanto & Alhoniemi, 2000).
-- Cada cluster representa un **perfil cualitativo institucional**.
-- **Cluster Splitting (Escisión):** Cuando entidades que compartían un cluster en $T_{t-1}$ se separan en $T_t$, indicando **diferenciación de perfiles**.
-- **Cluster Merging (Fusión):** Cuando entidades provenientes de clusters distintos convergen en un mismo cluster en $T_t$, indicando **homogeneización de perfiles**.
+### Meso Level (Cluster Dynamics)
+- Applies agglomerative hierarchical clustering over neuron weights (Vesanto & Alhoniemi, 2000 methodology).
+- Each cluster represents a **qualitative institutional profile**.
+- **Cluster Splitting:** When entities sharing a cluster in $T_{t-1}$ separate in $T_t$, indicating **profile differentiation**.
+- **Cluster Merging:** When entities from distinct clusters converge into a single cluster in $T_t$, indicating **profile homogenization**.
 
-### Nivel Micro (Individual)
-- Evalúa el movimiento de entidades particulares en la cuadrícula hexagonal.
-- **Perfiles Singulares:** Entidades que ocupan de forma aislada un cluster propio. El análisis longitudinal revela su carácter típicamente **transitorio**: en años previos o posteriores suelen compartir cluster con otros pares conforme maduran sus indicadores.
+### Micro Level (Individual)
+- Evaluates the movement of individual entities across the hexagonal grid.
+- **Singular Profiles:** Entities that occupy their own cluster in isolation. Longitudinal analysis reveals their typically **transient** nature: in earlier or later years they usually share a cluster with peers as their indicators mature.
 
 ---
 
-## 5. Cuantificación de la Deriva Sináptica ($\Delta W$)
+## 5. Quantifying Synaptic Drift ($\Delta W$)
 
-Para medir objetivamente la tensión adaptativa de la malla entre dos periodos consecutivos $T_{t-1}$ y $T_t$, se calcula la deriva de los vectores de pesos por neurona $j$:
+To objectively measure the adaptive tension of the lattice between two consecutive periods $T_{t-1}$ and $T_t$, the weight vector drift per neuron $j$ is computed:
 
 $$\Delta W_j = \| W_j^{(t)} - W_j^{(t-1)} \|_2 = \sqrt{\sum_{d=1}^D (w_{j,d}^{(t)} - w_{j,d}^{(t-1)})^2}$$
 
-- Un valor bajo de $\Delta W$ indica una región semántica conservada y altamente estable.
-- Un valor alto de $\Delta W$ señala cuadrantes donde ocurrió una profunda reestructuración conceptual o de desempeño en el colectivo analizado.
+- A low $\Delta W$ value indicates a conserved, highly stable semantic region.
+- A high $\Delta W$ value highlights quadrants where deep conceptual or performance restructuring occurred within the analyzed cohort.

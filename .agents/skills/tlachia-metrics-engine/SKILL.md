@@ -1,87 +1,90 @@
 ---
 name: tlachia-metrics-engine
-description: Motor cienciométrico autónomo para el cálculo de más de 30 indicadores (FWCI, H-index, Top 10%, APC USD, 6 vías OA, Gini) y análisis temporal anual y longitudinal por periodos sobre tablas canónicas.
+description: Standalone scientometric engine for computing 30+ indicators (FWCI, H-index, Top 10%, APC USD, 6 OA pathways, Gini) and annual and period-based longitudinal temporal analyses over canonical tables. Respond and label outputs in the user's language.
 ---
 
 # TlachIA Metrics Engine
 
-Motor analítico independiente para calcular la batería integral de indicadores cienciométricos, económicos y de ciencia abierta de TlachIA a partir de cualquier archivo tabular normalizado (`.parquet`, `.csv`, `.json`), sin requerir la interfaz web ni la base de datos central de TlachIA Metrics.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Independent analytical engine for computing the comprehensive suite of TlachIA scientometric, economic, and open science indicators from any normalized tabular file (`.parquet`, `.csv`, `.json`), without requiring the web interface or central TlachIA Metrics database.
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Suite Consolidada de 30+ Indicadores:** Volumen, citas, H-index, i10, FWCI, percentiles, Top 10% y Top 1%.
-- **Análisis Temporal Anual:** Generación de series temporales continuas año por año (`annual-series`) con cálculo de tasas de crecimiento anual ($\Delta \text{Docs}$, $\Delta \text{Citas}$).
-- **Análisis Longitudinal por Periodos:** Evaluación por ventanas fijas (`--window 5` o `--window 10`), ventanas deslizantes (`--window 5 --step 1`), periodos específicos o último lustro (`--last-years 5`), con matrices longitudinales de entidades para SOM.
-- **Monitoreo de Acceso Abierto:** Desglose de las 6 vías (Gold, Diamond, Hybrid, Green, Bronze, Closed).
-- **Economía de la Publicación:** Gasto devengado en APC comercial en USD y cuantificación de ahorro por Acceso Abierto Diamante.
-- **Agregación a 4 Niveles:** Desglose por investigador (`researcher`), departamento/institución (`institution`) o país (`country`).
-- **Diversidad Temática de Gini:** Cuantificación del grado de concentración o dispersión del frente de investigación.
+- **Consolidated Suite of 30+ Indicators:** Volume, citations, H-index, i10, FWCI, percentiles, Top 10%, and Top 1%.
+- **Annual Temporal Analysis:** Generation of continuous year-by-year time series (`annual-series`) with annual growth rate calculations ($\Delta \text{Docs}$, $\Delta \text{Citations}$).
+- **Longitudinal Period Analysis:** Evaluation across fixed windows (`--window 5` or `--window 10`), sliding windows (`--window 5 --step 1`), specific periods, or the latest five-year period (`--last-years 5`), producing longitudinal entity matrices for SOM.
+- **Open Access Monitoring:** Breakdown across the 6 pathways (Gold, Diamond, Hybrid, Green, Bronze, Closed).
+- **Publication Economics:** Accrued commercial APC expenditure in USD and quantification of savings from Diamond Open Access.
+- **Multi-Level Aggregation:** Breakdown by researcher (`researcher`), department/institution (`institution`), country (`country`), journal (`source`), subfield (`subfield`), or topic (`topic`).
+- **Thematic Gini Diversity:** Quantification of the degree of concentration or dispersion of the research front.
 
 ---
 
-## Interfaz CLI
+## CLI Interface
 
-Entorno de ejecución:
+Execution environment:
 ```bash
-python scripts/tlachia_metrics_cli.py [subcomando] [opciones]
+python scripts/tlachia_metrics_cli.py [subcommand] [options]
 ```
 
-### 1. Resumen cienciométrico (con filtros temporales opcionales)
+### 1. Scientometric Summary (with optional temporal filters)
 ```bash
-# Resumen global
+# Global summary (English default; pass --lang es for Spanish)
 python scripts/tlachia_metrics_cli.py calculate-summary \
   --corpus ./corpus.parquet \
-  --output ./resumen_tlachia.md
+  --output ./tlachia_summary.md \
+  --lang en
 
-# Resumen del último lustro (últimos 5 años)
+# Summary of the last 5 years
 python scripts/tlachia_metrics_cli.py calculate-summary \
   --corpus ./corpus.parquet \
   --last-years 5 \
-  --output ./resumen_ultimo_lustro.md
+  --output ./summary_last_5years.md
 ```
 
-### 2. Serie temporal anual año por año
+### 2. Year-by-Year Annual Time Series
 ```bash
 python scripts/tlachia_metrics_cli.py annual-series \
   --corpus ./corpus.parquet \
   --year-from 2018 \
   --year-to 2024 \
-  --output ./serie_anual.md
+  --output ./annual_series.md
 ```
 
-### 3. Análisis longitudinal por periodos consecutivos o ventanas
+### 3. Longitudinal Analysis Across Consecutive Periods or Windows
 ```bash
-# Periodos consecutivos de 5 años
+# Consecutive 5-year periods
 python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --window 5 \
-  --output ./periodos_5anios.md
+  --output ./periods_5years.md
 
-# Lista explícita de periodos para análisis decenal
+# Explicit list of periods for decadal analysis
 python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --periods "2000-2009,2010-2019,2020-2024" \
-  --output ./periodos_decenales.parquet
+  --output ./decadal_periods.parquet
 
-# Matriz longitudinal de investigadores por periodo (para mapeo SOM)
+# Longitudinal matrix of researchers per period (for SOM mapping)
 python scripts/tlachia_metrics_cli.py period-series \
   --corpus ./corpus.parquet \
   --window 5 \
   --level researcher \
-  --output ./investigadores_longitudinal_som.parquet
+  --output ./researchers_longitudinal_som.parquet
 ```
 
-### 4. Agregación transversal a nivel de investigadores
+### 4. Cross-Sectional Aggregation at the Researcher Level
 ```bash
 python scripts/tlachia_metrics_cli.py aggregate-by \
   --corpus ./corpus.parquet \
   --level researcher \
-  --output ./autores_indicadores.parquet
+  --output ./authors_indicators.parquet
 ```
 
-### 5. Coeficiente de concentración de Gini temático
+### 5. Thematic Gini Concentration Coefficient
 ```bash
 python scripts/tlachia_metrics_cli.py gini-diversity \
   --corpus ./corpus.parquet \
@@ -90,7 +93,7 @@ python scripts/tlachia_metrics_cli.py gini-diversity \
 
 ---
 
-## Referencias Técnicas
-- [Guía de Análisis Temporal y Longitudinal por Periodos](references/longitudinal_periods_guide.md)
-- [Manual Matemático de Indicadores Cienciométricos TlachIA](references/tlachia_indicators_mathematical_handbook.md)
-- [Modelo Económico de APC y Ahorro Diamante](references/apc_economic_model.md)
+## Technical References
+- [Temporal and Period-Based Longitudinal Analysis Guide](references/longitudinal_periods_guide.md)
+- [Mathematical Handbook of TlachIA Scientometric Indicators](references/tlachia_indicators_mathematical_handbook.md)
+- [APC Economic Model and Diamond Savings](references/apc_economic_model.md)

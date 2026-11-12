@@ -2,9 +2,9 @@
 """
 OpenAlex Data Harvester CLI
 ---------------------------
-Herramienta autónoma e independiente para la recolección, paginación por cursor y
-estandarización de publicaciones científicas desde OpenAlex (API pública o endpoint local)
-hacia el esquema tabular canónico (Parquet, JSON, CSV).
+Standalone tool for harvesting, cursor-paginating, and standardizing scientific
+publications from OpenAlex (public API or local endpoint) into the canonical
+tabular schema (Parquet, JSON, CSV).
 """
 
 import sys
@@ -19,11 +19,33 @@ from typing import Dict, Any, List, Optional
 
 DEFAULT_API_URL = "https://api.openalex.org"
 
+MESSAGES = {
+    "en": {
+        "local_unavailable": "[OpenAlex Harvester] Local endpoint ({base_url}) unavailable ({code}). Connecting to {default_url}...\n",
+        "local_error": "[OpenAlex Harvester] Local endpoint error: {e}. Retrying at {default_url}...\n",
+        "public_failed": "[Error] Connection to public OpenAlex failed: {e2}\n",
+        "page_error": "[Warning] Connection error on page {page}: {e}\n",
+        "saved": "[Success] {n} records harvested and saved to {path}",
+        "connecting": "[OpenAlex Harvester] Connecting to {base_url}...",
+        "query_params": "[OpenAlex Harvester] Query parameters: {params}",
+        "no_results": "[Notice] No results found matching the provided filters.",
+    },
+    "es": {
+        "local_unavailable": "[OpenAlex Harvester] Endpoint local ({base_url}) no disponible ({code}). Conectando a {default_url}...\n",
+        "local_error": "[OpenAlex Harvester] Error en endpoint local: {e}. Reintentando en {default_url}...\n",
+        "public_failed": "[Error] Falló conexión a OpenAlex público: {e2}\n",
+        "page_error": "[Advertencia] Error de conexión en página {page}: {e}\n",
+        "saved": "[Éxito] {n} registros recolectados y guardados en {path}",
+        "connecting": "[OpenAlex Harvester] Conectando a {base_url}...",
+        "query_params": "[OpenAlex Harvester] Parámetros de consulta: {params}",
+        "no_results": "[Aviso] No se encontraron resultados con los filtros proporcionados.",
+    }
+}
+
 def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Busca una variable en el entorno o en archivos .env comunes."""
+    """Look up an environment variable in os.environ or common .env files."""
     if os.environ.get(key):
         return os.environ.get(key)
-    # Buscar en archivos .env cercanos
     env_paths = [
         Path.cwd() / ".env",
         Path(__file__).resolve().parents[3] / ".env",
@@ -42,7 +64,7 @@ def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
     return default
 
 def reconstruct_abstract(abstract_inverted_index: Optional[Dict[str, List[int]]]) -> str:
-    """Reconstruye el texto continuo de un resumen a partir del abstract_inverted_index de OpenAlex."""
+    """Reconstruct continuous abstract text from OpenAlex abstract_inverted_index."""
     if not abstract_inverted_index or not isinstance(abstract_inverted_index, dict):
         return ""
     token_positions = []
@@ -53,8 +75,8 @@ def reconstruct_abstract(abstract_inverted_index: Optional[Dict[str, List[int]]]
     return " ".join(word for _, word in token_positions)
 
 def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
-    """Mapea un objeto de trabajo de OpenAlex al esquema tabular canónico."""
-    # 1. Identificadores
+    """Map an OpenAlex work object to the canonical tabular schema."""
+    # 1. Identifiers
     work_id = work.get("id", "")
     if work_id.startswith("https://openalex.org/"):
         work_id = work_id.replace("https://openalex.org/", "")
@@ -62,11 +84,11 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
     if doi.startswith("https://doi.org/"):
         doi = doi.replace("https://doi.org/", "")
     
-    # 2. Título y Resumen
+    # 2. Title and Abstract
     title = work.get("title") or ""
     abstract = reconstruct_abstract(work.get("abstract_inverted_index"))
     
-    # 3. Autores y Afiliaciones
+    # 3. Authors and Affiliations
     authors_list = []
     author_ids_list = []
     affiliations_list = []
@@ -97,12 +119,12 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
     affiliations_str = "; ".join(affiliations_list)
     country_codes_str = "; ".join(sorted(list(country_codes_set)))
     
-    # 4. Fuente / Revista
+    # 4. Source / Journal
     primary_loc = work.get("primary_location") or {}
     source = primary_loc.get("source") or {}
     source_title = source.get("display_name") or ""
     
-    # 5. Año y Citas
+    # 5. Year and Citations
     year = work.get("publication_year")
     try:
         year = int(year) if year is not None else None
@@ -114,7 +136,7 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
     except (ValueError, TypeError):
         citations = 0
         
-    # 6. Palabras clave / Conceptos / Tópicos
+    # 6. Keywords / Concepts / Topics
     keywords_author_list = []
     keywords_plus_list = []
     
@@ -128,7 +150,7 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
         if concept_name:
             keywords_plus_list.append(concept_name)
             
-    # Si viene tópico primario
+    # Include primary topic if available
     primary_topic = work.get("primary_topic") or {}
     topic_name = primary_topic.get("display_name")
     if topic_name and topic_name not in keywords_plus_list:
@@ -137,12 +159,12 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
     keywords_author_str = "; ".join(keywords_author_list)
     keywords_plus_str = "; ".join(keywords_plus_list)
     
-    # 7. Acceso Abierto
+    # 7. Open Access
     oa_info = work.get("open_access") or {}
     oa_status = (oa_info.get("oa_status") or "closed").lower()
     is_oa = 1 if oa_info.get("is_oa") else 0
     
-    # 8. Métricas avanzadas (FWCI, Percentil, APC)
+    # 8. Advanced Metrics (FWCI, Percentile, APC)
     fwci = work.get("fwci")
     if fwci is not None:
         try:
@@ -150,7 +172,6 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
         except (ValueError, TypeError):
             fwci = None
             
-    # Percentil de citas si está disponible en citation_normalized_percentile
     percentile_data = work.get("citation_normalized_percentile") or {}
     percentile_val = percentile_data.get("value")
     if percentile_val is not None:
@@ -159,7 +180,6 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
         except (ValueError, TypeError):
             percentile_val = None
             
-    # APC estimado
     apc_paid_usd = None
     apc_paid_data = work.get("apc_paid")
     if isinstance(apc_paid_data, dict):
@@ -170,11 +190,11 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
             except (ValueError, TypeError):
                 apc_paid_usd = None
                 
-    # 9. Referencias
+    # 9. References
     referenced_works = work.get("referenced_works") or []
     references_str = "; ".join([r.replace("https://openalex.org/", "") for r in referenced_works])
     
-    # 10. Idioma
+    # 10. Language
     language = work.get("language") or ""
     
     return {
@@ -202,8 +222,9 @@ def map_openalex_work_to_canonical(work: Dict[str, Any]) -> Dict[str, Any]:
 
 def fetch_openalex_records(base_url: str, endpoint: str, params: Dict[str, Any],
                           api_key: Optional[str], limit: int,
-                          mailto: str = "agent@knomap.org") -> List[Dict[str, Any]]:
-    """Descarga registros usando cursor pagination de OpenAlex."""
+                          mailto: str = "agent@knomap.org", lang: str = "en") -> List[Dict[str, Any]]:
+    """Download records using OpenAlex cursor pagination."""
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     headers = {"User-Agent": f"KnoMap-Harvester/1.0 (mailto:{mailto})"}
     if api_key:
         headers["api-key"] = api_key
@@ -227,24 +248,26 @@ def fetch_openalex_records(base_url: str, endpoint: str, params: Dict[str, Any],
                 time.sleep(2.0)
                 continue
             if resp.status_code >= 500 and base_url != DEFAULT_API_URL:
-                sys.stderr.write(f"[OpenAlex Harvester] Endpoint local ({base_url}) no disponible ({resp.status_code}). Conectando a {DEFAULT_API_URL}...\n")
+                sys.stderr.write(msg["local_unavailable"].format(
+                    base_url=base_url, code=resp.status_code, default_url=DEFAULT_API_URL
+                ))
                 current_url = f"{DEFAULT_API_URL.rstrip('/')}/{endpoint.lstrip('/')}"
                 resp = requests.get(current_url, params=params, headers=headers, timeout=30)
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
             if base_url != DEFAULT_API_URL and current_url != f"{DEFAULT_API_URL.rstrip('/')}/{endpoint.lstrip('/')}":
-                sys.stderr.write(f"[OpenAlex Harvester] Error en endpoint local: {e}. Reintentando en {DEFAULT_API_URL}...\n")
+                sys.stderr.write(msg["local_error"].format(e=e, default_url=DEFAULT_API_URL))
                 current_url = f"{DEFAULT_API_URL.rstrip('/')}/{endpoint.lstrip('/')}"
                 try:
                     resp = requests.get(current_url, params=params, headers=headers, timeout=30)
                     resp.raise_for_status()
                     data = resp.json()
                 except Exception as e2:
-                    sys.stderr.write(f"[Error] Falló conexión a OpenAlex público: {e2}\n")
+                    sys.stderr.write(msg["public_failed"].format(e2=e2))
                     break
             else:
-                sys.stderr.write(f"[Advertencia] Error de conexión en página {page}: {e}\n")
+                sys.stderr.write(msg["page_error"].format(page=page, e=e))
                 break
             
         results = data.get("results", [])
@@ -268,13 +291,14 @@ def fetch_openalex_records(base_url: str, endpoint: str, params: Dict[str, Any],
             if total_count is not None and len(all_works) >= total_count:
                 break
                 
-        # Pausa suave
+        # Gentle courtesy delay
         time.sleep(0.1 if api_key else 0.25)
         
     return all_works[:limit]
 
-def save_canonical_records(records: List[Dict[str, Any]], output_path: str) -> None:
-    """Guarda los registros normalizados en Parquet, JSON o CSV según la extensión."""
+def save_canonical_records(records: List[Dict[str, Any]], output_path: str, lang: str = "en") -> None:
+    """Save normalized records in Parquet, JSON, or CSV format according to file extension."""
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(records)
@@ -289,49 +313,61 @@ def save_canonical_records(records: List[Dict[str, Any]], output_path: str) -> N
     else:
         df.to_parquet(out.with_suffix(".parquet"), index=False, engine="pyarrow")
         
-    print(f"[Éxito] {len(df)} registros recolectados y guardados en {output_path}")
+    print(msg["saved"].format(n=len(df), path=output_path))
 
 def main():
     parser = argparse.ArgumentParser(
-        description="OpenAlex Harvester CLI: Descarga y normalización de literatura científica desde OpenAlex."
+        description="OpenAlex Harvester CLI: Download and normalize scientific literature from OpenAlex."
+    )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for labels/messages (en or es)"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     
     # 1. fetch-works
-    p_works = subparsers.add_parser("fetch-works", help="Recolecta trabajos por consulta general, tópicos o filtros.")
-    p_works.add_argument("--query", type=str, help="Términos de búsqueda en título y resumen")
-    p_works.add_argument("--author-id", type=str, help="ID de autor OpenAlex (ej. A5023888391) o ORCID")
-    p_works.add_argument("--ror", type=str, help="ID ROR institucional (ej. 012gw1n35)")
-    p_works.add_argument("--issn", type=str, help="ISSN de revista o fuente")
-    p_works.add_argument("--topic", type=str, help="ID de Tópico OpenAlex (ej. T10001)")
-    p_works.add_argument("--year-from", type=int, help="Año de inicio (inclusive)")
-    p_works.add_argument("--year-to", type=int, help="Año de fin (inclusive)")
+    p_works = subparsers.add_parser("fetch-works", help="Harvest works by general query, topics, or filters.")
+    p_works.add_argument("--query", type=str, help="Search terms in title and abstract")
+    p_works.add_argument("--author-id", type=str, help="OpenAlex Author ID (e.g., A5023888391) or ORCID")
+    p_works.add_argument("--ror", type=str, help="Institutional ROR ID (e.g., 012gw1n35)")
+    p_works.add_argument("--issn", type=str, help="Journal or source ISSN")
+    p_works.add_argument("--topic", type=str, help="OpenAlex Topic ID (e.g., T10001)")
+    p_works.add_argument("--year-from", type=int, help="Start year (inclusive)")
+    p_works.add_argument("--year-to", type=int, help="End year (inclusive)")
     p_works.add_argument("--oa-status", type=str, choices=["gold", "diamond", "green", "hybrid", "bronze", "closed"],
-                         help="Filtrar por vía de Acceso Abierto")
-    p_works.add_argument("--limit", type=int, default=50, help="Número máximo de artículos a recolectar (default: 50)")
-    p_works.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida (.parquet, .json, .csv)")
-    p_works.add_argument("--api-url", type=str, help="URL base de la API OpenAlex (default: https://api.openalex.org)")
-    p_works.add_argument("--api-key", type=str, help="API Key de OpenAlex (opcional, busca OPENALEX_API_KEY en .env)")
+                         help="Filter by Open Access route")
+    p_works.add_argument("--limit", type=int, default=50, help="Maximum number of articles to harvest (default: 50)")
+    p_works.add_argument("--output", type=str, required=True, help="Output file path (.parquet, .json, .csv)")
+    p_works.add_argument("--api-url", type=str, help="Base OpenAlex API URL (default: https://api.openalex.org)")
+    p_works.add_argument("--api-key", type=str, help="OpenAlex API Key (optional, checks OPENALEX_API_KEY in .env)")
+    p_works.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     
     # 2. fetch-author-works
-    p_author = subparsers.add_parser("fetch-author-works", help="Recolecta la producción científica completa de un autor.")
-    p_author.add_argument("--author-id", type=str, required=True, help="ID OpenAlex o ORCID del investigador")
-    p_author.add_argument("--limit", type=int, default=200, help="Límite máximo de trabajos (default: 200)")
-    p_author.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida")
-    p_author.add_argument("--api-url", type=str)
-    p_author.add_argument("--api-key", type=str)
+    p_author = subparsers.add_parser("fetch-author-works", help="Harvest the complete scientific output of an author.")
+    p_author.add_argument("--author-id", type=str, required=True, help="Researcher OpenAlex ID or ORCID")
+    p_author.add_argument("--limit", type=int, default=200, help="Maximum number of works (default: 200)")
+    p_author.add_argument("--output", type=str, required=True, help="Output file path")
+    p_author.add_argument("--api-url", type=str, help="Base OpenAlex API URL")
+    p_author.add_argument("--api-key", type=str, help="OpenAlex API Key")
+    p_author.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
     
     # 3. fetch-institution-works
-    p_inst = subparsers.add_parser("fetch-institution-works", help="Recolecta trabajos afiliados a una institución.")
-    p_inst.add_argument("--ror", type=str, required=True, help="Identificador ROR (ej. 012gw1n35 para UNAM)")
-    p_inst.add_argument("--year-from", type=int, help="Año inicial")
-    p_inst.add_argument("--year-to", type=int, help="Año final")
-    p_inst.add_argument("--limit", type=int, default=200, help="Límite máximo de trabajos (default: 200)")
-    p_inst.add_argument("--output", type=str, required=True, help="Ruta del archivo de salida")
-    p_inst.add_argument("--api-url", type=str)
-    p_inst.add_argument("--api-key", type=str)
+    p_inst = subparsers.add_parser("fetch-institution-works", help="Harvest works affiliated with an institution.")
+    p_inst.add_argument("--ror", type=str, required=True, help="ROR identifier (e.g., 012gw1n35 for UNAM)")
+    p_inst.add_argument("--year-from", type=int, help="Start year")
+    p_inst.add_argument("--year-to", type=int, help="End year")
+    p_inst.add_argument("--limit", type=int, default=200, help="Maximum number of works (default: 200)")
+    p_inst.add_argument("--output", type=str, required=True, help="Output file path")
+    p_inst.add_argument("--api-url", type=str, help="Base OpenAlex API URL")
+    p_inst.add_argument("--api-key", type=str, help="OpenAlex API Key")
+    p_inst.add_argument("--lang", type=str, choices=["en", "es"], default="en", help="Output language for labels/messages (en or es)")
 
     args = parser.parse_args()
+    lang = getattr(args, "lang", "en") or "en"
+    msg = MESSAGES.get(lang, MESSAGES["en"])
     
     base_url = args.api_url or get_env_variable("OPENALEX_API_URL") or DEFAULT_API_URL
     api_key = args.api_key or get_env_variable("OPENALEX_API_KEY")
@@ -382,23 +418,24 @@ def main():
     if filter_parts:
         params["filter"] = ",".join(filter_parts)
         
-    print(f"[OpenAlex Harvester] Conectando a {base_url}...")
-    print(f"[OpenAlex Harvester] Parámetros de consulta: {params}")
+    print(msg["connecting"].format(base_url=base_url))
+    print(msg["query_params"].format(params=params))
     
     raw_works = fetch_openalex_records(
         base_url=base_url,
         endpoint="works",
         params=params,
         api_key=api_key,
-        limit=args.limit
+        limit=args.limit,
+        lang=lang
     )
     
     if not raw_works:
-        print("[Aviso] No se encontraron resultados con los filtros proporcionados.")
+        print(msg["no_results"])
         sys.exit(0)
         
     canonical_records = [map_openalex_work_to_canonical(w) for w in raw_works]
-    save_canonical_records(canonical_records, args.output)
+    save_canonical_records(canonical_records, args.output, lang=lang)
 
 if __name__ == "__main__":
     main()

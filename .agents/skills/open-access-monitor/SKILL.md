@@ -1,6 +1,6 @@
 ---
 name: open-access-monitor
-description: Monitoreo analítico de las 6 vías de Acceso Abierto (Diamante, Dorada APC, Híbrida, Bronce, Verde, Cerrada), cálculo de gasto comercial estimado en APC (USD) y análisis de tendencias de transición.
+description: Analytical monitoring of the 6 Open Access pathways (Diamond, Gold APC, Hybrid, Bronze, Green, Closed), estimation of commercial APC expenditure in USD, and transition trend analysis. Respond and label outputs in the user's language.
 dependencies:
   - python: "/home/ambientesPy/revistaslatam"
   - script: "scripts/open_access_monitor_cli.py"
@@ -8,44 +8,49 @@ dependencies:
 
 # Open Access Monitor
 
-Módulo cienciométrico especializado en la clasificación y cuantificación de las 6 vías canónicas de Acceso Abierto (Open Access), soberanía científica y estimación de costos de publicación comercial por APC.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Scientometric module specialized in classifying and quantifying the 6 canonical Open Access pathways, scientific sovereignty, and commercial publication cost estimation via APCs.
 
 ## Overview
 
-El módulo permite auditar colecciones documentales (Parquet, CSV o JSON) para identificar la penetración del acceso abierto, contrastar modelos no comerciales (Diamante) frente a modelos comerciales de mercado (Gold APC, Híbridas) y modelar la transición temporal de las publicaciones.
+This module audits document collections (Parquet, CSV, or JSON) to measure Open Access penetration, contrast non-commercial models (Diamond) against commercial market models (Gold APC, Hybrid), and model the temporal transition of publications.
 
 ## Dependencies
 
-- Entorno Python: `/home/ambientesPy/revistaslatam`
-- Script ejecutable: [`scripts/open_access_monitor_cli.py`](file:///home/jlja/.gemini/config/skills/open-access-monitor/scripts/open_access_monitor_cli.py)
+- Python environment: `/home/ambientesPy/revistaslatam`
+- Executable script: [`scripts/open_access_monitor_cli.py`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/scripts/open_access_monitor_cli.py)
 
-## Interfaz CLI
+## CLI Interface
 
-### 1. Desglose por Vías de Acceso Abierto (`breakdown`)
-Calcula la distribución absoluta y porcentual en las 6 vías, generando reporte JSON y figuras duales en alta resolución (300 DPI) para publicación:
+### 1. Open Access Pathway Breakdown (`breakdown`)
+Computes absolute and percentage distributions across the 6 pathways, generating a JSON report and dual high-resolution (300 DPI) publication figures:
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/scripts/open_access_monitor_cli.py breakdown \
-  --input /ruta/al/corpus.parquet \
-  --output /ruta/a/oa_breakdown.json \
-  --plot-es /ruta/a/oa_distribution_es.png \
-  --plot-en /ruta/a/oa_distribution_en.png \
-  --plotly-html /ruta/a/oa_distribution.html
+  --input /path/to/corpus.parquet \
+  --output /path/to/oa_breakdown.json \
+  --plot-es /path/to/oa_distribution_es.png \
+  --plot-en /path/to/oa_distribution_en.png \
+  --plotly-html /path/to/oa_distribution.html \
+  --lang en
 ```
 
-### 2. Estimación de Gasto Comercial en APC (`apc-spending`)
-Calcula el gasto monetario en USD derivado de artículos en revistas doradas e híbridas:
+### 2. Commercial APC Expenditure Estimation (`apc-spending`)
+Computes monetary expenditure in USD derived from articles published in Gold and Hybrid journals:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /home/jlja/.gemini/config/skills/open-access-monitor/scripts/open_access_monitor_cli.py apc-spending \
-  --input /ruta/al/corpus.parquet \
+/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/scripts/open_access_monitor_cli.py apc-spending \
+  --input /path/to/corpus.parquet \
   --gold-apc-usd 2200 \
   --hybrid-apc-usd 3200 \
-  --output /ruta/a/apc_spending.json
+  --output /path/to/apc_spending.json \
+  --lang en
 ```
 
-### 3. Tendencias de Transición Anual (`transition-trend`)
-Analiza la serie cronológica anual de adopción de Acceso Abierto:
+### 3. Annual Transition Trends (`transition-trend`)
+Analyzes the annual chronological series of Open Access adoption:
 ```bash
-/home/ambientesPy/revistaslatam/bin/python /home/jlja/.gemini/config/skills/open-access-monitor/scripts/open_access_monitor_cli.py transition-trend \
-  --input /ruta/al/corpus.parquet \
-  --output /ruta/a/oa_trend.json
+/home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/open-access-monitor/scripts/open_access_monitor_cli.py transition-trend \
+  --input /path/to/corpus.parquet \
+  --output /path/to/oa_trend.json \
+  --lang en
 ```

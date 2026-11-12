@@ -1,41 +1,41 @@
-# Guía de Reporte PRIBA (Preferred Reporting Items for Bibliometric Analysis)
+# PRIBA Reporting Guideline (Preferred Reporting Items for Bibliometric Analysis)
 
-Basado en: Koo, M., & Lin, S. C. (2022). *Preferred reporting items for bibliometric analysis (PRIBA): A proposal for reporting bibliometric reviews*. Journal of Medical Sciences, 42(3), 115-123.
-
----
-
-## 1. Contexto Metodológico
-
-**PRIBA** fue propuesto por la comunidad cienciométrica como una adaptación directa y formal de **PRISMA 2020** orientada a revisiones bibliométricas y mapeo de la ciencia. 
-
-A diferencia del PRISMA médico tradicional (diseñado para evaluar sesgos de intervención clínica y metaanálisis estadístico), PRIBA reformula los ítems para auditar la validez estructural de los estudios basados en datos bibliográficos:
+Based on: Koo, M., & Lin, S. C. (2022). *Preferred reporting items for bibliometric analysis (PRIBA): A proposal for reporting bibliometric reviews*. Journal of Medical Sciences, 42(3), 115-123.
 
 ---
 
-## 2. Los Componentes Esenciales de PRIBA
+## 1. Methodological Context
 
-### A. Definición de la Pregunta y Unidad de Análisis
-* Especificación clara de la unidad de análisis (autores, documentos, revistas, países, instituciones o palabras clave/conceptos).
-* Declaración del tipo de análisis relacional:
-  * **Co-ocurrencia:** Mapeo de términos y frentes conceptuales.
-  * **Coautoría:** Redes sociales y colaboración institucional/geográfica.
-  * **Co-citación:** Estructura intelectual fundacional y colegios invisibles.
-  * **Acoplamiento Bibliográfico:** Frentes de investigación contemporáneos activos.
-  * **Citación Directa:** Linajes genealógicos de ideas.
+**PRIBA** was proposed by the scientometric community as a direct, formal adaptation of **PRISMA 2020** tailored to bibliometric reviews and science mapping.
 
-### B. Delimitación y Recolección de Datos
-* Consulta exacta con etiquetas de campo y operadores de proximidad.
-* Registro de fecha de acceso y versión de la base (OpenAlex, WoS, Scopus).
-* Mapeo del flujo cuantitativo: registros brutos recuperados $\to$ duplicados eliminados $\to$ registros incluidos con metadatos completos.
+Unlike traditional medical PRISMA (designed to evaluate clinical intervention biases and statistical meta-analysis), PRIBA reformulates items to audit the structural validity of studies based on bibliographic data:
 
-### C. Normalización y Métricas de Similitud
-* Declaración del método de normalización relacional:
-  * **Association Strength** (Van Eck & Waltman, recomendada para clustering espacial).
-  * **Coseno de Salton** (adecuado para afinidad bilateral internacional).
-  * **Índice de Jaccard** o **Índice de Equivalencia**.
-* Declaración del método de conteo: **conteo completo (*full counting*)** vs. **conteo fraccional (*fractional counting*)**.
+---
 
-### D. Visualización, Algoritmos y Robustez
-* Algoritmo de partición comunitaria (Leiden, Louvain, Infomap) y parámetros de resolución ($\gamma$).
-* Software empleado y versiones (VOSviewer, Bibliometrix, KnoMap, Python).
-* Identificación y discusión de sesgos de cobertura lingüística o indexación de las bases.
+## 2. Core Components of PRIBA
+
+### A. Research Question and Unit of Analysis Definition
+* Clear specification of the unit of analysis (authors, documents, journals, countries, institutions, or keywords/concepts).
+* Declaration of the relational analysis type:
+  * **Co-occurrence:** Term mapping and conceptual fronts.
+  * **Co-authorship:** Social networks and institutional/geographical collaboration.
+  * **Co-citation:** Foundational intellectual structure and invisible colleges.
+  * **Bibliographic Coupling:** Active contemporary research fronts.
+  * **Direct Citation:** Genealogical lineages of ideas.
+
+### B. Delineation and Data Collection
+* Exact query string with field tags and proximity operators.
+* Record of access date and database version (OpenAlex, WoS, Scopus).
+* Mapping of the quantitative flow: raw records retrieved $\to$ duplicates removed $\to$ included records with complete metadata.
+
+### C. Normalization and Similarity Metrics
+* Declaration of the relational normalization method:
+  * **Association Strength** (Van Eck & Waltman, recommended for spatial clustering).
+  * **Salton's Cosine** (suitable for international bilateral affinity).
+  * **Jaccard Index** or **Equivalence Index**.
+* Declaration of the counting method: **full counting** vs. **fractional counting**.
+
+### D. Visualization, Algorithms, and Robustness
+* Community partitioning algorithm (Leiden, Louvain, Infomap) and resolution parameters ($\gamma$).
+* Software used and versions (VOSviewer, Bibliometrix, KnoMap, Python).
+* Identification and discussion of linguistic coverage or database indexing biases.

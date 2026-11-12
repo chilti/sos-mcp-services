@@ -1,21 +1,22 @@
-# Estándares Internacionales de Endogamia Editorial
+# International Standards for Editorial Endogamy
 
-La endogamia institucional en revistas científicas representa el grado de concentración en que una revista publica a investigadores de su propia institución editora.
+Institutional endogamy in scientific journals represents the degree of concentration to which a journal publishes researchers affiliated with its own publishing institution.
 
 ---
 
-## 1. Umbrales Normativos de Indización
+## 1. Indexing Regulatory Thresholds
 
-| Sistema de Indización | Umbral Máximo de Endogamia Autoral | Requisito de Consejo Editorial |
+| Indexing System | Maximum Author Endogamy Threshold | Editorial Board Requirement |
 |---|---|---|
-| **Latindex Catálogo 2.0** | $\le 50\%$ de autores internos de la entidad editora | $\ge 50\%$ de evaluadores y miembros externos |
-| **SciELO (Scientific Electronic Library Online)** | $\le 30\%$ a $40\%$ de autores afiliados a la entidad editora | $\ge 60\%$ a $70\%$ de consejo editorial externo |
-| **Redalyc** | $\le 20\%$ a $30\%$ de autores de la entidad | Máxima apertura internacional y diversificación institucional |
-| **DOAJ (Directory of Open Access Journals)** | Prohibición estricta de revistas predadoras / vanagloriosas | Declaración de arbitraje por pares independiente |
+| **Latindex Catalog 2.0** | $\le 50\%$ internal authors from the publishing entity | $\ge 50\%$ external reviewers and board members |
+| **SciELO (Scientific Electronic Library Online)** | $\le 30\%$ to $40\%$ authors affiliated with the publishing entity | $\ge 60\%$ to $70\%$ external editorial board |
+| **Redalyc** | $\le 20\%$ to $30\%$ internal entity authors | Maximum international openness and institutional diversification |
+| **DOAJ (Directory of Open Access Journals)** | Strict prohibition of predatory / vanity journals | Explicit independent peer-review statement |
 
 ---
 
-## 2. Metodología de Cálculo
+## 2. Calculation Methodology
 
-$$\text{Tasa de Endogamia (\%)} = \frac{N_{\text{autores institución editora}}}{N_{\text{total de autores analizados}}} \times 100$$
-Un valor $\le 20\%$ indica **excelencia y proyección exterior**; un valor $> 50\%$ emite **alerta crítica** de riesgo de exclusión en índices internacionales.
+$$\text{Endogamy Rate (\%)} = \frac{N_{\text{publishing institution authors}}}{N_{\text{total analyzed authors}}} \times 100$$
+
+A value $\le 20\%$ indicates **excellence and external reach**; a value $> 50\%$ triggers a **critical alert** indicating risk of exclusion from international indexes.

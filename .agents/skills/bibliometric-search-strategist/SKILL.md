@@ -1,149 +1,151 @@
 ---
 name: bibliometric-search-strategist
-description: Construcción experta de estrategias de búsqueda bibliográfica avanzada y delimitación de campos científicos (Field Delineation multi-etapa de Huang & Porter, bloques conceptuales, Pearl Growing y traducción multi-base Web of Science, Scopus, PubMed y ClickHouse), auditada bajo la directriz GLOBAL (ISSI).
+description: Expert construction of advanced bibliographic search strategies and scientific field delineation (Huang & Porter multi-stage Field Delineation, conceptual building blocks, Pearl Growing, and multi-database translation across Web of Science, Scopus, PubMed, and ClickHouse), audited under the GLOBAL (ISSI) guideline. Respond and label outputs in the user's language.
 metadata:
   python: ">=3.10"
   script: "scripts/query_synthesizer.py"
 ---
 # Bibliometric Search Strategist
 
-Especialista en formulación, optimización, traducción y auditoría de estrategias de búsqueda y **delimitación de campos científicos (*Field Delineation*)** para cienciometría, mapeo científico, bibliometría evaluativa y estudios cuantitativos de la ciencia (*Science of Science*).
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-Esta habilidad adopta formalmente los estándares nativos de la disciplina cienciométrica internacional, sustituyendo los marcos biomédicos clínicos por la directriz **GLOBAL (ISSI)** y el protocolo de **Delimitación de Campo Multi-Etapa de Huang, Schiebel & Porter (2011)**, garantizando representatividad estructural, transparencia y reproducibilidad estricta.
+Specialist in formulating, optimizing, translating, and auditing search strategies and **scientific field delineation (*Field Delineation*)** for scientometrics, science mapping, evaluative bibliometrics, and quantitative studies of science (*Science of Science*).
+
+This skill formally adopts the native standards of the international scientometrics discipline, replacing clinical biomedical frameworks with the **GLOBAL (ISSI)** guideline and the **Huang, Schiebel & Porter (2011) Multi-Stage Field Delineation** protocol, ensuring structural representativeness, transparency, and strict reproducibility.
 
 ---
 
-## 1. Paradigma Metodológico: Delimitación de Campos (Field Delineation)
+## 1. Methodological Paradigm: Field Delineation
 
-En cienciometría, delimitar el corpus de un dominio o tecnología (*Field Delineation*) va más allá de encadenar palabras clave: es el proceso formal de aislar un sub-espacio científico minimizando tanto el **silencio bibliográfico (falsos negativos)** como la **contaminación temática (falsos positivos)** (Zitt & Bassecoulard, 2006).
+In scientometrics, delineating the corpus of a domain or technology (*Field Delineation*) goes far beyond chaining keywords together: it is the formal process of isolating a scientific subspace while minimizing both **bibliographic silence (false negatives)** and **thematic contamination (false positives)** (Zitt & Bassecoulard, 2006).
 
 ```mermaid
 flowchart TD
-    subgraph Etapa1 ["Etapa 1: Core Search (Alta Precisión)"]
-        C1["Términos Inequívocos y Propios"] --> C2["Precision ≈ 100% / Recall Moderado"]
+    subgraph Stage1 ["Stage 1: Core Search (High Precision)"]
+        C1["Unambiguous & Proprietary Terms"] --> C2["Precision ≈ 100% / Moderate Recall"]
     end
-    subgraph Etapa2 ["Etapa 2: Modular Expansion (Alto Recall)"]
-        E1["Building Blocks por Facetas"] --> E2["Tesauros / Topics / MeSH"]
-        E2 --> E3["Variantes UK/US y Acrónimos"]
+    subgraph Stage2 ["Stage 2: Modular Expansion (High Recall)"]
+        E1["Building Blocks by Facets"] --> E2["Thesauri / Topics / MeSH"]
+        E2 --> E3["UK/US Variants & Acronyms"]
     end
-    subgraph Etapa3 ["Etapa 3: Noise Filtering (Depuración)"]
-        N1["Exclusión de Ramas Ajenas"] --> N2["Reglas de Co-ocurrencia Contextual"]
-        N2 --> N3["Prevención de Desbordamiento Léxico"]
+    subgraph Stage3 ["Stage 3: Noise Filtering (Refinement)"]
+        N1["Exclusion of Unrelated Branches"] --> N2["Contextual Co-occurrence Rules"]
+        N2 --> N3["Lexical Overflow Prevention"]
     end
-    subgraph Etapa4 ["Etapa 4: Calibración y Auditoría"]
-        A1["Prueba de Semillas (Golden Standard)"] --> A2["Auditoría GLOBAL (ISSI)"]
+    subgraph Stage4 ["Stage 4: Calibration & Audit"]
+        A1["Seed Test (Golden Standard)"] --> A2["GLOBAL (ISSI) Audit"]
     end
 
-    Etapa1 ==> Etapa2 ==> Etapa3 ==> Etapa4
+    Stage1 ==> Stage2 ==> Stage3 ==> Stage4
 ```
 
-### 1.1. Arquitectura de Bloques de Construcción (Building Blocks)
+### 1.1. Building Blocks Architecture
 
-Adaptada al análisis cuantitativo de la ciencia, la estrategia descompone la interrogante en facetas conceptuales ortogonales:
+Adapted to quantitative studies of science, the strategy decomposes the research question into orthogonal conceptual facets:
 
-$$\text{Estrategia Global} = F_1 \land F_2 \land \dots \land F_k$$
+$$\text{Global Strategy} = F_1 \land F_2 \land \dots \land F_k$$
 
-1. **Intra-Faceta (`OR` - Cobertura Exhaustiva):**
-   - Agrupa sinónimos, lemas, acrónimos, variantes ortográficas británicas y americanas (p. ej., `behavior` / `behaviour`, `optimization` / `optimisation`).
-   - Incorpora descriptores de vocabularios controlados (OpenAlex Topics, WoS Subject Categories, Scopus ASJC, MeSH Headings).
-2. **Inter-Facetas (`AND` - Especificidad Contextual):**
-   - Interseca las facetas conceptuales independientes. Limitar el número de bloques a 2 o 3 para no asfixiar el volumen de publicaciones seminales.
-3. **Uso Prudente de la Exclusión:**
-   - **Regla cienciométrica:** Evitar el uso libre del operador `NOT` a nivel textual directo, ya que elimina inadvertidamente trabajos relevantes que discuten o refutan el concepto excluido. Utilizar restricciones de categorías temáticas ajenas o filtros en fases de tamizaje.
-
----
-
-## 2. Métodos Heurísticos y Operadores Avanzados
-
-### 2.1. Cultivo de Perlas (Pearl Growing)
-Cuando el dominio es emergente o su vocabulario está en disputa:
-1. **Selección de Semillas (*Pearls*):** Seleccionar entre 3 y 5 artículos canónicos indiscutibles (*golden standard*).
-2. **Minería de Descriptores:** Extraer palabras clave de autor, términos indexados (*Keywords Plus*, *Index Terms*, *Topics v5.0*) y categorías temáticas.
-3. **Expansión y Calibración:** Incorporar los términos discriminantes a la ecuación. Verificar que **el 100% de los artículos semilla sea recuperado** en la consulta resultante.
-
-### 2.2. Operadores de Proximidad vs. Frases Exactas
-Las frases exactas (`"..."`) son rígidas e ignoran adjetivos o inversiones. Los operadores de proximidad contextualizan la co-ocurrencia:
-* **Web of Science:** `termA NEAR/n termB` (máximo $n$ palabras intermedias en cualquier orden).
-* **Scopus:** `termA W/n termB` (cualquier orden) o `termA PRE/n termB` (orden estricto).
-* **PubMed:** `"termA termB"~n` (proximidad por distancia de edición).
-* **ClickHouse (`rag.works_academic_all`):** Combinación booleana de expresiones posicionales sinónimas.
-
-### 2.3. Truncamiento Seguro
-* **Asterisco (`*`):** Cero o más caracteres (`nanopart*`). **Prohibición:** Nunca usar truncamiento en raíces menores a 4 caracteres (p. ej., `pol*` genera desbordamiento con *policy, polymer, police, polish, pollen*).
-* **Comodín de un caracter (`?` o `$`)**: Variaciones morfológicas controladas (`wom?n`).
+1. **Intra-Facet (`OR` - Exhaustive Coverage):**
+   - Groups synonyms, lemmas, acronyms, and British/American spelling variants (e.g., `behavior` / `behaviour`, `optimization` / `optimisation`).
+   - Incorporates descriptors from controlled vocabularies (OpenAlex Topics, WoS Subject Categories, Scopus ASJC, MeSH Headings).
+2. **Inter-Facet (`AND` - Contextual Specificity):**
+   - Intersects independent conceptual facets. Limit the number of blocks to 2 or 3 to avoid choking off seminal publications.
+3. **Prudent Use of Exclusion:**
+   - **Scientometric rule:** Avoid free use of the `NOT` operator at the direct text level, as it inadvertently eliminates relevant papers that discuss or refute the excluded concept. Instead, use restrictions on unrelated subject categories or apply filters during screening phases.
 
 ---
 
-## 3. Matriz de Traducción Multi-Plataforma (Polyglot Crosswalk)
+## 2. Heuristic Methods and Advanced Operators
 
-| Campo / Parámetro | Web of Science (WoS) | Scopus (Elsevier) | PubMed (NLM) | OpenAlex / ClickHouse (`rag.works_academic_all`) |
+### 2.1. Pearl Growing
+When a domain is emerging or its vocabulary is contested:
+1. **Seed Selection (*Pearls*):** Select 3 to 5 undisputed canonical articles (*golden standard*).
+2. **Descriptor Mining:** Extract author keywords, indexed terms (*Keywords Plus*, *Index Terms*, *Topics v5.0*), and subject categories.
+3. **Expansion and Calibration:** Incorporate discriminating terms into the equation. Verify that **100% of the seed articles are retrieved** by the resulting query.
+
+### 2.2. Proximity Operators vs. Exact Phrases
+Exact phrases (`"..."`) are rigid and ignore intervening adjectives or inversions. Proximity operators contextualize co-occurrence:
+* **Web of Science:** `termA NEAR/n termB` (at most $n$ intervening words in either order).
+* **Scopus:** `termA W/n termB` (either order) or `termA PRE/n termB` (strict order).
+* **PubMed:** `"termA termB"~n` (edit-distance proximity).
+* **ClickHouse (`rag.works_academic_all`):** Boolean combination of synonymous positional expressions.
+
+### 2.3. Safe Truncation
+* **Asterisk (`*`):** Zero or more characters (`nanopart*`). **Prohibition:** Never use truncation on word stems shorter than 4 characters (e.g., `pol*` causes massive lexical overflow with *policy, polymer, police, polish, pollen*).
+* **Single-character wildcard (`?` or `$`):** Controlled morphological variations (`wom?n`).
+
+---
+
+## 3. Multi-Platform Translation Matrix (Polyglot Crosswalk)
+
+| Field / Parameter | Web of Science (WoS) | Scopus (Elsevier) | PubMed (NLM) | OpenAlex / ClickHouse (`rag.works_academic_all`) |
 |---|---|---|---|---|
-| **Título + Resumen + Keywords** | `TS=("deep learning" OR "neural net*")` | `TITLE-ABS-KEY("deep learning" OR "neural net*")` | `("deep learning"[tiab] OR "neural net*"[tiab])` | `(positionCaseInsensitiveUTF8(title, 'deep learning') > 0 OR positionCaseInsensitiveUTF8(title, 'neural net') > 0)` |
-| **Título solamente** | `TI=("quantum computing")` | `TITLE("quantum computing")` | `"quantum computing"[ti]` | `positionCaseInsensitiveUTF8(title, 'quantum computing') > 0` |
-| **Palabras Clave / Keywords** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'solar cell') > 0, keywords)` |
-| **Tópicos / Categorías** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `positionCaseInsensitiveUTF8(topic, 'Solar Cells') > 0` |
-| **Ventana Temporal** | `PY=(2015-2024)` | `PUBYEAR > 2014 AND PUBYEAR < 2025` | `2015:2024[dp]` | `(publication_year >= 2015 AND publication_year <= 2024)` |
-| **Tipología Documental** | `DT=(Article OR Review)` | `(DOCTYPE(ar) OR DOCTYPE(re))` | `("journal article"[pt] OR "review"[pt])` | `type IN ('article', 'review')` |
-| **Acceso Abierto Diamante** | `OA=(Diamond)` *(o filtro manual)* | `OA(NONE)` *(con mapeo de APC)* | N/A *(vía PMC)* | `oa_status = 'diamond'` |
+| **Title + Abstract + Keywords** | `TS=("deep learning" OR "neural net*")` | `TITLE-ABS-KEY("deep learning" OR "neural net*")` | `("deep learning"[tiab] OR "neural net*"[tiab])` | `(positionCaseInsensitiveUTF8(title, 'deep learning') > 0 OR positionCaseInsensitiveUTF8(title, 'neural net') > 0)` |
+| **Title Only** | `TI=("quantum computing")` | `TITLE("quantum computing")` | `"quantum computing"[ti]` | `positionCaseInsensitiveUTF8(title, 'quantum computing') > 0` |
+| **Author Keywords** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'solar cell') > 0, keywords)` |
+| **Topics / Categories** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `positionCaseInsensitiveUTF8(topic, 'Solar Cells') > 0` |
+| **Time Window** | `PY=(2015-2024)` | `PUBYEAR > 2014 AND PUBYEAR < 2025` | `2015:2024[dp]` | `(publication_year >= 2015 AND publication_year <= 2024)` |
+| **Document Types** | `DT=(Article OR Review)` | `(DOCTYPE(ar) OR DOCTYPE(re))` | `("journal article"[pt] OR "review"[pt])` | `type IN ('article', 'review')` |
+| **Diamond Open Access** | `OA=(Diamond)` *(or manual filter)* | `OA(NONE)` *(with APC mapping)* | N/A *(via PMC)* | `oa_status = 'diamond'` |
 
-### Reglas para ClickHouse (`rag.works_academic_all`)
-1. **CERO JOINS:** Resolver toda la consulta contra la tabla desnormalizada precalculada.
-2. **Columnas de Producción:** Usar `title`, `author_names`, `institution_names`, `topic`, `keywords`, `all_country_codes`.
-3. **Optimización Columnar:** Emplear `positionCaseInsensitiveUTF8(col, 'term') > 0` y funciones de arrays de orden superior (`arrayExists(...)`).
+### ClickHouse Rules (`rag.works_academic_all`)
+1. **ZERO JOINS:** Resolve the entire query against the precomputed denormalized table.
+2. **Production Columns:** Use `title`, `author_names`, `institution_names`, `topic`, `keywords`, `all_country_codes`.
+3. **Columnar Optimization:** Use `positionCaseInsensitiveUTF8(col, 'term') > 0` and higher-order array functions (`arrayExists(...)`).
 
 ---
 
-## 4. Marco de Calidad y Auditoría: Directriz GLOBAL (ISSI)
+## 4. Quality and Audit Framework: GLOBAL (ISSI) Guideline
 
-En cienciometría, la auditoría metodológica se fundamenta en la **Directriz GLOBAL** (*Guidance List for repOrting Bibliometric AnaLyses*, desarrollada por consenso de miembros de la ISSI / ScholCommLab). 
+In scientometrics, methodological auditing is grounded in the **GLOBAL Guideline** (*Guidance List for repOrting Bibliometric AnaLyses*, developed by consensus of ISSI / ScholCommLab members).
 
-Toda estrategia de delimitación generada por el agente debe emitir la **Lista de Verificación GLOBAL**:
+Every delineation strategy generated by the agent must emit the **GLOBAL Checklist**:
 
-| Dimensión GLOBAL | Ítem de Auditoría | Estado | Criterio Metodológico |
+| GLOBAL Dimension | Audit Item | Status | Methodological Criterion |
 |---|---|:---:|---|
-| **1. Justificación Conceptual** | Delimitación del dominio y preguntas | ✅ / ⚠️ | Justificación teórica de las facetas y límites disciplinarios. |
-| **2. Fuentes y Snapshot** | Declaración de bases y fecha de corte | ✅ / ⚠️ | Registro explícito de base de datos, índice, fecha y huso horario de extracción. |
-| **3. Delimitación de Campo** | Ecuación exacta y etiquetas de campo | ✅ / ⚠️ | Publicación íntegra de la sintaxis con etiquetas específicas (`TS=`, `TITLE-ABS-KEY()`, etc.). |
-| **4. Selección de Descriptores** | Vocabularios controlados y sinónimos | ✅ / ⚠️ | Cobertura sistemática de tesauros (Topics, MeSH, Categorías) y términos libres. |
-| **5. Ortografía y Truncamiento** | Comodines seguros y balanceo léxico | ✅ / ⚠️ | Comillas balanceadas, sin comodines < 4 letras y operadores booleanos en mayúsculas. |
-| **6. Filtros y Límites** | Ventana temporal y tipos de documento | ✅ / ⚠️ | Justificación explícita de años de inicio/fin y exclusión/inclusión de tipologías. |
-| **7. Reproducibilidad y Código** | Disponibilidad de sintaxis y scripts | ✅ / ⚠️ | Sintaxis versionada en texto plano y scripts CLI reproducibles con semillas fijas. |
+| **1. Conceptual Rationale** | Domain delineation and research questions | ✅ / ⚠️ | Theoretical justification of facets and disciplinary boundaries. |
+| **2. Sources & Snapshot** | Database declaration and cutoff date | ✅ / ⚠️ | Explicit record of database, index, extraction date, and time zone. |
+| **3. Field Delineation** | Exact search string and field tags | ✅ / ⚠️ | Full publication of query syntax with specific field tags (`TS=`, `TITLE-ABS-KEY()`, etc.). |
+| **4. Descriptor Selection** | Controlled vocabularies and synonyms | ✅ / ⚠️ | Systematic coverage of thesauri (Topics, MeSH, Categories) and free-text terms. |
+| **5. Spelling & Truncation** | Safe wildcards and lexical balancing | ✅ / ⚠️ | Balanced quotes, no wildcards < 4 letters, and uppercase Boolean operators. |
+| **6. Filters & Limits** | Time window and document types | ✅ / ⚠️ | Explicit justification of start/end years and document type inclusion/exclusion. |
+| **7. Reproducibility & Code** | Availability of syntax and scripts | ✅ / ⚠️ | Plain-text versioned syntax and reproducible CLI scripts with fixed seeds. |
 
 ---
 
-## 5. Herramienta Automatizada: `scripts/query_synthesizer.py`
+## 5. Automated Tool: `scripts/query_synthesizer.py`
 
-CLI autónomo para validación sintáctica, transpilación multi-base y auditoría GLOBAL:
+Standalone CLI for syntactic validation, multi-database transpilation, and GLOBAL auditing:
 
 ```bash
-# Validar sintaxis y detectar anomalías léxicas o comodines peligrosos
+# Validate syntax and detect lexical anomalies or dangerous wildcards
 /home/ambientesPy/revistaslatam/bin/python \
-  /mnt/expansion/desplegados/agentic-data-stack/.agents/skills/bibliometric-search-strategist/scripts/query_synthesizer.py \
+  /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-search-strategist/scripts/query_synthesizer.py \
   --action validate \
   --query '("causal inference" OR "structural causal model*") AND (LLM OR "large language model*")'
 
-# Transpilar bloques JSON a WoS, Scopus, PubMed, ClickHouse y generar auditoría GLOBAL
+# Transpile JSON blocks to WoS, Scopus, PubMed, ClickHouse and generate GLOBAL audit
 /home/ambientesPy/revistaslatam/bin/python \
-  /mnt/expansion/desplegados/agentic-data-stack/.agents/skills/bibliometric-search-strategist/scripts/query_synthesizer.py \
+  /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-search-strategist/scripts/query_synthesizer.py \
   --action transpile \
   --config blocks_definition.json \
   --output ./search_strategies/
 ```
 
-### Formato de Entrada de Bloques (`blocks_definition.json`)
+### Block Input Format (`blocks_definition.json`)
 
 ```json
 {
-  "project_title": "Inferencia Causal en Modelos Masivos de Lenguaje",
+  "project_title": "Causal Inference in Large Language Models",
   "blocks": [
     {
-      "name": "Teoría Causal",
+      "name": "Causal Theory",
       "terms": ["causal inference", "structural causal model*", "counterfactual reasoning"],
       "mesh": ["Causality", "Models, Statistical"],
       "topics": ["Causal Inference", "Causal Discovery"]
     },
     {
-      "name": "Inteligencia Artificial y Agentes",
+      "name": "Artificial Intelligence and Agents",
       "terms": ["large language model*", "LLM", "autonomous agent*", "chain-of-thought"],
       "mesh": ["Artificial Intelligence", "Natural Language Processing"],
       "topics": ["Natural Language Processing", "Artificial Intelligence"]
@@ -159,17 +161,17 @@ CLI autónomo para validación sintáctica, transpilación multi-base y auditor�
 
 ---
 
-## 6. Flujo de Trabajo Integrado con el Ecosistema
+## 6. Ecosystem Integrated Workflow
 
-1. **Delimitación Inicial:** Diseñar bloques conceptuales (*building blocks*) y transpilar consultas con `bibliometric-search-strategist`.
-2. **Auditoría de Calidad:** Generar y revisar el reporte `global_audit.md`.
-3. **Cosecha Masiva:** Extraer datos globales con [`openalex-harvester`](../openalex-harvester/SKILL.md) o producción mexicana con [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md).
-4. **Revisión y Snowballing:** Enlazar con [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) para ejecutar la revisión profunda y el filtro de densidad de citaciones.
-5. **Mapeo de Redes y SOM:** Procesar con [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md) y [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
+1. **Initial Delineation:** Design conceptual blocks (*building blocks*) and transpile queries using `bibliometric-search-strategist`.
+2. **Quality Audit:** Generate and review the `global_audit.md` report.
+3. **Bulk Harvesting:** Extract global data with [`openalex-harvester`](../openalex-harvester/SKILL.md) or Mexican output with [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md).
+4. **Review and Snowballing:** Chain with [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) to execute in-depth literature review and citation density filtering.
+5. **Network and SOM Mapping:** Process with [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md) and [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
 
 ---
 
-## 7. Referencias Bibliográficas
+## 7. Bibliographic References
 
 * Glänzel, W., Schlemmer, B., & Du Plessis, B. (2009). A hybrid approach for addressing the problem of "field delineation" in scientometric studies. *Scientometrics*, 79(1), 3–17. https://doi.org/10.1007/s11192-009-0401-7
 * Harter, S. P. (1986). *Online Information Retrieval: Concepts, Principles, and Techniques*. Academic Press.

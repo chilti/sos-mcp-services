@@ -1,30 +1,32 @@
 ---
 name: semantic-scholar-harvester
-description: Extracción de artículos, resúmenes y grafos de citas desde Semantic Scholar Graph API hacia tablas canónicas (Parquet, JSON, CSV).
+description: Extract articles, abstracts, and citation graphs from the Semantic Scholar Graph API into canonical tables (Parquet, JSON, CSV). Respond and label outputs in the user's language.
 ---
 
 # Semantic Scholar Data Harvester
 
-Herramienta autónoma e independiente para consultar la base de conocimiento de Semantic Scholar (`https://api.semanticscholar.org/graph/v1`), descargar publicaciones por palabras clave o autor, y reconstruir subgrafos de citación directa (entrantes y salientes).
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Autonomous, standalone tool for querying the Semantic Scholar knowledge graph (`https://api.semanticscholar.org/graph/v1`), downloading publications by keywords or author, and reconstructing direct citation subgraphs (incoming and outgoing).
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Búsqueda Temática Amplia:** Búsqueda textual y filtrado por rangos de años sin necesidad obligatoria de API key.
-- **Construcción de Grafos de Citas:** Descarga simultánea de citas entrantes y referencias bibliográficas de cualquier artículo.
-- **Mapeo Canónico Estandarizado:** Generación directa de archivos Parquet, JSON o CSV consumibles por los motores de indicadores y redes.
+- **Broad Thematic Search:** Full-text search and year-range filtering without requiring a mandatory API key.
+- **Citation Graph Construction:** Simultaneous download of incoming citations and outgoing bibliographic references for any paper.
+- **Standardized Canonical Mapping:** Direct generation of Parquet, JSON, or CSV files ready for consumption by indicator and network engines.
 
 ---
 
-## Interfaz CLI
+## CLI Interface
 
-Entorno de ejecución:
+Execution environment:
 ```bash
-python scripts/s2_harvest_cli.py [subcomando] [opciones]
+python scripts/s2_harvest_cli.py [subcommand] [options]
 ```
 
-### 1. Búsqueda temática
+### 1. Thematic search
 ```bash
 python scripts/s2_harvest_cli.py search-papers \
   --query "knowledge graphs science" \
@@ -34,14 +36,14 @@ python scripts/s2_harvest_cli.py search-papers \
   --output ./s2_knowledge_graphs.parquet
 ```
 
-### 2. Extracción de grafo de citaciones de un paper
+### 2. Paper citation graph extraction
 ```bash
 python scripts/s2_harvest_cli.py citation-graph \
   --paper-id "10.1038/s41586-020-2649-2" \
   --output ./paper_citation_subgraph.parquet
 ```
 
-### 3. Publicaciones de un autor por S2 Author ID
+### 3. Author publications by S2 Author ID
 ```bash
 python scripts/s2_harvest_cli.py author-papers \
   --author-id "1741101" \
@@ -51,6 +53,6 @@ python scripts/s2_harvest_cli.py author-papers \
 
 ---
 
-## Referencias Técnicas
-- [Campos y Estructura de Semantic Scholar Graph API](references/s2_graph_api_fields.md)
-- [Concepto de Citas Influyentes](references/influential_citations_concept.md)
+## Technical References
+- [Semantic Scholar Graph API Fields and Structure](references/s2_graph_api_fields.md)
+- [Influential Citations Concept](references/influential_citations_concept.md)

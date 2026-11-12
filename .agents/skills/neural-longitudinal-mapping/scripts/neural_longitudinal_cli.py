@@ -34,6 +34,78 @@ for cand in ENGINE_CANDIDATES:
         break
 
 
+I18N = {
+    "en": {
+        "period_title": "Period {p_key}",
+        "var_prefix": "Var {i}",
+        "rep_title": "# Neurocomputational Longitudinal Dynamics Report (SOM)",
+        "rep_slices": "**Analyzed Time Slices:** {slices} ({n} periods)",
+        "rep_protocol": "**Methodological Protocol:** Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet (2024), *IJSMC*.",
+        "rep_tip_action": "> **KnoMap Direct Action:** You can interactively explore this temporal sequence in the **Temporal Player** and **Side-by-Side** view.",
+        "sec1_title": "## 1. Macro Level: Systemic Evolution and Components",
+        "sec1_desc": "Evolution of performance ranges across key dimensions:",
+        "tbl_ind_header": "Indicator / Dimension",
+        "tbl_mean_prefix": "Mean {p}",
+        "sec1_growth_title": "### Intertemporal Growth Rates (Δ% of the mean):",
+        "tbl_dim_header": "Dimension",
+        "sec2_title": "## 2. Cohort Dynamics and Entity Retention",
+        "tbl_pop_header": "| Transition | Previous Base | Retained | New Entrants | Departures | Retention Rate |",
+        "b_persistent_core": "- **Persistent Core (Present in 100% of periods):** {n} entity(ies).",
+        "b_transient_ents": "- **Transient Entities (1 single period):** {n} entity(ies).",
+        "sec3_title": "## 3. Meso Level: Cluster Dynamics (Vesanto)",
+        "sec3_desc": "Structural transitions of qualitative profiles between consecutive periods:",
+        "sub_transition": "### Transition: `{t_name}`",
+        "b_splits": "- **Profile Differentiation (Cluster Splitting):** {n} event(s).",
+        "b_split_detail": "  - Source cluster #{c} splits across: {ents}...",
+        "b_no_splits": "- *No major cluster splits recorded.*",
+        "b_merges": "- **Profile Homogenization (Cluster Merging):** {n} event(s).",
+        "b_merge_detail": "  - Convergence toward target cluster #{c}.",
+        "sec4_title": "## 4. Micro Level: Trajectories and Singular Profiles",
+        "sec4_sing_title": "### Singular Profiles per Period (Entities with a unique qualitative profile):",
+        "no_singulars": "*(No isolated singular profiles)*",
+        "sec4_disp_title": "### Largest Displacements on the Hexagonal Lattice (Δx, Δy):",
+        "cluster_changed_tag": " ⚡ *(changed cluster)*",
+        "disp_item": "- **{entity}**: Displacement = {disp} hex{alert}",
+        "sec5_title": "## 5. Intertemporal Synaptic Drift (Adaptive Tension ΔW)",
+        "tbl_drift_header": "| Transition | Maximum Drift (ΔW max) | Mean Drift |",
+    },
+    "es": {
+        "period_title": "Periodo {p_key}",
+        "var_prefix": "Var {i}",
+        "rep_title": "# Reporte de Dinámica Neurocomputacional Longitudinal (SOM)",
+        "rep_slices": "**Cortes Temporales Analizados:** {slices} ({n} periodos)",
+        "rep_protocol": "**Protocolo Metodológico:** Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet (2024), *IJSMC*.",
+        "rep_tip_action": "> **Acción Directa KnoMap:** Puedes explorar interactivamente esta secuencia temporal en el **Reproductor Temporal** y la vista **Side-by-Side**.",
+        "sec1_title": "## 1. Nivel Macro: Evolución Sistémica y Componentes",
+        "sec1_desc": "Evolución de los rangos de desempeño en las dimensiones clave:",
+        "tbl_ind_header": "Indicador / Dimensión",
+        "tbl_mean_prefix": "Media {p}",
+        "sec1_growth_title": "### Tasas de Crecimiento Intertemporal (Δ% de la media):",
+        "tbl_dim_header": "Dimensión",
+        "sec2_title": "## 2. Dinámica de Cohortes y Retención de Entidades",
+        "tbl_pop_header": "| Transición | Base Anterior | Retenidas | Nuevos Ingresos | Salidas | Tasa Retención |",
+        "b_persistent_core": "- **Núcleo Persistente (Presentes en el 100% de los periodos):** {n} entidad(es).",
+        "b_transient_ents": "- **Entidades Transitorias (1 solo periodo):** {n} entidad(es).",
+        "sec3_title": "## 3. Nivel Meso: Dinámica de Clusters (Vesanto)",
+        "sec3_desc": "Transiciones estructurales de perfiles cualitativos entre periodos consecutivos:",
+        "sub_transition": "### Transición: `{t_name}`",
+        "b_splits": "- **Diferenciación de Perfiles (Escisión de clusters):** {n} evento(s).",
+        "b_split_detail": "  - Cluster origen #{c} se divide entre: {ents}...",
+        "b_no_splits": "- *No se registraron escisiones mayores de clusters.*",
+        "b_merges": "- **Homogeneización de Perfiles (Fusión de clusters):** {n} evento(s).",
+        "b_merge_detail": "  - Convergencia hacia cluster destino #{c}.",
+        "sec4_title": "## 4. Nivel Micro: Trayectorias y Perfiles Singulares",
+        "sec4_sing_title": "### Perfiles Singulares por Periodo (Entidades con perfil cualitativo único):",
+        "no_singulars": "*(Sin perfiles singulares aislados)*",
+        "sec4_disp_title": "### Mayores Desplazamientos en la Cuadrícula Hexagonal (Δx, Δy):",
+        "cluster_changed_tag": " ⚡ *(cambió de cluster)*",
+        "disp_item": "- **{entity}**: Desplazamiento = {disp} hex{alert}",
+        "sec5_title": "## 5. Deriva Sináptica Intertemporal (Tensión Adaptativa ΔW)",
+        "tbl_drift_header": "| Transición | Deriva Máxima (ΔW max) | Deriva Promedio |",
+    },
+}
+
+
 def extract_year(val: Any) -> Optional[int]:
     """Extracts a valid 4-digit calendar year (1800-2100) from diverse formats."""
     if val is None:
@@ -458,8 +530,8 @@ def cmd_train(args):
 
 def render_longitudinal_publication_figures(results: Dict[str, Any], plot_dir: str, dpi: int = 300):
     """
-    Renders clean publication-ready 300 DPI figures in Spanish (som_longitudinal_es.png)
-    and English (som_longitudinal_en.png) showing the period cluster maps on top and
+    Renders clean publication-ready 300 DPI figures in English (som_longitudinal_en.png)
+    and Spanish (som_longitudinal_es.png) showing the period cluster maps on top and
     the final period's Component Planes grid on the bottom, with strict equal aspect ratio
     and no dark bbox behind mapped entity labels.
     """
@@ -491,12 +563,13 @@ def render_longitudinal_publication_figures(results: Dict[str, Any], plot_dir: s
 
     comp_cmap = LinearSegmentedColormap.from_list("labsom_comp", ["#38a169", "#ecc94b", "#e53e3e"], N=256)
 
-    for lang in ["es", "en"]:
+    for lang in ["en", "es"]:
+        t = I18N[lang]
         n_periods = len(sorted_periods)
         last_map = maps[sorted_periods[-1]]
         weights = last_map.get("weights", [])
         n_vars = len(weights[0]) if weights and isinstance(weights[0], list) else 0
-        var_names = indicators if indicators and len(indicators) == n_vars else [f"Var {i+1}" for i in range(n_vars)]
+        var_names = indicators if indicators and len(indicators) == n_vars else [t["var_prefix"].format(i=i+1) for i in range(n_vars)]
 
         n_comp_cols = 4 if n_vars >= 4 else max(1, n_vars)
         n_comp_rows = math.ceil(n_vars / n_comp_cols) if n_vars > 0 else 0
@@ -553,7 +626,7 @@ def render_longitudinal_publication_figures(results: Dict[str, Any], plot_dir: s
                     path_effects=[pe.withStroke(linewidth=2.2, foreground="#0f172a")]
                 )
 
-            p_label = f"Periodo {p_key}" if lang == "es" else f"Period {p_key}"
+            p_label = t["period_title"].format(p_key=p_key)
             ax.set_title(p_label, fontsize=11, fontweight="bold", color="#0f172a", pad=6)
             pad = r_hex * 1.35
             ax.set_xlim(min(xs) - pad, max(xs) + pad)
@@ -816,7 +889,7 @@ def cmd_analyze(args):
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(analysis_result, f, indent=2, ensure_ascii=False)
 
-    print(f"Success! Evolutionary analysis computed across Macro (Delta %), Meso, Micro, and Population Dynamics.")
+    print("Success! Evolutionary analysis computed across Macro (Delta %), Meso, Micro, and Population Dynamics.")
     print(f"Persistent Core Entities: {len(persistent_core)} | Transient Entities: {len(transient_entities)}")
     print(f"Analysis saved to: {args.output}")
 
@@ -833,6 +906,9 @@ def cmd_report(args):
     with open(args.analysis, "r", encoding="utf-8") as f:
         analysis = json.load(f)
 
+    lang = getattr(args, "lang", "en") or "en"
+    t = I18N.get(lang, I18N["en"])
+
     periods = analysis.get("periods", [])
     macro = analysis.get("macro", {})
     macro_trans = analysis.get("macro_transitions", {})
@@ -843,27 +919,28 @@ def cmd_report(args):
     drifts = analysis.get("synaptic_drift", {})
 
     lines = []
-    lines.append("# Reporte de Dinámica Neurocomputacional Longitudinal (SOM)")
+    lines.append(t["rep_title"])
     lines.append("")
-    lines.append(f"**Cortes Temporales Analizados:** {', '.join(periods)} ({len(periods)} periodos)")
-    lines.append("**Protocolo Metodológico:** Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet (2024), *IJSMC*.")
+    lines.append(t["rep_slices"].format(slices=", ".join(periods), n=len(periods)))
+    lines.append(t["rep_protocol"])
     lines.append("")
 
     if args.mode == "knomap_internal":
         lines.append("> [!TIP]")
-        lines.append("> **Acción Directa KnoMap:** Puedes explorar interactivamente esta secuencia temporal en el **Reproductor Temporal** y la vista **Side-by-Side**.")
+        lines.append(t["rep_tip_action"])
         lines.append("> `NavigateToTab: longitudinal`")
         lines.append("")
 
     # Macro Section
-    lines.append("## 1. Nivel Macro: Evolución Sistémica y Componentes")
-    lines.append("Evolución de los rangos de desempeño en las dimensiones clave:")
+    lines.append(t["sec1_title"])
+    lines.append(t["sec1_desc"])
     lines.append("")
 
     first_p = periods[0] if periods else ""
+    inds = []
     if first_p in macro:
         inds = list(macro[first_p].keys())
-        lines.append("| Indicador / Dimensión | " + " | ".join([f"Media {p}" for p in periods]) + " |")
+        lines.append(f"| {t['tbl_ind_header']} | " + " | ".join([t["tbl_mean_prefix"].format(p=p) for p in periods]) + " |")
         lines.append("| :--- | " + " | ".join([":---:" for _ in periods]) + " |")
         for ind in inds:
             row = [f"**{ind}**"]
@@ -874,15 +951,15 @@ def cmd_report(args):
     lines.append("")
 
     # Macro Transitions (Growth Rates)
-    if macro_trans:
-        lines.append("### Tasas de Crecimiento Intertemporal (Δ% de la media):")
+    if macro_trans and inds:
+        lines.append(t["sec1_growth_title"])
         trans_keys = list(macro_trans.keys())
-        lines.append("| Dimensión | " + " | ".join([f"Δ% `{t}`" for t in trans_keys]) + " |")
+        lines.append(f"| {t['tbl_dim_header']} | " + " | ".join([f"Δ% `{tr}`" for tr in trans_keys]) + " |")
         lines.append("| :--- | " + " | ".join([":---:" for _ in trans_keys]) + " |")
         for ind in inds:
             row = [f"**{ind}**"]
-            for t in trans_keys:
-                g_val = macro_trans.get(t, {}).get(ind, {}).get("growth_pct", "-")
+            for tr in trans_keys:
+                g_val = macro_trans.get(tr, {}).get(ind, {}).get("growth_pct", "-")
                 prefix = "+" if isinstance(g_val, (int, float)) and g_val > 0 else ""
                 row.append(f"{prefix}{g_val}%" if g_val != "-" else "-")
             lines.append("| " + " | ".join(row) + " |")
@@ -890,9 +967,9 @@ def cmd_report(args):
 
     # Population Dynamics Section
     if pop or cohorts:
-        lines.append("## 2. Dinámica de Cohortes y Retención de Entidades")
+        lines.append(t["sec2_title"])
         if pop:
-            lines.append("| Transición | Base Anterior | Retenidas | Nuevos Ingresos | Salidas | Tasa Retención |")
+            lines.append(t["tbl_pop_header"])
             lines.append("| :--- | :---: | :---: | :---: | :---: | :---: |")
             for t_name, p_data in pop.items():
                 lines.append(
@@ -903,63 +980,63 @@ def cmd_report(args):
 
         if cohorts:
             p_core = cohorts.get("persistent_core", [])
-            lines.append(f"- **Núcleo Persistente (Presentes en el 100% de los periodos):** {len(p_core)} entidad(es).")
+            lines.append(t["b_persistent_core"].format(n=len(p_core)))
             if p_core:
                 lines.append(f"  *{', '.join(p_core[:15])}{'...' if len(p_core) > 15 else ''}*")
-            lines.append(f"- **Entidades Transitorias (1 solo periodo):** {cohorts.get('transient_entities_count', 0)} entidad(es).")
+            lines.append(t["b_transient_ents"].format(n=cohorts.get("transient_entities_count", 0)))
             lines.append("")
 
     # Meso Section
-    lines.append("## 3. Nivel Meso: Dinámica de Clusters (Vesanto)")
-    lines.append("Transiciones estructurales de perfiles cualitativos entre periodos consecutivos:")
+    lines.append(t["sec3_title"])
+    lines.append(t["sec3_desc"])
     lines.append("")
     for trans in meso:
         t_name = trans.get("transition", "")
         splits = trans.get("splits_differentiation", [])
         merges = trans.get("merges_homogenization", [])
 
-        lines.append(f"### Transición: `{t_name}`")
+        lines.append(t["sub_transition"].format(t_name=t_name))
         if splits:
-            lines.append(f"- **Diferenciación de Perfiles (Escisión de clusters):** {len(splits)} evento(s).")
+            lines.append(t["b_splits"].format(n=len(splits)))
             for sp in splits[:3]:
                 ents_flat = [e for group in sp.get("entities", {}).values() for e in group]
-                lines.append(f"  - Cluster origen #{sp['from_cluster']} se divide entre: {', '.join(ents_flat[:4])}...")
+                lines.append(t["b_split_detail"].format(c=sp["from_cluster"], ents=", ".join(ents_flat[:4])))
         else:
-            lines.append("- *No se registraron escisiones mayores de clusters.*")
+            lines.append(t["b_no_splits"])
 
         if merges:
-            lines.append(f"- **Homogeneización de Perfiles (Fusión de clusters):** {len(merges)} evento(s).")
+            lines.append(t["b_merges"].format(n=len(merges)))
             for mg in merges[:3]:
-                lines.append(f"  - Convergencia hacia cluster destino #{mg['to_cluster']}.")
+                lines.append(t["b_merge_detail"].format(c=mg["to_cluster"]))
         lines.append("")
 
     # Micro Section
-    lines.append("## 4. Nivel Micro: Trayectorias y Perfiles Singulares")
+    lines.append(t["sec4_title"])
     lines.append("")
-    lines.append("### Perfiles Singulares por Periodo (Entidades con perfil cualitativo único):")
+    lines.append(t["sec4_sing_title"])
     singulars = micro.get("singular_profiles", {})
     for p, sing_list in singulars.items():
         if sing_list:
             lines.append(f"- **{p}:** {', '.join(sing_list)}")
         else:
-            lines.append(f"- **{p}:** *(Sin perfiles singulares aislados)*")
+            lines.append(f"- **{p}:** {t['no_singulars']}")
     lines.append("")
 
     # Top displacements
     displacements = micro.get("displacements", {})
     if displacements:
-        lines.append("### Mayores Desplazamientos en la Cuadrícula Hexagonal (Δx, Δy):")
+        lines.append(t["sec4_disp_title"])
         for t_name, moves in displacements.items():
             lines.append(f"**{t_name}:**")
             top_moves = moves[:5]
             for m in top_moves:
-                c_alert = " ⚡ *(cambió de cluster)*" if m.get("cluster_changed") else ""
-                lines.append(f"- **{m['entity']}**: Desplazamiento = {m['displacement']} hex{c_alert}")
+                c_alert = t["cluster_changed_tag"] if m.get("cluster_changed") else ""
+                lines.append(t["disp_item"].format(entity=m["entity"], disp=m["displacement"], alert=c_alert))
         lines.append("")
 
     # Synaptic Drift Section
-    lines.append("## 5. Deriva Sináptica Intertemporal (Tensión Adaptativa ΔW)")
-    lines.append("| Transición | Deriva Máxima (ΔW max) | Deriva Promedio |")
+    lines.append(t["sec5_title"])
+    lines.append(t["tbl_drift_header"])
     lines.append("| :--- | :---: | :---: |")
     for t_name, d_obj in drifts.items():
         max_d = d_obj.get("max_drift", "-")
@@ -971,12 +1048,13 @@ def cmd_report(args):
     with open(args.output, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    print(f"Success! Generated publication-grade longitudinal report.")
+    print("Success! Generated publication-grade longitudinal report.")
     print(f"Report written to: {args.output}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Neural Longitudinal Mapping CLI (SOM Warm-Start Chaining)")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Output language for reports and labels (default: en)")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     # Subcommand: prepare
@@ -991,6 +1069,7 @@ def main():
     p_prep.add_argument("--last-years", type=int, default=None, help="Filter last N years relative to max year")
     p_prep.add_argument("--agg", choices=["mean", "sum", "last"], default="mean", help="Indicator aggregation method per entity window (default: mean)")
     p_prep.add_argument("--output", required=True, help="Path to write prepared_series.json")
+    p_prep.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en or es)")
     p_prep.set_defaults(func=cmd_prepare)
 
     # Subcommand: train
@@ -1012,6 +1091,7 @@ def main():
     p_train.add_argument("--output", required=True, help="Path to write longitudinal_results.json")
     p_train.add_argument("--plot-dir", default=None, help="Directory to export 300 DPI bilingual figures (som_longitudinal_es.png / _en.png)")
     p_train.add_argument("--dpi", type=int, default=300, help="Resolution in DPI for static PNG figures (default: 300)")
+    p_train.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en or es)")
     p_train.set_defaults(func=cmd_train)
 
     # Subcommand: plot
@@ -1024,12 +1104,14 @@ def main():
     p_plot.add_argument("--input", required=True, help="Path to longitudinal_results.json")
     p_plot.add_argument("--plot-dir", required=True, help="Directory to save som_longitudinal_es.png and som_longitudinal_en.png")
     p_plot.add_argument("--dpi", type=int, default=300, help="Resolution in DPI (default: 300)")
+    p_plot.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en or es)")
     p_plot.set_defaults(func=cmd_plot)
 
     # Subcommand: analyze
     p_ana = subparsers.add_parser("analyze", help="Compute Macro, Meso, Micro, and Population dynamics")
     p_ana.add_argument("--input", required=True, help="Path to longitudinal_results.json")
     p_ana.add_argument("--output", required=True, help="Path to write dynamics_analysis.json")
+    p_ana.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en or es)")
     p_ana.set_defaults(func=cmd_analyze)
 
     # Subcommand: report
@@ -1037,6 +1119,7 @@ def main():
     p_rep.add_argument("--analysis", "--input", "-i", dest="analysis", required=True, help="Path to dynamics_analysis.json")
     p_rep.add_argument("--mode", choices=["knomap_internal", "external_mcp"], default="external_mcp", help="Report mode")
     p_rep.add_argument("--output", required=True, help="Path to write report.md")
+    p_rep.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language for markdown report (default: en)")
     p_rep.set_defaults(func=cmd_report)
 
     args = parser.parse_args()

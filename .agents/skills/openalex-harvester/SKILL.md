@@ -1,48 +1,50 @@
 ---
 name: openalex-harvester
-description: Extracción, paginación por cursor y normalización de literatura científica desde OpenAlex hacia tablas canónicas (Parquet, JSON, CSV).
+description: Extract, cursor-paginate, and normalize scientific literature from OpenAlex into canonical tables (Parquet, JSON, CSV). Respond and label outputs in the user's language.
 metadata:
   python: ">=3.10"
   script: "scripts/openalex_harvest_cli.py"
 ---
 # OpenAlex Data Harvester
 
-Herramienta autónoma e independiente para la recolección masiva de registros científicos desde la API de OpenAlex (`https://api.openalex.org` o endpoints locales), con soporte de paginación por cursor y mapeo al esquema tabular canónico.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Autonomous, standalone tool for bulk harvesting of scientific records from the OpenAlex API (`https://api.openalex.org` or local endpoints), supporting cursor pagination and mapping into the canonical tabular schema.
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Búsqueda temática flexible:** Por palabras clave, títulos, tópicos y fechas a nivel mundial.
-- **Producción autoral e institucional:** Descarga directa por ORCID, OpenAlex Author ID o ROR de instituciones.
-- **Filtros de Ciencia Abierta:** Segmentación por vía de Acceso Abierto (`gold`, `diamond`, `green`, `hybrid`, `closed`).
-- **Mapeo al Esquema Canónico:** Estandariza autores, afiliaciones, citas, FWCI, percentiles, APC y referencias en un archivo Parquet, JSON o CSV.
-
----
-
-## Dependencies y Cadena de Valor
-
-- **Entorno Python:** Python 3.10+ (con dependencias requeridas)
-- **Script CLI:** `scripts/openalex_harvest_cli.py`
-- **Habilidades Downstream:**
-  - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Procesa el archivo Parquet canónico para calcular más de 30 indicadores cienciométricos.
-  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Extrae redes de coautoría, acoplamiento bibliográfico y co-ocurrencia de términos.
-  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Recibe la matriz de perfiles calculada a partir del corpus.
-- **Diferenciación con `openalex-mexico-clickhouse`:**
-  - Si la consulta es sobre **México** (universidades mexicanas, investigadores SNII, producción nacional), utilizar [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) que consulta el clúster ClickHouse local ultrarrápido con embeddings y CERO JOINs.
-  - Usar `openalex-harvester` cuando se requiera cosechar literatura de **cualquier país o tema del mundo** directamente desde la API global de OpenAlex hacia archivos Parquet canónicos.
+- **Flexible Thematic Search:** Worldwide retrieval by keywords, titles, topics, and date ranges.
+- **Author and Institutional Output:** Direct download by ORCID, OpenAlex Author ID, or institutional ROR.
+- **Open Science Filters:** Segmentation by Open Access route (`gold`, `diamond`, `green`, `hybrid`, `closed`).
+- **Canonical Schema Mapping:** Standardizes authors, affiliations, citations, FWCI, percentiles, APC, and references into a Parquet, JSON, or CSV file.
 
 ---
 
-## Interfaz CLI
+## Dependencies and Value Chain
 
-Entorno de ejecución:
+- **Python Environment:** Python 3.10+ (with required dependencies)
+- **CLI Script:** `scripts/openalex_harvest_cli.py`
+- **Downstream Skills:**
+  - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Processes the canonical Parquet file to compute over 30 scientometric indicators.
+  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Extracts co-authorship, bibliographic coupling, and term co-occurrence networks.
+  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Receives the profile matrix computed from the corpus.
+- **Differentiation from `openalex-mexico-clickhouse`:**
+  - If the query is about **Mexico** (Mexican universities, SNII researchers, national output), use [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md), which queries the ultra-fast local ClickHouse cluster with embeddings and ZERO JOINs.
+  - Use `openalex-harvester` when harvesting literature from **any country or topic worldwide** directly from the global OpenAlex API into canonical Parquet files.
+
+---
+
+## CLI Interface
+
+Execution environment:
 
 ```bash
-python scripts/openalex_harvest_cli.py [subcomando] [opciones]
+python scripts/openalex_harvest_cli.py [subcommand] [options]
 ```
 
-### 1. Búsqueda temática o de revista
+### 1. Thematic or journal search
 
 ```bash
 python scripts/openalex_harvest_cli.py fetch-works \
@@ -53,7 +55,7 @@ python scripts/openalex_harvest_cli.py fetch-works \
   --output ./data/quantum_works.parquet
 ```
 
-### 2. Producción de un autor por ORCID o ID
+### 2. Author output by ORCID or ID
 
 ```bash
 python scripts/openalex_harvest_cli.py fetch-author-works \
@@ -62,7 +64,7 @@ python scripts/openalex_harvest_cli.py fetch-author-works \
   --output ./data/author_works.parquet
 ```
 
-### 3. Producción institucional por ROR
+### 3. Institutional output by ROR
 
 ```bash
 python scripts/openalex_harvest_cli.py fetch-institution-works \
@@ -75,23 +77,23 @@ python scripts/openalex_harvest_cli.py fetch-institution-works \
 
 ---
 
-## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## Common Mistakes and Anti-Patterns (Avoid Frequent Pitfalls)
 
-- ❌ **Anti-patrón 1: Cosechar por API pública literatura que ya reside en ClickHouse local**  
-  Usar `openalex-harvester` para descargar artículos de la UNAM o México a través de la API externa con latencia de red.  
-  **Solución:** Para cualquier investigación de México, recurrir directamente a `openalex-mexico-clickhouse` (1.65M de obras locales con tiempo de respuesta en milisegundos).
-- ❌ **Anti-patrón 2: Usar paginación tradicional por página para grandes volúmenes**  
-  OpenAlex limita la paginación convencional a los primeros 10,000 registros.  
-  **Solución:** El CLI utiliza automáticamente paginación por cursor (`cursor=*`) para recolecciones exhaustivas.
-- ❌ **Anti-patrón 3: Exportar grandes volúmenes a JSON en lugar de Parquet**  
-  Generar archivos JSON gigantescos para decenas de miles de artículos.  
-  **Solución:** Usar `--output <ruta>.parquet`. El formato Parquet columnar reduce el tamaño en disco hasta un 85% y preserva los tipos de datos exactos.
-- ❌ **Anti-patrón 4: Violación de File-Output First**  
-  Intentar procesar sin especificar `--output`. El CLI requiere siempre una ruta de archivo estructurado de destino.
+- ❌ **Anti-pattern 1: Harvesting literature via the public API that already resides in local ClickHouse**  
+  Using `openalex-harvester` to download UNAM or Mexican papers over the external API with network latency.  
+  **Solution:** For any research focused on Mexico, rely directly on `openalex-mexico-clickhouse` (1.65M local works with millisecond response times).
+- ❌ **Anti-pattern 2: Using traditional page-number pagination for large volumes**  
+  OpenAlex limits conventional page pagination to the first 10,000 records.  
+  **Solution:** The CLI automatically uses cursor pagination (`cursor=*`) for exhaustive harvests.
+- ❌ **Anti-pattern 3: Exporting large volumes to JSON instead of Parquet**  
+  Generating massive JSON files for tens of thousands of papers.  
+  **Solution:** Use `--output <path>.parquet`. The columnar Parquet format reduces disk size by up to 85% and preserves exact data types.
+- ❌ **Anti-pattern 4: Violating File-Output First**  
+  Attempting to process without specifying `--output`. The CLI always requires a structured destination file path.
 
 ---
 
-## Referencias Técnicas
+## Technical References
 
-- [Parámetros y Filtros de la API](references/openalex_api_parameters.md)
-- [Guía de Paginación por Cursor](references/cursor_paging_guide.md)
+- [OpenAlex API Parameters and Filters](references/openalex_api_parameters.md)
+- [Cursor Pagination Guide](references/cursor_paging_guide.md)

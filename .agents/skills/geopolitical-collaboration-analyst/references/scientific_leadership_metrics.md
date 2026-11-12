@@ -1,66 +1,66 @@
-# Métricas de Liderazgo Científico, Normalización Bilateral y Asimetría Norte-Sur
+# Scientific Leadership Metrics, Bilateral Normalization, and North-South Asymmetry
 
-Fundamentos metodológicos cuantitativos para evaluar la soberanía intelectual, dirección epistemológica y simetría en la colaboración transfronteriza (Moya-Anegón et al., 2013; Chinchilla-Rodríguez et al., 2019; Scimago Lab).
+Quantitative methodological foundations for evaluating intellectual sovereignty, epistemological direction, and symmetry in cross-border collaboration (Moya-Anegón et al., 2013; Chinchilla-Rodríguez et al., 2019; Scimago Lab).
 
 ---
 
-## 1. Normalización de Intensidad de Colaboración Bilateral
+## 1. Bilateral Collaboration Intensity Normalization
 
-El mero recuento absoluto de coautorías ($C_{ij}$) introduce un **sesgo de tamaño masivo** hacia las grandes superpotencias científicas (EE. UU., China, Reino Unido), enmascarando relaciones estratégicas intensas entre países con menor producción agregada.
+Raw co-authorship counts ($C_{ij}$) introduce a **massive size bias** toward large scientific superpowers (USA, China, UK), masking intense strategic relationships between countries with smaller aggregate output.
 
-### A. Coseno de Salton Bilateral
-Mide la afinidad relativa normalizando el número de colaboraciones conjuntas por la media geométrica de las producciones individuales de ambos países:
+### A. Bilateral Salton's Cosine
+Measures relative affinity by normalizing the number of joint collaborations by the geometric mean of the individual outputs of both countries:
 
 $$\text{Salton}_{ij} = \frac{C_{ij}}{\sqrt{T_i \times T_j}}$$
 
-Donde:
-* $C_{ij}$: Artículos con al menos una coautoría entre el país $i$ y el país $j$.
-* $T_i, T_j$: Producción total de documentos del país $i$ y el país $j$ en el corpus/tema.
-* **Rango:** $[0, 1]$. Valores cercanos a 1 indican una asociación bilateral casi perfecta.
+Where:
+* $C_{ij}$: Papers with at least one co-authorship between country $i$ and country $j$.
+* $T_i, T_j$: Total document output of country $i$ and country $j$ in the corpus/topic.
+* **Range:** $[0, 1]$. Values close to 1 indicate near-perfect bilateral association.
 
-### B. Índice de Jaccard Bilateral
-Normaliza la intersección sobre la unión de la producción:
+### B. Bilateral Jaccard Index
+Normalizes the intersection over the union of output:
 
 $$\text{Jaccard}_{ij} = \frac{C_{ij}}{T_i + T_j - C_{ij}}$$
 
 ---
 
-## 2. Métricas de Soberanía y Liderazgo Epistemológico
+## 2. Epistemological Sovereignty and Leadership Metrics
 
-En publicaciones en coautoría internacional ($K \ge 2$ países soberanos presentes en las afiliaciones), se evalúa la posición de liderazgo del país ancla:
+In internationally co-authored publications ($K \ge 2$ sovereign countries present in the affiliations), the leadership position of the anchor country is evaluated:
 
-### A. Tasa de Liderazgo de Primer Autor ($L_{\text{first}}$)
-Cuantifica la proporción donde el investigador principal (primer autor) pertenece a una institución nacional del país ancla:
+### A. First-Author Leadership Rate ($L_{\text{first}}$)
+Quantifies the proportion where the principal investigator (first author) belongs to a domestic institution of the anchor country:
 
-$$L_{\text{first}}(\text{ancla}) = \frac{N_{\text{primer\_autor\_nacional}}}{N_{\text{artículos\_internacionales\_ancla}}} \times 100\%$$
+$$L_{\text{first}}(\text{anchor}) = \frac{N_{\text{domestic\_first\_author}}}{N_{\text{anchor\_international\_papers}}} \times 100\%$$
 
-### B. Tasa de Liderazgo de Autor de Correspondencia ($L_{\text{corr}}$)
-Cuantifica la proporción donde la autoría de correspondencia (responsable del diseño experimental, financiamiento, correspondencia con la revista y envío) recae en el país ancla:
+### B. Corresponding-Author Leadership Rate ($L_{\text{corr}}$)
+Quantifies the proportion where corresponding authorship (responsible for experimental design, funding, journal correspondence, and submission) resides in the anchor country:
 
-$$L_{\text{corr}}(\text{ancla}) = \frac{N_{\text{autor\_correspondencia\_nacional}}}{N_{\text{artículos\_internacionales\_ancla}}} \times 100\%$$
+$$L_{\text{corr}}(\text{anchor}) = \frac{N_{\text{domestic\_corresponding\_author}}}{N_{\text{anchor\_international\_papers}}} \times 100\%$$
 
 ---
 
-## 3. Matriz de Clasificación de Soberanía Científica
+## 3. Scientific Sovereignty Classification Matrix
 
-| Rango de Liderazgo | Diagnóstico Cienciométrico | Interpretación de Política Científica |
+| Leadership Range | Scientometric Diagnosis | Science Policy Interpretation |
 |:---:|:---|:---|
-| **$L \ge 50\%$** | **Liderazgo Preponderante (Soberanía Epistemológica)** | El país actúa como generador de hipótesis, director del proyecto y redactor principal. Ejerce atracción de talento internacional. |
-| **$40\% \le L < 50\%$** | **Colaboración Simétrica (Equitativa)** | Balance equitativo entre contrapartes internacionales. Consorcios maduros sin relaciones de subordinación. |
-| **$30\% \le L < 40\%$** | **Participación Secundaria (Dirección Compartida)** | Colaboraciones donde la iniciativa suele originarse en el exterior, pero el país mantiene co-dirección o autoría de correspondencia relevante. |
-| **$L < 30\%$** | **Asimetría Epistemológica / Subordinación Norte-Sur** | Fenómeno conocido como *"Ciencia Helicóptero"* o extractiva: el país aporta trabajo de campo, muestras clínicas o datos primarios locales, pero la dirección y redacción principal recae en centros del Norte Global. |
+| **$L \ge 50\%$** | **Preponderant Leadership (Epistemological Sovereignty)** | The country acts as hypothesis generator, project director, and primary author, attracting international talent. |
+| **$40\% \le L < 50\%$** | **Symmetrical Collaboration (Equitable)** | Equitable balance among international counterparts; mature consortia without subordination relationships. |
+| **$30\% \le L < 40\%$** | **Secondary Participation (Shared Direction)** | Collaborations where initiative often originates abroad, but the country retains relevant co-direction or corresponding authorship. |
+| **$L < 30\%$** | **Epistemological Asymmetry / North-South Subordination** | Phenomenon known as *"Helicopter Science"* or extractive science: the country provides fieldwork, clinical samples, or local primary data, while intellectual direction and primary writing reside in Global North centers. |
 
 ---
 
-## 4. Cuadrantes Estratégicos Bilaterales (Salton vs. Volumen)
+## 4. Strategic Bilateral Quadrants (Salton vs. Volume)
 
-Al contrastar el volumen de coautorías ($C_{ij}$) con el Coseno de Salton ($\text{Salton}_{ij}$) respecto a las medianas del corpus:
+By contrasting co-authorship volume ($C_{ij}$) with Salton's Cosine ($\text{Salton}_{ij}$) relative to corpus medians:
 
-1. **Cuadrante I (Superior Derecho - Alta Afinidad / Alto Volumen):**
-   * *Socios Estratégicos Nucleares.* Articulación bilateral sólida y recurrente.
-2. **Cuadrante II (Superior Izquierdo - Alta Afinidad / Volumen Moderado):**
-   * *Aliados Estratégicos de Especialización.* Alta cercanía cienciométrica relativa que debe ser protegida con fondos bilaterales dedicados.
-3. **Cuadrante III (Inferior Derecho - Baja Afinidad / Alto Volumen):**
-   * *Socios por Inercia Global.* Volúmenes elevados debidos al gran tamaño global del socio (ej. superpotencias científicas), pero con baja especialización bilateral.
-4. **Cuadrante IV (Inferior Izquierdo - Baja Afinidad / Bajo Volumen):**
-   * *Colaboraciones Periféricas o Emergentes.* Lazos esporádicos o individuales.
+1. **Quadrant I (Upper Right - High Affinity / High Volume):**
+   * *Core Strategic Partners.* Solid and recurrent bilateral articulation.
+2. **Quadrant II (Upper Left - High Affinity / Moderate Volume):**
+   * *Specialized Strategic Allies.* High relative scientometric proximity that should be supported with dedicated bilateral funding.
+3. **Quadrant III (Lower Right - Low Affinity / High Volume):**
+   * *Global Inertia Partners.* High volumes driven by the partner's massive global size (e.g., scientific superpowers), but with low bilateral specialization.
+4. **Quadrant IV (Lower Left - Low Affinity / Low Volume):**
+   * *Peripheral or Emerging Collaborations.* Sporadic or individual ties.

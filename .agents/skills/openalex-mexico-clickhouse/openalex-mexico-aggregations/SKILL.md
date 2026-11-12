@@ -1,32 +1,34 @@
 ---
 name: openalex-mexico-aggregations
-description: "Cálculo de métricas agregadas y rankings cienciométricos en ClickHouse (rag.works_academic_all): distribución de las 6 vías de acceso abierto (Diamond vs Gold APC), gasto comercial en APC en USD, series temporales anuales, subcampos temáticos y RANKING de instituciones e investigadoras/es líderes en un tema ('top-entities') con volumen, citas y FWCI."
+description: "Calculation of aggregated metrics and scientometric rankings in ClickHouse (rag.works_academic_all): distribution across the 6 Open Access routes (Diamond vs Gold APC), commercial APC expenditure in USD, annual time series, thematic subfields, and RANKING of leading institutions and researchers in a topic ('top-entities') with volume, citations, and FWCI. Respond and label outputs in the user's language."
 metadata:
   python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
 
-# OpenAlex México Aggregations
+# OpenAlex Mexico Aggregations
 
-Motor de agregación columnar para la evaluación cuantitativa de la producción científica en México a escala masiva sin transferir registros individuales.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Columnar aggregation engine for the quantitative evaluation of scientific production in Mexico at massive scale without transferring individual records.
 
 ## Overview
 
-Calcula métricas e indicadores de impacto, gasto editorial y modelos de publicación agrupados por cualquier dimensión cienciométrica (año, vía OA, subcampo, disciplina o país), respondiendo en milisegundos gracias al motor MergeTree de ClickHouse. Además, mediante el comando `top-entities`, identifica de forma directa las instituciones o personas investigadoras con mayor capacidad en cualquier tema.
+Calculates impact metrics and indicators, publishing expenditure, and publication models grouped by any scientometric dimension (year, OA route, subfield, discipline, or country), responding in milliseconds thanks to the ClickHouse MergeTree engine. Additionally, through the `top-entities` command, it directly identifies the institutions or researchers with the highest capacity in any topic.
 
 ## Dependencies
 
-- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
-- **Script CLI:** `scripts/openalex_mexico_cli.py`
-- **Tabla ClickHouse:** `rag.works_academic_all`
+- **Python Environment:** Python 3.10+ (`clickhouse-connect`)
+- **CLI Script:** `scripts/openalex_mexico_cli.py`
+- **ClickHouse Table:** `rag.works_academic_all`
 
 ## CLI Interface
 
 > [!IMPORTANT]
-> Guarda siempre los archivos de salida dentro del workspace actual en `./data/`, NUNCA en `/tmp/`.
+> Always save output files inside the current workspace in `./data/`, NEVER in `/tmp/`.
 
-### 1. Desglose de Vías de Acceso Abierto y Gasto en APC
-Cuantifica la penetración de las 6 vías y calcula el gasto comercial total en USD:
+### 1. Breakdown of Open Access Routes and APC Expenditure
+Quantifies the penetration of the 6 OA routes and calculates total commercial expenditure in USD:
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
@@ -34,8 +36,8 @@ python scripts/openalex_mexico_cli.py aggregate \
   --output ./data/acceso_abierto_mexico.json
 ```
 
-### 2. Serie Temporal de Producción, Citas y Calidad de Impacto
-Evolución anual de publicaciones, porcentaje en el Top 10% y FWCI medio:
+### 2. Time Series of Production, Citations, and Impact Quality
+Annual evolution of publications, percentage in the Top 10%, and mean FWCI:
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
   --group-by "publication_year" \
@@ -43,8 +45,8 @@ python scripts/openalex_mexico_cli.py aggregate \
   --output ./data/tendencia_anual_mexico.json
 ```
 
-### 3. Agrupación por Subcampo Disciplinar
-Identifica los subcampos con mayor volumen de publicaciones y concentración de citas:
+### 3. Grouping by Disciplinary Subfield
+Identifies the subfields with the highest publication volume and citation concentration:
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
   --group-by "subfield" \
@@ -52,8 +54,8 @@ python scripts/openalex_mexico_cli.py aggregate \
   --output ./data/subcampos_mexico.json
 ```
 
-### 4. Filtrado por Institución Específica
-Aplica filtros por universidad usando los arrays nativos de ClickHouse:
+### 4. Filtering by Specific Institution
+Applies filters by university using native ClickHouse arrays:
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
   --group-by "oa_status" \
@@ -61,25 +63,25 @@ python scripts/openalex_mexico_cli.py aggregate \
   --output ./data/oa_unam_2022_2025.json
 ```
 
-### 5. Distribución de Objetivos de Desarrollo Sostenible (ODS / SDGs)
-Agrupa y cuantifica la producción científica según los 17 ODS de la ONU (Agenda 2030):
+### 5. Distribution of Sustainable Development Goals (SDGs / ODS)
+Groups and quantifies scientific production according to the 17 UN SDGs (2030 Agenda):
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
   --group-by "sdgs" \
   --filter "publication_year >= 2020" \
   --output ./data/sdgs_mexico.json
 ```
-*Soporta 4 niveles analíticos:*
-- **Nacional:** Sin filtro para evaluar todo el corpus de México (901K publicaciones en ODS).
-- **Institucional:** Filtrando por ROR institucional (ej. `01tmp8f25` para la UNAM) o por nombre en `institution_names`.
-- **Investigador:** Filtrando por ID canónico (`A...`) o nombre en `author_names` (`arrayExists(...)`).
-- **Temático:** Filtrando por título o subcampo (`ilike(title, '%...%')`).
-*Nota técnica ClickHouse:* Desanida tanto `sdgs` como `sdg_ids` mediante `ARRAY JOIN arrayDistinct(arrayConcat(sdgs, sdg_ids))` garantizando cobertura completa de artículos individuales y multitemáticos.
+*Supports 4 analytical levels:*
+- **National:** Unfiltered to evaluate the entire corpus of Mexico (901K publications in SDGs).
+- **Institutional:** Filtering by institutional ROR (e.g., `01tmp8f25` for UNAM) or by name in `institution_names`.
+- **Researcher:** Filtering by canonical ID (`A...`) or name in `author_names` (`arrayExists(...)`).
+- **Thematic:** Filtering by title or subfield (`ilike(title, '%...%')`).
+*ClickHouse Technical Note:* Unnests both `sdgs` and `sdg_ids` via `ARRAY JOIN arrayDistinct(arrayConcat(sdgs, sdg_ids))`, guaranteeing full coverage of single-topic and multi-topic papers.
 
-### 6. Ranking de Entidades Líderes por Tema (`top-entities`)
-Identifica con un solo comando qué **autores** o **instituciones** tienen la mayor capacidad científica (volumen, citas, FWCI y porcentaje en el Top 10% mundial) en un tema estratégico (ej. litio, celdas solares, grafeno):
+### 6. Ranking Leading Entities by Topic (`top-entities`)
+Identifies with a single command which **authors** or **institutions** have the highest scientific capacity (volume, citations, FWCI, and percentage in the global Top 10%) in a strategic topic (e.g., lithium, solar cells, graphene):
 
-**Para Instituciones líderes:**
+**For Leading Institutions:**
 ```bash
 python scripts/openalex_mexico_cli.py top-entities \
   --query "lithium" \
@@ -88,7 +90,7 @@ python scripts/openalex_mexico_cli.py top-entities \
   --output ./data/top_instituciones_litio.json
 ```
 
-**Para Investigadores líderes (con resolución de nombres y ORCID):**
+**For Leading Researchers (with name and ORCID resolution):**
 ```bash
 python scripts/openalex_mexico_cli.py top-entities \
   --query "lithium" \
@@ -97,32 +99,32 @@ python scripts/openalex_mexico_cli.py top-entities \
   --output ./data/top_investigadores_litio.json
 ```
 
-## Salida Estructurada
+## Structured Output
 
-Cada registro agrupado devuelve de forma automática:
-- `dimension`: Valor de la categoría agrupada (ej. `diamond`, `2024`, etc.).
-- `total_works`: Conteo absoluto de publicaciones.
-- `total_citations`: Citas acumuladas globales.
-- `avg_fwci`: Promedio del impacto normalizado por campo.
-- `pct_top_10`: Porcentaje de artículos en el 10% más citado del mundo.
-- `total_apc_paid_usd`: Suma del gasto comercial estimado en cargos APC (USD).
+Each grouped record automatically returns:
+- `dimension`: Value of the grouped category (e.g., `diamond`, `2024`, etc.).
+- `total_works`: Absolute publication count.
+- `total_citations`: Cumulative global citations.
+- `avg_fwci`: Average Field-Weighted Citation Impact.
+- `pct_top_10`: Percentage of articles in the world's top 10% most cited.
+- `total_apc_paid_usd`: Sum of estimated commercial expenditure on APC charges (USD).
 
-## Protocolo Obligatorio para Temas Generales (IA, Nanotecnología, Biotecnología)
+## Mandatory Protocol for Broad Umbrella Topics (AI, Nanotechnology, Biotechnology)
 
-Cuando la consulta del usuario se refiera a un área sombrilla o disciplina amplia (ej. *"Inteligencia Artificial"*, *"Biotecnología"*, *"Energías Renovables"*), **NUNCA ejecutes `top-entities` directamente con el término general**. Sigue estrictamente este procedimiento en 2 fases para modelos locales con ventanas acotadas:
+When the user's query refers to a broad umbrella area or discipline (e.g., *"Artificial Intelligence"*, *"Biotechnology"*, *"Renewable Energy"*), **NEVER run `top-entities` directly with the general term**. Strictly follow this 2-phase procedure for local models with bounded context windows:
 
-### Fase 1: Descubrimiento Taxonómico en ClickHouse (Data-Driven Taxonomy)
-Ejecuta la agregación agrupando por tópicos para descubrir cuáles son las especialidades reales con producción científica en México:
+### Phase 1: Taxonomic Discovery in ClickHouse (Data-Driven Taxonomy)
+Run the aggregation grouping by topics to discover which actual specialties have scientific production in Mexico:
 ```bash
 python scripts/openalex_mexico_cli.py aggregate \
-  --group-by "topic" \
+  --group-by "topics_hierarchy" \
   --filter "subfield = 'Artificial Intelligence'" \
   --output ./data/especialidades_ia.json
 ```
-Inspecciona los primeros resultados de salida para identificar los 3 a 5 tópicos dominantes (ej. *Metaheuristic Optimization*, *Neural Networks*, *Natural Language Processing*, *Fuzzy Logic*).
+Inspect the top output results to identify the 3 to 5 dominant topics (e.g., *Metaheuristic Optimization*, *Neural Networks*, *Natural Language Processing*, *Fuzzy Logic*).
 
-### Fase 2: Evaluación de Capacidad por Especialidad Específica
-Con los tópicos reales descubiertos en la Fase 1, ejecuta `top-entities` para cada especialidad concreta:
+### Phase 2: Capacity Evaluation by Specific Specialty
+Using the real topics discovered in Phase 1, run `top-entities` for each concrete specialty:
 ```bash
 python scripts/openalex_mexico_cli.py top-entities \
   --query "Natural Language Processing" \
@@ -133,20 +135,19 @@ python scripts/openalex_mexico_cli.py top-entities \
 
 ## References
 
-- [Diccionario de Métricas y Modelo Económico APC](references/metrics_and_apc_dictionary.md)
+- [Metrics Dictionary and APC Economic Model](references/metrics_and_apc_dictionary.md)
 
-## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## Common Mistakes and Anti-Patterns (Avoid Frequent Errors)
 
-- ❌ **Anti-patrón 1: Formular JOINs en sentencias de agregación**  
-  Intentar cruzar `rag.works_academic_all` con otras tablas. ClickHouse rechaza consultas con JOIN sin optimización.  
-  **Solución:** Filtrar estrictamente sobre las columnas y arrays nativos de la tabla materializada (`has(institution_rors, '...')`).
-- ❌ **Anti-patrón 2: Consultar temas sombrilla en un solo paso**  
-  Buscar "Inteligencia Artificial" directamente como tópico. En México la producción está fragmentada en especialidades concretas.  
-  **Solución:** Descomponer primero agrupando por `topic` filtrado por `subfield = 'Artificial Intelligence'`, identificar los tópicos dominantes y luego consultar con `top-entities`.
-- ❌ **Anti-patrón 3: Violación de File-Output First (Almacenar en `/tmp/`)**  
-  Guardar los resultados en directorios volátiles del sistema operativo.  
-  **Solución:** Guardar siempre en `./data/` o en `scratch/` del workspace actual.
-- ❌ **Anti-patrón 4: Volcar reportes completos al contexto del chat**  
-  Leer e imprimir el JSON entero de cientos de líneas.  
-  **Solución:** Leer únicamente los primeros registros o el resumen ejecutivo para mantener el consumo de tokens por debajo de 500.
-
+- ❌ **Anti-pattern 1: Formulating JOINs in aggregation statements**  
+  Attempting to join `rag.works_academic_all` with other tables. ClickHouse rejects unoptimized JOIN queries.  
+  **Solution:** Filter strictly on the columns and native arrays of the materialized table (`has(institution_rors, '...')`).
+- ❌ **Anti-pattern 2: Querying umbrella topics in a single step**  
+  Searching for "Artificial Intelligence" directly as a topic. In Mexico, production is fragmented across specific specialties.  
+  **Solution:** Decompose first by grouping by `topics_hierarchy` filtered by `subfield = 'Artificial Intelligence'`, identify the dominant topics, and then query with `top-entities`.
+- ❌ **Anti-pattern 3: Violating File-Output First (Storing in `/tmp/`)**  
+  Saving results in volatile operating system directories.  
+  **Solution:** Always save in `./data/` or in `scratch/` of the current workspace.
+- ❌ **Anti-pattern 4: Dumping full reports into the chat context**  
+  Reading and printing the entire JSON of hundreds of lines.  
+  **Solution:** Read only the top records or the executive summary to keep token consumption below 500.

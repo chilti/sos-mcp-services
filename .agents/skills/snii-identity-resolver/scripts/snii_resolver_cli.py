@@ -3,6 +3,7 @@
 CLI Helper: SNII Identity Resolver
 Resolves official researcher identity against the National System of Researchers (SNII 2025 Padrón),
 retrieving canonical level, knowledge area, institutional accreditation, ORCID, and OpenAlex ID.
+Supports bilingual CLI messages (--lang en / --lang es).
 """
 
 import sys
@@ -25,6 +26,7 @@ except ImportError:
 
 def cmd_resolve(args):
     """Resolves single researcher identity against official SNII registry."""
+    lang = getattr(args, "lang", "en")
     res = resolve_snii_identity(
         fullname=args.name,
         institution=args.institution or "UNAM",
@@ -36,23 +38,39 @@ def cmd_resolve(args):
         json.dump(res, f, indent=2, ensure_ascii=False)
 
     match = res.get("canonical_match", {})
-    print(f"Resolved SNII Identity for '{args.name}': Level={match.get('snii_level', 'N/A')}, Confidence={res.get('disambiguation_confidence')}. Output: {args.output}")
+    if lang == "es":
+        print(
+            f"Identidad SNII resuelta para '{args.name}': "
+            f"Nivel={match.get('snii_level', 'N/A')}, Confianza={res.get('disambiguation_confidence')}. "
+            f"Salida: {args.output}"
+        )
+    else:
+        print(
+            f"Resolved SNII Identity for '{args.name}': "
+            f"Level={match.get('snii_level', 'N/A')}, Confidence={res.get('disambiguation_confidence')}. "
+            f"Output: {args.output}"
+        )
     sys.exit(0)
 
 
 def cmd_profile(args):
     """Retrieves full SNII and bibliometric profile."""
+    lang = getattr(args, "lang", "en")
     res = get_researcher_profile(args.name)
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
 
-    print(f"Profile for '{args.name}' retrieved. Saved to {args.output}")
+    if lang == "es":
+        print(f"Perfil de '{args.name}' recuperado. Guardado en {args.output}")
+    else:
+        print(f"Profile for '{args.name}' retrieved. Saved to {args.output}")
     sys.exit(0)
 
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for SNII Identity Resolver")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Output language for CLI messages (default: en)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: resolve
@@ -61,12 +79,14 @@ def main():
     p_res.add_argument("--institution", default="UNAM", help="Institution affiliation")
     p_res.add_argument("--dependency", default="", help="Academic department / faculty")
     p_res.add_argument("--output", required=True, help="Path to output JSON")
+    p_res.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_res.set_defaults(func=cmd_resolve)
 
     # Subcommand: profile
     p_pro = subparsers.add_parser("profile", help="Get full researcher SNII profile")
     p_pro.add_argument("--name", required=True, help="Author name fragment")
     p_pro.add_argument("--output", required=True, help="Path to output JSON")
+    p_pro.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en/es)")
     p_pro.set_defaults(func=cmd_profile)
 
     args = parser.parse_args()

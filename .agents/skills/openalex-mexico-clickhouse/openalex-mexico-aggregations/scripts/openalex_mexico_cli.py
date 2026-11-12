@@ -549,7 +549,11 @@ def cmd_search_works(args):
     sql = f"""
     SELECT id, title, doi, any(publication_year), max(cited_by_count), any(oa_status), any(is_oa),
            any(fwci), any(percentile), any(is_top_10), any(is_top_1), any(apc_paid_usd),
-           any(author_names), any(institution_names), any(institution_rors), any(topic), any(subfield)
+           any(author_names), any(institution_names), any(institution_rors), any(topic), any(subfield),
+           any(field), any(domain), any(type), any(language), any(source_id), any(source_type),
+           any(apc_list_usd), any(is_doaj_indexed), any(has_repository_fulltext),
+           any(keywords), any(sdgs), any(all_country_codes), any(country_code),
+           JSONExtract(any(raw_data), 'referenced_works', 'Array(String)')
     FROM rag.works_academic_all
     WHERE {where_sql}
     GROUP BY id, title, doi
@@ -560,12 +564,21 @@ def cmd_search_works(args):
     res = client.query(sql)
     works = []
     for row in res.result_rows:
+        pub_year = row[3]
+        cites = row[4] or 0
+        auth_list = list(row[12] or [])
+        inst_list = list(row[13] or [])
+        kw_list = list(row[26] or [])
+        cc_list = list(row[28] or ([row[29]] if row[29] else []))
+        ref_list = list(row[30] or [])
         works.append({
             "id": row[0],
             "title": row[1],
             "doi": row[2],
-            "publication_year": row[3],
-            "cited_by_count": row[4],
+            "publication_year": pub_year,
+            "year": pub_year,
+            "cited_by_count": cites,
+            "citations": cites,
             "oa_status": row[5],
             "is_oa": bool(row[6] == "1" or row[6] == 1 or str(row[6]).lower() == "true"),
             "fwci": round(row[7], 3) if row[7] is not None else None,
@@ -573,35 +586,70 @@ def cmd_search_works(args):
             "is_top_10": bool(row[9] == 1),
             "is_top_1": bool(row[10] == 1),
             "apc_paid_usd": round(row[11], 2) if row[11] is not None else 0.0,
-            "raw_author_names": row[12],
-            "institution_names": row[13],
-            "institution_rors": row[14],
+            "raw_author_names": auth_list,
+            "author_names": auth_list,
+            "authors": "; ".join(str(a) for a in auth_list if a),
+            "institution_names": inst_list,
+            "affiliations": "; ".join(str(i) for i in inst_list if i),
+            "institution_rors": list(row[14] or []),
             "topic": row[15],
-            "subfield": row[16]
+            "subfield": row[16],
+            "field": row[17],
+            "domain": row[18],
+            "type": row[19] or "article",
+            "doc_type": row[19] or "article",
+            "language": row[20] or "en",
+            "source_id": row[21] or "",
+            "source_title": row[21] or "",
+            "source_type": row[22] or "",
+            "apc_list_usd": round(row[23], 2) if row[23] is not None else 0.0,
+            "is_doaj_indexed": bool(row[24] == 1),
+            "has_repository_fulltext": bool(row[25] == 1),
+            "keywords": kw_list,
+            "keywords_author": "; ".join(str(k) for k in kw_list if k),
+            "keywords_plus": row[15] or "",
+            "sdgs": list(row[27] or []),
+            "all_country_codes": cc_list,
+            "country_codes": "; ".join(str(c) for c in cc_list if c),
+            "country_code": row[29] or "MX",
+            "referenced_works": ref_list,
+            "source_db": "OpenAlex-Mexico-ClickHouse"
         })
 
     # Desambiguar y resolver autores de México vs internacionales
     resolve_authors_for_works(works, client)
 
-    output_data = {
-        "filters": {
-            "query": args.query,
-            "author_name": args.author_name,
-            "institution_name": args.institution_name,
-            "institution_ror": args.institution_ror,
-            "year_range": f"{args.year_min}-{args.year_max}",
-            "oa_status": args.oa_status,
-            "is_top_10": args.is_top_10,
-            "topic": args.topic
-        },
-        "limit": limit,
-        "total_returned": len(works),
-        "works": works
-    }
-
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=2, ensure_ascii=False)
+    ext = os.path.splitext(args.output)[1].lower()
+    if ext in (".parquet", ".csv"):
+        import pandas as pd
+        df = pd.DataFrame(works)
+        if ext == ".parquet":
+            df.to_parquet(args.output, index=False)
+        else:
+            for col in df.columns:
+                if df[col].apply(lambda x: isinstance(x, (list, dict))).any():
+                    df[col] = df[col].apply(lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else ("; ".join(map(str, x)) if isinstance(x, list) else x))
+            df.to_csv(args.output, index=False)
+    else:
+        output_data = {
+            "filters": {
+                "query": args.query,
+                "author_name": args.author_name,
+                "institution_name": args.institution_name,
+                "institution_ror": args.institution_ror,
+                "year_range": f"{args.year_min}-{args.year_max}",
+                "oa_status": args.oa_status,
+                "is_top_10": args.is_top_10,
+                "topic": args.topic
+            },
+            "limit": limit,
+            "total_returned": len(works),
+            "works": works,
+            "records": works
+        }
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     print(f"Búsqueda de publicaciones en México completada: {len(works)} trabajos guardados en {args.output}")
     sys.exit(0)
@@ -1217,11 +1265,12 @@ def cmd_validate_query(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CLI para OpenAlex México ClickHouse Engine")
+    parser = argparse.ArgumentParser(description="CLI for OpenAlex Mexico ClickHouse Engine")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Output language for messages (default: en)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcomando: search-authors
-    p_auth = subparsers.add_parser("search-authors", help="Busca investigadoras/es de México en authors_seed_mexico y academics_all")
+    p_auth = subparsers.add_parser("search-authors", help="Search Mexican researchers in authors_seed_mexico and academics_all")
     p_auth.add_argument("--name", default="", help="Nombre o apellido del autor")
     p_auth.add_argument("--institution", help="Nombre o acrónimo de la institución (ej. UNAM, CINVESTAV)")
     p_auth.add_argument("--dependency", help="Dependencia académica (ej. Facultad de Ciencias)")
@@ -1229,10 +1278,11 @@ def main():
     p_auth.add_argument("--orcid", help="ORCID canónico")
     p_auth.add_argument("--limit", type=int, default=50, help="Límite de registros (default: 50, max: 1000)")
     p_auth.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_auth.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_auth.set_defaults(func=cmd_search_authors)
 
     # Subcomando: search-works
-    p_wrk = subparsers.add_parser("search-works", help="Recupera publicaciones en rag.works_academic_all")
+    p_wrk = subparsers.add_parser("search-works", help="Retrieve publications in rag.works_academic_all")
     p_wrk.add_argument("--query", default="", help="Término a buscar en el título")
     p_wrk.add_argument("--author-name", help="Nombre del autor en el array de autores")
     p_wrk.add_argument("--institution-name", help="Nombre de la institución en el array")
@@ -1244,10 +1294,11 @@ def main():
     p_wrk.add_argument("--is-top-10", help="Filtrar por publicaciones Top 10%% (true/false)")
     p_wrk.add_argument("--limit", type=int, default=100, help="Límite de publicaciones (default: 100, max: 50000)")
     p_wrk.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_wrk.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_wrk.set_defaults(func=cmd_search_works)
 
     # Subcomando: semantic-search
-    p_sem = subparsers.add_parser("semantic-search", help="Búsqueda semántica usando embeddings nomic locales (768d)")
+    p_sem = subparsers.add_parser("semantic-search", help="Semantic search using local 768d nomic embeddings")
     p_sem.add_argument("--query", required=True, help="Texto o pregunta en lenguaje natural")
     p_sem.add_argument("--target", choices=["works", "institutions", "authors"], default="works", help="Objetivo de búsqueda: works, institutions o authors")
     p_sem.add_argument("--institution-name", help="Filtrar por institución")
@@ -1257,39 +1308,44 @@ def main():
     p_sem.add_argument("--is-top-10", help="Filtrar por publicaciones Top 10%% (true/false)")
     p_sem.add_argument("--limit", type=int, default=20, help="Límite de resultados")
     p_sem.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_sem.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_sem.set_defaults(func=cmd_semantic_search)
 
     # Subcomando: top-entities
-    p_top = subparsers.add_parser("top-entities", help="Identifica autores o instituciones con mayor capacidad en un tema")
+    p_top = subparsers.add_parser("top-entities", help="Identify top-capacity authors or institutions on a topic")
     p_top.add_argument("--query", required=True, help="Tema o disciplina a evaluar (ej. 'lithium', 'baterias de litio')")
     p_top.add_argument("--by", choices=["authors", "institutions"], required=True, help="Entidad a rankear (authors o institutions)")
     p_top.add_argument("--year-min", type=int, help="Año mínimo")
     p_top.add_argument("--year-max", type=int, help="Año máximo")
     p_top.add_argument("--limit", type=int, default=15, help="Número de entidades en el ranking (default: 15, max: 200)")
     p_top.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_top.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_top.set_defaults(func=cmd_top_entities)
 
     # Subcomando: aggregate
-    p_agg = subparsers.add_parser("aggregate", help="Agregaciones cuantitativas en rag.works_academic_all")
+    p_agg = subparsers.add_parser("aggregate", help="Quantitative aggregations over rag.works_academic_all")
     p_agg.add_argument("--group-by", default="oa_status", help="Campo de agrupación (oa_status, publication_year, subfield, etc.)")
     p_agg.add_argument("--filter", help="Cláusula WHERE para filtrar la agregación")
     p_agg.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_agg.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_agg.set_defaults(func=cmd_aggregate)
 
     # Subcomando: get-institution
-    p_inst = subparsers.add_parser("get-institution", help="Consulta catálogo nacional en rag.institutions_seed_mexico")
+    p_inst = subparsers.add_parser("get-institution", help="Query national institutional catalog in rag.institutions_seed_mexico")
     p_inst.add_argument("--query", default="", help="Nombre de la institución")
     p_inst.add_argument("--acronym", help="Acrónimo institucional (ej. UNAM, IPN, UAM, CINVESTAV)")
     p_inst.add_argument("--state", help="Estado / Entidad federativa de México")
     p_inst.add_argument("--ror", help="Código ROR")
     p_inst.add_argument("--limit", type=int, default=25, help="Límite de resultados")
     p_inst.add_argument("--output", required=True, help="Ruta de guardado para el archivo JSON")
+    p_inst.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_inst.set_defaults(func=cmd_get_institution)
 
     # Subcomando: validate-query
-    p_val = subparsers.add_parser("validate-query", help="Valida sintaxis y bloquea consultas con JOIN")
+    p_val = subparsers.add_parser("validate-query", help="Validate syntax and block JOIN queries")
     p_val.add_argument("--query", required=True, help="Sentencia SQL a validar")
     p_val.add_argument("--output", required=True, help="Ruta de guardado para el reporte")
+    p_val.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_val.set_defaults(func=cmd_validate_query)
 
     args = parser.parse_args()

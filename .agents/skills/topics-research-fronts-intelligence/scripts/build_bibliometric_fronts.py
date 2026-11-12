@@ -119,13 +119,20 @@ def parse_arguments():
         "--output-dir", "-o",
         type=str,
         default="./reports",
-        help="Directorio destino para guardar los artefactos generados (default: ./reports)"
+        help="Target directory to save generated artifacts (default: ./reports)"
     )
     parser.add_argument(
         "--random-seed",
         type=int,
         default=42,
-        help="Semilla determinista para clustering (default: 42)"
+        help="Deterministic seed for clustering (default: 42)"
+    )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "es"],
+        default="en",
+        help="Output language for front labels and summaries (default: en)"
     )
     return parser.parse_args()
 
@@ -388,11 +395,12 @@ def detect_clusters_leiden(
     return membership
 
 
-def label_fronts(df: pd.DataFrame, cluster_col: str = "cluster_id") -> Dict[int, str]:
+def label_fronts(df: pd.DataFrame, cluster_col: str = "cluster_id", lang: str = "en") -> Dict[int, str]:
     """
-    Genera un nombre descriptivo automático para cada frente a partir de los títulos y keywords.
+    Generates an automatic descriptive name for each front from titles and keywords.
     """
     labels = {}
+    is_es = (lang == "es")
     custom_stopwords = {
         "study", "analysis", "using", "based", "approach", "results", "model",
         "effect", "evaluation", "method", "methods", "review", "system", "case",
@@ -416,8 +424,9 @@ def label_fronts(df: pd.DataFrame, cluster_col: str = "cluster_id") -> Dict[int,
         if top_words:
             label = " & ".join(top_words)
         else:
-            label = f"Specialty {c}"
-        labels[c] = f"Front {c}: {label}"
+            label = f"Especialidad {c}" if is_es else f"Specialty {c}"
+        prefix = "Frente" if is_es else "Front"
+        labels[c] = f"{prefix} {c}: {label}"
 
     return labels
 
@@ -495,12 +504,16 @@ def main():
             cluster_remap[vc] = counter
             counter += 1
 
+        is_es = (getattr(args, "lang", "en") == "es")
         df["front_id"] = df["cluster_id_raw"].map(lambda x: cluster_remap.get(x, 0))
-        labels_dict = label_fronts(df[df["front_id"] > 0], cluster_col="front_id")
-        labels_dict[0] = "Residual / Isolated Works"
+        labels_dict = label_fronts(df[df["front_id"] > 0], cluster_col="front_id", lang=getattr(args, "lang", "en"))
+        labels_dict[0] = "Residual / Trabajos Aislados" if is_es else "Residual / Isolated Works"
         df["front_name"] = df["front_id"].map(labels_dict)
 
     # 5. Generar Tabla Resumen de Frentes (fronts_summary.csv)
+    is_es = (getattr(args, "lang", "en") == "es")
+    cites_lbl = "Citas" if is_es else "Citations"
+    na_lbl = "N/D" if is_es else "N/A"
     summary_records = []
     active_fronts = [f for f in sorted(df["front_id"].unique()) if f > 0]
     logger.info(f"Se identificaron {len(active_fronts)} frentes de investigación con masa crítica (N >= {args.min_cluster_size}).")
@@ -516,9 +529,9 @@ def main():
         # Identificar documento más citado del frente como Core Paper
         if "cited_by_count" in sub.columns:
             top_paper_row = sub.sort_values(by="cited_by_count", ascending=False).iloc[0]
-            core_paper = f"{top_paper_row.get('title', 'N/D')} ({top_paper_row.get('publication_year', '')}), Citas: {top_paper_row.get('cited_by_count', 0)}"
+            core_paper = f"{top_paper_row.get('title', na_lbl)} ({top_paper_row.get('publication_year', '')}), {cites_lbl}: {top_paper_row.get('cited_by_count', 0)}"
         else:
-            core_paper = sub.iloc[0].get("title", "N/D")
+            core_paper = sub.iloc[0].get("title", na_lbl)
 
         summary_records.append({
             "front_id": f_id,

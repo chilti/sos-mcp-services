@@ -242,16 +242,17 @@ def fetch_forward_citations(work_id: str, limit: int = 25) -> List[Dict[str, Any
     return citing_works
 
 
-def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_cocitations: int, output_dir: str):
+def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_cocitations: int, output_dir: str, lang: str = "en"):
     os.makedirs(output_dir, exist_ok=True)
     ch_client = get_ch_client()
+    is_es = (lang == "es")
 
     print("\n" + "=" * 60)
-    print("  DEEP LITERATURE RESEARCHER: PROTOCOLO DE SNOWBALLING (WOHLIN, 2014)")
+    print("  DEEP LITERATURE RESEARCHER: PROTOCOLO DE SNOWBALLING (WOHLIN, 2014)" if is_es else "  DEEP LITERATURE RESEARCHER: SNOWBALLING PROTOCOL (WOHLIN, 2014)")
     print("=" * 60)
 
-    # 1. Resolver conjunto semilla
-    print(f"\n[Fase 1] Resolviendo {len(seeds_raw)} artículos semilla...")
+    # 1. Resolve seed set
+    print(f"\n[Fase 1] Resolviendo {len(seeds_raw)} artículos semilla..." if is_es else f"\n[Phase 1] Resolving {len(seeds_raw)} seed articles...")
     resolved_seeds = []
     seed_ids = set()
     for s in seeds_raw:
@@ -259,43 +260,43 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
         if seed_obj:
             resolved_seeds.append(seed_obj)
             seed_ids.add(seed_obj["id"])
-            print(f"  ✓ [{seed_obj['id']}] ({seed_obj.get('year', 'N/D')}) {seed_obj.get('title', '')[:70]}...")
+            print(f"  ✓ [{seed_obj['id']}] ({seed_obj.get('year', 'N/A')}) {seed_obj.get('title', '')[:70]}...")
         else:
-            print(f"  ✗ No se pudo resolver la semilla: {s}", file=sys.stderr)
+            print(f"  ✗ {'No se pudo resolver la semilla' if is_es else 'Could not resolve seed'}: {s}", file=sys.stderr)
 
     if not resolved_seeds:
-        print("Error: No se pudo resolver ningún artículo semilla.", file=sys.stderr)
+        print("Error: No se pudo resolver ningún artículo semilla." if is_es else "Error: Could not resolve any seed articles.", file=sys.stderr)
         sys.exit(1)
 
-    # 2. Backward Snowballing (Referencias citadas)
+    # 2. Backward Snowballing (Cited references)
     backward_counter = Counter()
     backward_links = defaultdict(list)
     if mode in ("backward", "both"):
-        print("\n[Fase 2] Ejecutando Backward Snowballing (rastreo de raíces teóricas)...")
+        print("\n[Fase 2] Ejecutando Backward Snowballing (rastreo de raíces teóricas)..." if is_es else "\n[Phase 2] Running Backward Snowballing (tracking theoretical roots)...")
         for s in resolved_seeds:
             refs = s.get("referenced_works", [])
-            print(f"  - Semilla {s['id']}: {len(refs)} referencias citadas.")
+            print(f"  - {'Semilla' if is_es else 'Seed'} {s['id']}: {len(refs)} {'referencias citadas.' if is_es else 'cited references.'}")
             for ref_id in refs:
                 if ref_id not in seed_ids:
                     backward_counter[ref_id] += 1
                     backward_links[ref_id].append(s["id"])
 
-    # 3. Forward Snowballing (Artículos citantes)
+    # 3. Forward Snowballing (Citing articles)
     forward_works_dict = {}
     forward_links = defaultdict(list)
     if mode in ("forward", "both"):
-        print("\n[Fase 3] Ejecutando Forward Snowballing (rastreo de frentes contemporáneos)...")
+        print("\n[Fase 3] Ejecutando Forward Snowballing (rastreo de frentes contemporáneos)..." if is_es else "\n[Phase 3] Running Forward Snowballing (tracking contemporary fronts)...")
         for s in resolved_seeds:
             citing = fetch_forward_citations(s["id"], limit=30)
-            print(f"  - Semilla {s['id']}: {len(citing)} trabajos citantes influyentes recuperados.")
+            print(f"  - {'Semilla' if is_es else 'Seed'} {s['id']}: {len(citing)} {'trabajos citantes influyentes recuperados.' if is_es else 'influential citing works retrieved.'}")
             for cw in citing:
                 cid = cw["id"]
                 if cid not in seed_ids:
                     forward_works_dict[cid] = cw
                     forward_links[cid].append(s["id"])
 
-    # 4. Consolidar candidatos para tamizaje
-    print("\n[Fase 4] Consolidando candidatos y calculando centralidad en el grafo...")
+    # 4. Consolidate candidates for screening
+    print("\n[Fase 4] Consolidando candidatos y calculando centralidad en el grafo..." if is_es else "\n[Phase 4] Consolidating candidates and computing graph centrality...")
     all_candidate_ids = set()
     for wid, count in backward_counter.items():
         if count >= min_cocitations:
@@ -303,11 +304,11 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
     for wid in forward_works_dict.keys():
         all_candidate_ids.add(wid)
 
-    print(f"  - Total de candidatos únicos descubiertos: {len(all_candidate_ids)}")
+    print(f"  - {'Total de candidatos únicos descubiertos' if is_es else 'Total unique candidates discovered'}: {len(all_candidate_ids)}")
 
-    # Obtener metadatos de los candidatos backward faltantes
+    # Fetch metadata for missing backward candidates
     backward_ids_to_fetch = [wid for wid in all_candidate_ids if wid not in forward_works_dict]
-    print(f"  - Recuperando metadatos de {len(backward_ids_to_fetch)} obras referenciadas...")
+    print(f"  - {'Recuperando metadatos de' if is_es else 'Fetching metadata for'} {len(backward_ids_to_fetch)} {'obras referenciadas...' if is_es else 'referenced works...'}")
     backward_meta = fetch_works_metadata(backward_ids_to_fetch, ch_client)
 
     candidate_records = []
@@ -393,26 +394,48 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
     with open(flow_path, "w", encoding="utf-8") as f:
         json.dump(prisma_flow, f, indent=2)
 
-    # Reporte Markdown
+    # Markdown Report
     report_path = os.path.join(output_dir, "snowball_report.md")
     with open(report_path, "w", encoding="utf-8") as f:
-        f.write("# Informe de Snowballing de Citas (Protocolo Wohlin, 2014)\n\n")
-        f.write(f"- **Artículos Semilla Analizados:** {len(resolved_seeds)}\n")
-        f.write(f"- **Modo de Rastreo:** `{mode}`\n")
-        f.write(f"- **Total de Candidatos Descubiertos:** {len(candidate_records)}\n")
-        f.write(f"- **Candidatos Priorizados para Tamizaje PRISMA:** {len(top_records)}\n\n")
+        if is_es:
+            f.write("# Informe de Snowballing de Citas (Protocolo Wohlin, 2014)\n\n")
+            f.write(f"- **Artículos Semilla Analizados:** {len(resolved_seeds)}\n")
+            f.write(f"- **Modo de Rastreo:** `{mode}`\n")
+            f.write(f"- **Total de Candidatos Descubiertos:** {len(candidate_records)}\n")
+            f.write(f"- **Candidatos Priorizados para Tamizaje PRISMA:** {len(top_records)}\n\n")
 
-        f.write("## Diagrama de Flujo PRISMA 2020\n\n")
-        f.write("```mermaid\nflowchart TD\n")
-        f.write(f'    S["Conjunto Semilla (n = {len(resolved_seeds)})"] --> B["Backward Snowballing (n = {len(backward_counter)})"]\n')
-        f.write(f'    S --> F["Forward Snowballing (n = {len(forward_works_dict)})"]\n')
-        f.write(f'    B & F --> U["Total Candidatos Únicos (n = {len(candidate_records)})"]\n')
-        f.write(f'    U --> SCR["Priorizados para Tamizaje de Resumen (n = {len(top_records)})"]\n')
-        f.write("```\n\n")
+            f.write("## Diagrama de Flujo PRISMA 2020\n\n")
+            f.write("```mermaid\nflowchart TD\n")
+            f.write(f'    S["Conjunto Semilla (n = {len(resolved_seeds)})"] --> B["Backward Snowballing (n = {len(backward_counter)})"]\n')
+            f.write(f'    S --> F["Forward Snowballing (n = {len(forward_works_dict)})"]\n')
+            f.write(f'    B & F --> U["Total Candidatos Únicos (n = {len(candidate_records)})"]\n')
+            f.write(f'    U --> SCR["Priorizados para Tamizaje de Resumen (n = {len(top_records)})"]\n')
+            f.write("```\n\n")
 
-        f.write("## Top 15 Artículos Candidatos por Centralidad e Impacto\n\n")
-        f.write("| # | Año | Citas | Dirección | Conexiones Semilla | Título / DOI |\n")
-        f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+            f.write("## Top 15 Artículos Candidatos por Centralidad e Impacto\n\n")
+            f.write("| # | Año | Citas | Dirección | Conexiones Semilla | Título / DOI |\n")
+            f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+        else:
+            f.write("# Citation Snowballing Report (Wohlin Protocol, 2014)\n\n")
+            f.write(f"- **Seed Articles Analyzed:** {len(resolved_seeds)}\n")
+            f.write(f"- **Tracking Mode:** `{mode}`\n")
+            f.write(f"- **Total Candidates Discovered:** {len(candidate_records)}\n")
+            f.write(f"- **Prioritized Candidates for PRISMA Screening:** {len(top_records)}\n\n")
+
+            f.write("## PRISMA 2020 Flow Diagram\n\n")
+            f.write("```mermaid\nflowchart TD\n")
+            f.write(f'    S["Seed Set (n = {len(resolved_seeds)})"] --> B["Backward Snowballing (n = {len(backward_counter)})"]\n')
+            f.write(f'    S --> F["Forward Snowballing (n = {len(forward_works_dict)})"]\n')
+            f.write(f'    B & F --> U["Total Unique Candidates (n = {len(candidate_records)})"]\n')
+            f.write(f'    U --> SCR["Prioritized for Abstract Screening (n = {len(top_records)})"]\n')
+            f.write("```\n\n")
+
+            f.write("## Top 15 Candidate Articles by Centrality and Impact\n\n")
+            f.write("| # | Year | Citations | Direction | Seed Connections | Title / DOI |\n")
+            f.write("|---|:---:|:---:|:---:|:---:|---|\n")
+
+        seed_unit = "semillas" if is_es else "seeds"
+        na_lbl = "N/D" if is_es else "N/A"
         for i, r in enumerate(top_records[:15], 1):
             raw_doi = r["doi"] or ""
             if raw_doi.startswith("http"):
@@ -426,10 +449,10 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
                 doi_display = r["work_id"]
 
             doi_link = f"[{doi_display}]({doi_url})" if doi_url else doi_display
-            f.write(f"| {i} | {r['year'] or 'N/D'} | {r['cited_by_count']} | `{r['direction']}` | {len(r['seed_connections'])} semillas | **{r['title'][:80]}...**<br>{doi_link} |\n")
+            f.write(f"| {i} | {r['year'] or na_lbl} | {r['cited_by_count']} | `{r['direction']}` | {len(r['seed_connections'])} {seed_unit} | **{r['title'][:80]}...**<br>{doi_link} |\n")
 
     print("\n" + "=" * 60)
-    print(f"✅ Snowballing finalizado con éxito en '{output_dir}':")
+    print(f"✅ {'Snowballing finalizado con éxito en' if is_es else 'Snowballing completed successfully in'} '{output_dir}':")
     print("  - snowball_candidates.json")
     print("  - snowball_candidates.csv")
     print("  - prisma_flow_data.json")
@@ -439,14 +462,15 @@ def run_snowballing(seeds_raw: List[str], mode: str, top_candidates: int, min_co
 
 def main():
     parser = argparse.ArgumentParser(description="Deep Literature Researcher - Citation Snowball CLI")
-    parser.add_argument("--seeds", nargs="+", required=True, help="Lista de DOIs o OpenAlex Work IDs semilla")
-    parser.add_argument("--mode", choices=["backward", "forward", "both"], default="both", help="Modo de rastreo")
-    parser.add_argument("--top-citations", type=int, default=30, help="Número de candidatos principales a priorizar")
-    parser.add_argument("--min-cocitations", type=int, default=1, help="Umbral mínimo de co-citaciones para incluir referencia")
-    parser.add_argument("--output", type=str, default="./snowball_results", help="Directorio de salida para los resultados")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Output language for reports and messages (default: en)")
+    parser.add_argument("--seeds", nargs="+", required=True, help="List of seed DOIs or OpenAlex Work IDs")
+    parser.add_argument("--mode", choices=["backward", "forward", "both"], default="both", help="Tracking mode")
+    parser.add_argument("--top-citations", type=int, default=30, help="Number of top candidates to prioritize")
+    parser.add_argument("--min-cocitations", type=int, default=1, help="Minimum co-citation threshold to include reference")
+    parser.add_argument("--output", type=str, default="./snowball_results", help="Output directory for results")
 
     args = parser.parse_args()
-    run_snowballing(args.seeds, args.mode, args.top_citations, args.min_cocitations, args.output)
+    run_snowballing(args.seeds, args.mode, args.top_citations, args.min_cocitations, args.output, lang=args.lang)
 
 
 if __name__ == "__main__":

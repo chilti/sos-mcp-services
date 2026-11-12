@@ -1,155 +1,157 @@
 ---
 name: scientometrics-incites-expert
 description: >-
-  Gestor integral y analista experto en benchmarking cienciométrico institucional con Clarivate InCites. Inspecciona inventarios de unidades (Organizations, Locations, Researchers, WoS Categories, Publication Sources, Research Areas ESI / SDG / Topics, Funding Agencies, Patentometrics), extrae matrices multidimensionales por ventanas (Histórico vs Reciente 5 años) listas para SOM, extrae series anuales longitudinales (Trend) para PathSOM con suavizado ECMA y calcula matrices estratégicas de crecimiento (Strategic Growth Matrix: CAGR % vs Volumen).
+  Comprehensive manager and expert analyst for institutional scientometric benchmarking with Clarivate InCites. Inspects unit inventories (Organizations, Locations, Researchers, WoS Categories, Publication Sources, Research Areas ESI / SDG / Topics, Funding Agencies, Patentometrics), extracts windowed multidimensional matrices (Historical vs. Recent 5-year) ready for SOM, extracts longitudinal annual series (Trend) for PathSOM with ECMA smoothing, and computes strategic growth matrices (Strategic Growth Matrix: CAGR % vs. Volume). Respond and label outputs in the user's language.
 ---
-# Scientometrics InCites Expert: Gestor de Paquetes y Benchmarking Clarivate InCites
+# Scientometrics InCites Expert: Clarivate InCites Package Manager and Benchmarking
 
-## 1. Propósito y Activación
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-Esta skill se activa cuando el usuario proporciona datos, reportes tabulares o paquetes exportados desde **Clarivate InCites Benchmarking & Analytics** (archivos individuales `.csv`, `.xlsx` o archivos `.zip` estructurados) y requiere:
+## 1. Purpose and Activation
 
-1. **Inspeccionar y Validar el Inventario InCites:** Identificar las unidades analíticas disponibles (`Organizations`, `Locations`, `Researchers`, `WoS Categories`, `Publication Sources`, `Research Areas ESI / SDG / Topics`, `Funding Agencies`, `Patentometrics`), las ventanas temporales cubiertas y los esquemas de indicadores presentes.
-2. **Extraer Matrices Multidimensionales para el SOM:** Extraer perfiles numéricos limpios $[N \times D]$ de entidades específicas discriminando entre:
-   * **Ventana Reciente (5 años, e.g. 2021–2025):** Para diagnóstico de coyuntura y desempeño actual.
-   * **Histórico Completo (`Whole`, e.g. 1980–2025):** Para caracterización acumulada de la trayectoria histórica.
-   * Envío directo de matrices a [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) y [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md).
-3. **Modelar Series Anuales y Trayectorias PathSOM:** Extraer series anuales (*Trend*) aplicando suavizado exponencial centrado (ECMA-3 / ECMA-5) para rastrear la órbita evolutiva de universidades o países en [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
-4. **Calcular la Matriz de Crecimiento Estratégico (Strategic Growth Matrix):** Calcular tasas de crecimiento anual compuesto (CAGR %) frente a volumen actual para clasificar entidades en 4 cuadrantes analíticos (*Star Leaders*, *Emerging Stars*, *Established Giants*, *Low Priority*).
+This skill activates when the user provides data, tabular reports, or exported packages from **Clarivate InCites Benchmarking & Analytics** (individual `.csv`, `.xlsx` files, or structured `.zip` archives) and needs to:
 
----
-
-## 2. Dependencies y Cadena de Valor
-
-Esta skill actúa como el puente de ingesta y normalización de InCites hacia el modelado neurocomputacional del ecosistema UNAM:
-
-* **Habilidades Downstream (Consumidores de Datos):**
-  * [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Recibe la matriz limpia $[N \times D]$ para calibración espectral SVD, dimensionamiento de sobremalla hexagonal y entrenamiento del SOM.
-  * [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Recibe las series temporales anuales suavizadas con ECMA para generar el trazado de trayectorias con splines continuas (máximo 5 entidades simultáneas).
-  * [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md): Recibe secuencias de cortes intertemporales para el encadenamiento Warm-Start.
-* **Habilidades Complementarias:**
-  * [`tlachia-metrics-handler`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Equivalente canónico para paquetes exportados desde TlachIA Metrics / OpenAlex.
-* **Herramientas de Software Asociadas:**
-  * [`incites_parser.py`](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/incites_parser.py): Motor de parsing de InCites en KnoMap.
-  * [`services/knomap/tools/incites_tools.py`](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py): Herramientas MCP expuestas al agente.
+1. **Inspect and Validate the InCites Inventory:** Identify available analytical units (`Organizations`, `Locations`, `Researchers`, `WoS Categories`, `Publication Sources`, `Research Areas ESI / SDG / Topics`, `Funding Agencies`, `Patentometrics`), covered temporal windows, and present indicator schemas.
+2. **Extract Multidimensional Matrices for SOM:** Extract clean $[N \times D]$ numeric profiles of specific entities, distinguishing between:
+   * **Recent Window (5 years, e.g., 2021–2025):** For current status diagnosis and recent performance.
+   * **Full Historical (`Whole`, e.g., 1980–2025):** For cumulative characterization of the historical trajectory.
+   * Direct forwarding of matrices to [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md) and [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md).
+3. **Model Annual Series and PathSOM Trajectories:** Extract annual series (*Trend*) applying centered exponential smoothing (ECMA-3 / ECMA-5) to track the evolutionary orbit of universities or countries in [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md).
+4. **Compute the Strategic Growth Matrix:** Calculate Compound Annual Growth Rates (CAGR %) against current volume to classify entities into 4 analytical quadrants (*Star Leaders*, *Emerging Stars*, *Established Giants*, *Low Priority*).
 
 ---
 
-## 3. Anatomía de Reportes y Paquetes Clarivate InCites
+## 2. Dependencies and Value Chain
 
-Los reportes exportados de InCites presentan particularidades técnicas de formato que el agente debe manejar con rigor:
+This skill acts as the ingestion and normalization bridge from InCites into the UNAM ecosystem's neurocomputational modeling:
+
+* **Downstream Skills (Data Consumers):**
+  * [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md): Receives the clean $[N \times D]$ matrix for SVD spectral calibration, hexagonal over-grid sizing, and SOM training.
+  * [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md): Receives ECMA-smoothed annual time series to generate continuous spline trajectory plots (maximum 5 simultaneous entities).
+  * [`neural-longitudinal-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/neural-longitudinal-mapping/SKILL.md): Receives sequences of intertemporal slices for Warm-Start chaining.
+* **Complementary Skills:**
+  * [`tlachia-metrics-handler`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md): Canonical equivalent for packages exported from TlachIA Metrics / OpenAlex.
+* **Associated Software Tools:**
+  * [`incites_parser.py`](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/incites_parser.py): InCites parsing engine in KnoMap.
+  * [`services/knomap/tools/incites_tools.py`](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py): MCP tools exposed to the agent.
+
+---
+
+## 3. Anatomy of Clarivate InCites Reports and Packages
+
+Reports exported from InCites have specific formatting characteristics that the agent must handle rigorously:
 
 ```
-[Paquete InCites / Exportación Clarivate]
-├── Archivos CSV Individuales                    # Cabeceras de metadatos (e.g. "InCites dataset updated...")
-│   ├── Organizations.csv                        # Unicode UTF-8 o UTF-16 LE con BOM, separadores coma/tab
+[InCites Package / Clarivate Export]
+├── Individual CSV Files                         # Metadata headers (e.g., "InCites dataset updated...")
+│   ├── Organizations.csv                        # Unicode UTF-8 or UTF-16 LE with BOM, comma/tab delimiters
 │   ├── Locations.csv
 │   └── WoS Categories.csv
-└── Paquetes Estructurados (.zip o Directorios)
-    ├── 01_Matrices_Desempeño_Longitudinal/      # Variaciones interperiódicas (Δ% Docs, Δ CNCI, Δ Q1)
+└── Structured Packages (.zip or Directories)
+    ├── 01_Matrices_Desempeño_Longitudinal/      # Inter-period variations (Δ% Docs, Δ CNCI, Δ Q1)
     │   ├── Organizations Performance Matrix.csv
     │   └── Locations Performance Matrix.csv
-    ├── 02_Periodos_Consecutivos/                # Ventanas fijas quinquenales o personalizadas
+    ├── 02_Periodos_Consecutivos/                # Fixed 5-year or custom windows
     │   ├── Organizations 2016-2020.csv
     │   └── Organizations 2021-2025.csv
-    ├── 03_Historico_Completo/                   # Perfil acumulado de todo el horizonte temporal
-    │   ├── Organizations.csv                    # Perfil completo Whole
+    ├── 03_Historico_Completo/                   # Cumulative profile across the entire time horizon
+    │   ├── Organizations.csv                    # Complete Whole profile
     │   └── WoS Categories.csv
-    └── 04_Tendencias_Anuales/                   # Series anuales año por año
-        ├── Organizations Trend.csv              # Mediciones anuales para suavizado ECMA y PathSOM
+    └── 04_Tendencias_Anuales/                   # Year-by-year annual series
+        ├── Organizations Trend.csv              # Annual measurements for ECMA smoothing and PathSOM
         └── Locations Trend.csv
 ```
 
-### Reglas de Lectura y Limpieza para InCites
+### Reading and Cleaning Rules for InCites
 
-1. **Omitir Filas de Metadatos Iniciales:** Los CSV descargados directamente desde InCites suelen comenzar con 1 a 3 líneas de metadatos del sistema (ej. `"InCites dataset updated Feb 28, 2026. Includes Web of Science™ content..."`). Si no se omiten, el parser colapsa toda la tabla en una sola columna. El agente debe escanear las primeras 15 líneas y detectar la fila de encabezados reales con mayor conteo de separadores.
-2. **Detección de Codificación:** Soportar de forma transparente `utf-8-sig`, `utf-16-le` (típico de exportaciones de Excel de InCites) y `latin-1`.
-3. **Limpieza Numérica:** Convertir porcentajes textuales (e.g. `"24.50%"`) a números reales flotantes (`24.50`) y valores vacíos o guiones (`"-"`, `"n/a"`) a `0.0`.
-
----
-
-## 3. Correspondencia con la Interfaz de Usuario en KnoMap
-
-Cuando este archivo se procesa en el módulo **InCites Explorer** de KnoMap (`InCitesExplorer.tsx` y `ExploradorDatos.tsx`), el comportamiento del agente debe emular la experiencia del usuario en la plataforma:
-
-| Pestaña / Selector en KnoMap | Entidad Canónica (`unit_name`)           | Objeto de Benchmarking                                              |
-| :---------------------------- | :------------------------------------------ | :------------------------------------------------------------------ |
-| **Organizations**       | `Organizations`                           | Universidades, centros de investigación y dependencias             |
-| **Locations**           | `Locations`                               | Países, regiones y territorios geopolíticos                       |
-| **Researchers**         | `Researchers` / `Authors`               | Investigadores y autores de Web of Science                          |
-| **WoS Categories**      | `WoS Categories`                          | 254 áreas disciplinarias canónicas de Web of Science              |
-| **Publication Sources** | `Publication Sources`                     | Revistas y conferencias indexadas en Web of Science Core Collection |
-| **Research Areas ESI**  | `Research Areas ESI`                      | 22 campos canónicos de Essential Science Indicators                |
-| **Research Areas SDG**  | `Research Areas SDG`                      | Objetivos de Desarrollo Sostenible (ODS 1–17) de la ONU            |
-| **Citation Topics**     | `Research Areas Topic` (Macro/Meso/Micro) | Taxonomía jerárquica de Citation Topics de Clarivate              |
-| **Funding Agencies**    | `Funding Agencies`                        | Entidades y agencias de financiamiento de la investigación         |
-| **Patentometrics**      | `Patentometrics`                          | Patentes citantes e impacto tecnológico                            |
-| **Baseline Indicators** | `Data Indicators`                         | Indicadores baseline comparativos frente al promedio global         |
-
-### Vistas Analíticas Integradas en KnoMap:
-
-* **Sección 1: Baseline Summary Cards & Comparison Table:** Tablas comparativas frente a la media mundial (Baseline = 1.0 para CNCI/JNCI).
-* **Sección 2: Strategic Growth Matrix:** Gráfico de dispersión interactivo dividiendo las entidades en 4 cuadrantes según su CAGR % y su volumen.
-* **Sección 3: Multidimensional Profiles:**
-  * *4D Bubble Chart:* Eje X (CNCI), Eje Y (% Top 10%), Tamaño de Burbuja (WoS Documents), Color (Cuartil dominante o región).
-  * *Quartile Bar Chart:* Desglose porcentual en cuartiles Q1, Q2, Q3, Q4.
-  * *Sunburst Chart:* Navegación jerárquica de Research Areas (Macro $\to$ Meso $\to$ Micro).
-  * *Cluster Profile Radar:* Perfil de centroide y benchmarking institucional.
-* **Sección 4: PathSOM (Send to SOM):** Selección de matriz tabular para modelado no lineal de trayectorias.
+1. **Skip Initial Metadata Rows:** CSVs downloaded directly from InCites typically begin with 1 to 3 system metadata lines (e.g., `"InCites dataset updated Feb 28, 2026. Includes Web of Science™ content..."`). If not skipped, the parser collapses the entire table into a single column. The agent must scan the first 15 lines and detect the real header row with the highest delimiter count.
+2. **Encoding Detection:** Transparently support `utf-8-sig`, `utf-16-le` (typical of InCites Excel exports), and `latin-1`.
+3. **Numeric Cleaning:** Convert textual percentages (e.g., `"24.50%"`) to floating-point numbers (`24.50`) and empty values or dashes (`"-"`, `"n/a"`) to `0.0`.
 
 ---
 
-## 4. Protocolo MCP de Extracción y Modelado
+## 4. Correspondence with the KnoMap User Interface
 
-El agente ejecuta el siguiente flujo paso a paso mediante las herramientas de `knomap-som-engine`:
+When this file is processed in KnoMap's **InCites Explorer** module (`InCitesExplorer.tsx` and `ExploradorDatos.tsx`), the agent's behavior should mirror the user experience on the platform:
+
+| Tab / Selector in KnoMap | Canonical Entity (`unit_name`)              | Benchmarking Object                                                 |
+| :----------------------- | :------------------------------------------ | :------------------------------------------------------------------ |
+| **Organizations**        | `Organizations`                             | Universities, research centers, and academic departments            |
+| **Locations**            | `Locations`                                 | Countries, regions, and geopolitical territories                    |
+| **Researchers**          | `Researchers` / `Authors`                   | Web of Science researchers and authors                              |
+| **WoS Categories**       | `WoS Categories`                            | 254 canonical Web of Science disciplinary areas                     |
+| **Publication Sources**  | `Publication Sources`                       | Journals and conferences indexed in Web of Science Core Collection  |
+| **Research Areas ESI**   | `Research Areas ESI`                        | 22 canonical Essential Science Indicators fields                    |
+| **Research Areas SDG**   | `Research Areas SDG`                        | UN Sustainable Development Goals (SDGs 1–17)                        |
+| **Citation Topics**      | `Research Areas Topic` (Macro/Meso/Micro)   | Clarivate hierarchical Citation Topics taxonomy                     |
+| **Funding Agencies**     | `Funding Agencies`                          | Research funding entities and agencies                              |
+| **Patentometrics**       | `Patentometrics`                            | Citing patents and technological impact                             |
+| **Baseline Indicators**  | `Data Indicators`                           | Comparative baseline indicators against the global average          |
+
+### Integrated Analytical Views in KnoMap:
+
+* **Section 1: Baseline Summary Cards & Comparison Table:** Comparative tables against the world average (Baseline = 1.0 for CNCI/JNCI).
+* **Section 2: Strategic Growth Matrix:** Interactive scatter plot dividing entities into 4 quadrants according to their CAGR % and volume.
+* **Section 3: Multidimensional Profiles:**
+  * *4D Bubble Chart:* X-axis (CNCI), Y-axis (% Top 10%), Bubble Size (WoS Documents), Color (Dominant quartile or region).
+  * *Quartile Bar Chart:* Percentage breakdown across quartiles Q1, Q2, Q3, Q4.
+  * *Sunburst Chart:* Hierarchical navigation of Research Areas (Macro $\to$ Meso $\to$ Micro).
+  * *Cluster Profile Radar:* Centroid profile and institutional benchmarking.
+* **Section 4: PathSOM (Send to SOM):** Tabular matrix selection for non-linear trajectory modeling.
+
+---
+
+## 5. MCP Extraction and Modeling Protocol
+
+The agent executes the following step-by-step workflow using `knomap-som-engine` tools:
 
 ```
 +-------------------------------------------------------------------------------+
-|                       FLUJO DE TRABAJO INCITES -> SOM & ESTRATEGIA            |
+|                      INCITES -> SOM & STRATEGY WORKFLOW                       |
 +-------------------------------------------------------------------------------+
 | 1. inspect_incites_package(package_path="...")                                |
-|       ↓ (Retorna unidades disponibles, periodos y esquema detectado)          |
-| 2. DECISIÓN DEL USUARIO:                                                      |
-|       ├─ A. Modelado de Perfiles SOM:                                         |
+|       ↓ (Returns available units, periods, and detected schema)               |
+| 2. USER DECISION:                                                             |
+|       ├─ A. SOM Profile Modeling:                                             |
 |       │     get_incites_unit_matrix(unit_name="Organizations", ...)           |
-|       │     ↓ (Pasa data & labels a suggest_grid_size y train_som)            |
-|       │     Aplicar metodología en som-methodological-expert                  |
+|       │     ↓ (Passes data & labels to suggest_grid_size and train_som)       |
+|       │     Apply methodology in som-methodological-expert                    |
 |       │                                                                       |
-|       ├─ B. Trayectorias PathSOM (Órbita de Instituciones):                   |
+|       ├─ B. PathSOM Trajectories (Institutional Orbit):                       |
 |       │     get_incites_temporal_evolution(entities=["UNAM","USP",...])       |
-|       │     ↓ (Aplicar splines cúbicos y suavizado ECMA)                      |
-|       │     Aplicar metodología en som-trajectory-mapping (máx. 5 entidades)   |
+|       │     ↓ (Apply cubic splines and ECMA smoothing)                        |
+|       │     Apply methodology in som-trajectory-mapping (max. 5 entities)     |
 |       │                                                                       |
-|       └─ C. Diagnóstico de Crecimiento Estratégico:                          |
+|       └─ C. Strategic Growth Diagnosis:                                       |
 |             compute_strategic_growth_matrix(indicator="WoS Documents", ...)   |
-|             ↓ (Calcula CAGR % y clasifica en 4 cuadrantes de gestión)         |
-|             Emitir recomendaciones de inversión y priorización institucional  |
+|             ↓ (Computes CAGR % and classifies into 4 management quadrants)    |
+|             Issue institutional investment and prioritization recommendations |
 +-------------------------------------------------------------------------------+
 ```
 
-### Paso 1: Inspeccionar el Paquete o Reporte InCites
+### Step 1: Inspect the InCites Package or Report
 
-Invocar `knomap-som-engine -> inspect_incites_package`:
+Invoke `knomap-som-engine -> inspect_incites_package`:
 
 ```python
-# Ejemplo de llamada MCP:
+# Example MCP call:
 inspect_incites_package(
     package_path=r"C:\Users\jlja\Documents\Reportes\InCites_Benchmarking_Iberoamerica.zip"
 )
 ```
 
-* **Respuesta:** Devuelve `session_dir` (directorio temporal indexado), lista de `available_units`, resumen de archivos por periodo (`Whole`, `5Years`, `Trend`, `PerformanceMatrix`) y catálogo de indicadores detectados.
+* **Response:** Returns `session_dir` (indexed temporary directory), list of `available_units`, summary of files by period (`Whole`, `5Years`, `Trend`, `PerformanceMatrix`), and catalog of detected indicators.
 
-### Paso 2: Extraer la Matriz de Desempeño Multidimensional
+### Step 2: Extract the Multidimensional Performance Matrix
 
-Invocar `knomap-som-engine -> get_incites_unit_matrix`:
+Invoke `knomap-som-engine -> get_incites_unit_matrix`:
 
 ```python
-# Extracción de instituciones con batería balanceada de InCites:
+# Extracting institutions with a balanced InCites battery:
 get_incites_unit_matrix(
     session_dir=session_dir,
     unit_name="Organizations",
-    use_recent_5years=True,     # True: 2021-2025 (desempeño actual); False: Whole (histórico)
+    use_recent_5years=True,     # True: 2021-2025 (current performance); False: Whole (historical)
     selected_indicators=[
         "Category Normalized Citation Impact (CNCI)",
         "Journal Normalized Citation Impact (JNCI)",
@@ -161,26 +163,26 @@ get_incites_unit_matrix(
         "Average Percentile",
         "Web of Science Documents"
     ],
-    filter_min_threshold=50.0,   # Umbral mínimo de masa crítica (ej. 50 documentos WoS)
-    limit_top_n=50               # Top 50 instituciones líderes
+    filter_min_threshold=50.0,   # Minimum critical mass threshold (e.g., 50 WoS documents)
+    limit_top_n=50               # Top 50 leading institutions
 )
 ```
 
-* **Respuesta:** Devuelve `labels` (nombres institucionales limpios), `indicators` y `data` (matriz $[N \times D]$ de números reales limpios sin NaNs lista para normalización Z-score).
+* **Response:** Returns `labels` (clean institutional names), `indicators`, and `data` ($[N \times D]$ matrix of clean real numbers without NaNs ready for Z-score normalization).
 
-### Paso 3: Enviar al Pipeline SOM
+### Step 3: Send to the SOM Pipeline
 
-Una vez obtenida la matriz `data` y las etiquetas `labels`:
+Once the `data` matrix and `labels` are obtained:
 
-1. **Calcular Dimensiones:** Invocar `knomap-som-engine -> suggest_grid_size(data=data)` para calcular el aspect ratio SVD ($\sigma_1/\sigma_2$) y la sobremalla ($20N\text{--}30N$ neuronas según [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
-2. **Entrenar SOM:** Invocar `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
-3. **Optimizar Clusters:** Invocar `knomap-som-engine -> evaluate_som_clusters` para calibrar el $K$ óptimo vía Silhouette Score.
-4. **Interpretar Resultados:** Analizar la U-Matrix y los mapas de componentes para identificar grupos de pares comparables y fortalezas diferenciadas.
+1. **Compute Dimensions:** Invoke `knomap-som-engine -> suggest_grid_size(data=data)` to calculate the SVD aspect ratio ($\sigma_1/\sigma_2$) and over-gridding ($20N\text{--}30N$ neurons according to [`som-methodological-expert`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)).
+2. **Train SOM:** Invoke `knomap-som-engine -> train_som(data=data, labels=labels, rows=rows, cols=cols, init="pca")`.
+3. **Optimize Clusters:** Invoke `knomap-som-engine -> evaluate_som_clusters` to calibrate the optimal $K$ via Silhouette Score.
+4. **Interpret Results:** Analyze the U-Matrix and component planes to identify comparable peer groups and differentiated strengths.
 
-### Paso 4: Extraer Series Anuales y Trayectorias PathSOM
+### Step 4: Extract Annual Series and PathSOM Trajectories
 
-Para examinar la evolución histórica continua de un grupo selecto de competidores:
-Invocar `knomap-som-engine -> get_incites_temporal_evolution`:
+To examine the continuous historical evolution of a select competitor group:
+Invoke `knomap-som-engine -> get_incites_temporal_evolution`:
 
 ```python
 get_incites_temporal_evolution(
@@ -188,16 +190,16 @@ get_incites_temporal_evolution(
     unit_name="Organizations",
     entities=["UNAM", "Universidade de Sao Paulo", "Tecnologico de Monterrey", "UBA"],
     indicators=["CNCI", "% Documents in Top 10%", "Web of Science Documents"],
-    smoothing="ecma3"           # "ecma3" (ventana de 3 años), "ecma5" o "raw"
+    smoothing="ecma3"           # "ecma3" (3-year window), "ecma5", or "raw"
 )
 ```
 
-* **Respuesta:** Devuelve las series de tiempo anualizadas con suavizado centrado para cada indicador.
-* **Integración:** Transferir a [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md) respetando la **Regla de Oro de KnoMap (máximo 5 entidades simultáneas)** para evitar la saturación visual de splines.
+* **Response:** Returns annualized time series with centered smoothing for each indicator.
+* **Integration:** Transfer to [`som-trajectory-mapping`](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md) respecting the **KnoMap Golden Rule (maximum 5 simultaneous entities)** to prevent visual spline saturation.
 
-### Paso 5: Calcular la Matriz de Crecimiento Estratégico (Strategic Growth Matrix)
+### Step 5: Compute the Strategic Growth Matrix
 
-Invocar `knomap-som-engine -> compute_strategic_growth_matrix`:
+Invoke `knomap-som-engine -> compute_strategic_growth_matrix`:
 
 ```python
 compute_strategic_growth_matrix(
@@ -208,117 +210,117 @@ compute_strategic_growth_matrix(
 )
 ```
 
-* **Cálculo de la Tasa de Crecimiento Anual Compuesto (CAGR %):**
+* **Compound Annual Growth Rate (CAGR %) Calculation:**
   $$
-  \text{CAGR} = \left(\frac{V_{\text{final}}}{V_{\text{inicial}}}\right)^{\frac{1}{t_{\text{final}} - t_{\text{inicial}}}} - 1
+  \text{CAGR} = \left(\frac{V_{\text{final}}}{V_{\text{initial}}}\right)^{\frac{1}{t_{\text{final}} - t_{\text{initial}}}} - 1
   $$
-* **Cuadrantes Estratégicos Resultantes:**
-  * **Star Leaders (Alto Crecimiento, Alto Volumen):** Líderes dinámicos que expanden su producción a tasas superiores a la media del sistema.
-  * **Emerging Stars (Alto Crecimiento, Volumen Moderado):** Focos emergentes y nichos de oportunidad que deben recibir impulso institucional prioritario.
-  * **Established Giants (Bajo Crecimiento, Alto Volumen):** Instituciones tradicionales consolidadas con volumen masivo pero maduración o estancamiento en tasas de crecimiento.
-  * **Low Priority (Bajo Crecimiento, Bajo Volumen):** Entidades o áreas con baja tracción que requieren reestructuración o reasignación estratégica.
+* **Resulting Strategic Quadrants:**
+  * **Star Leaders (High Growth, High Volume):** Dynamic leaders expanding their output at rates exceeding the system average.
+  * **Emerging Stars (High Growth, Moderate Volume):** Emerging hotspots and opportunity niches that should receive priority institutional support.
+  * **Established Giants (Low Growth, High Volume):** Consolidated traditional institutions with massive volume but maturing or stagnating growth rates.
+  * **Low Priority (Low Growth, Low Volume):** Entities or areas with low traction requiring restructuring or strategic reallocation.
 
 ---
 
-## 5. Batería Exhaustiva de Indicadores Canónicos Clarivate InCites
+## 6. Exhaustive Battery of Canonical Clarivate InCites Indicators
 
-Al asesorar al usuario en la selección de indicadores para benchmarking institucional, se recomienda estructurar la consulta en 5 dimensiones canónicas:
+When advising the user on selecting indicators for institutional benchmarking, structuring the query across 5 canonical dimensions is recommended:
 
 ```
 +-------------------------------------------------------------------------------+
-|                 TAXONOMÍA DE INDICADORES CLARIVATE INCITES                    |
+|                     CLARIVATE INCITES INDICATOR TAXONOMY                      |
 +-------------------------------------------------------------------------------+
-| 1. Capacidad y Masa Crítica:                                                  |
+| 1. Capacity and Critical Mass:                                                |
 |    - Web of Science Documents, % Top 10%, % Top 1%, % Q1, % Q2, % Q3, % Q4    |
-| 2. Impacto Normalizado y Citación:                                            |
-|    - CNCI (Mundial = 1.0), JNCI, Times Cited, Citation Impact, Average Pct    |
-| 3. Colaboración e Internacionalización:                                       |
-|    - % International Collab, % Industry Collab, % Domestic, % Academic       |
-| 4. Acceso Abierto (Clarivate Open Access Schema):                             |
+| 2. Normalized Impact and Citation:                                            |
+|    - CNCI (World = 1.0), JNCI, Times Cited, Citation Impact, Average Pct      |
+| 3. Collaboration and Internationalization:                                    |
+|    - % International Collab, % Industry Collab, % Domestic, % Academic        |
+| 4. Open Access (Clarivate Open Access Schema):                                |
 |    - % All OA, % DOAJ Gold, % Other Gold, % Bronze, % Green Published/Accepted|
-| 5. Financiamiento e Impacto Tecnológico:                                      |
+| 5. Funding and Technological Impact:                                          |
 |    - Funding Agency Documents, Patent Citations to Web of Science             |
 +-------------------------------------------------------------------------------+
 ```
 
-### 1. Capacidad y Masa Crítica
+### 1. Capacity and Critical Mass
 
-* `Web of Science Documents`: Volumen absoluto de artículos, revisiones y actas indexadas en WoS Core Collection.
-* `% Documents in Top 10%`: Proporción de documentos en el decil superior mundial de citas en su respectivo campo y año.
-* `% Documents in Top 1%`: Proporción de artículos en el percentil de élite internacional.
-* `% Documents in Q1 Journals`: Porcentaje de producción publicada en revistas del primer cuartil de Journal Citation Reports (JCR). Soportar igualmente `% Documents in Q2 Journals`, `% Documents in Q3 Journals` y `% Documents in Q4 Journals`.
+* `Web of Science Documents`: Absolute volume of articles, reviews, and proceedings indexed in WoS Core Collection.
+* `% Documents in Top 10%`: Proportion of documents in the top world citation decile within their respective field and year.
+* `% Documents in Top 1%`: Proportion of articles in the international elite percentile.
+* `% Documents in Q1 Journals`: Percentage of output published in first-quartile Journal Citation Reports (JCR) journals. Equally supports `% Documents in Q2 Journals`, `% Documents in Q3 Journals`, and `% Documents in Q4 Journals`.
 
-### 2. Impacto Normalizado por Campo y Revista
+### 2. Field- and Journal-Normalized Impact
 
-* `Category Normalized Citation Impact (CNCI)`: **Indicador insignia de InCites**. Es el cociente entre las citas recibidas y las citas esperadas para documentos del mismo tipo, año y categoría de WoS ($\text{Mundial} = 1.0$). Permite comparar de forma justa disciplinas con hábitos de citación dispares (e.g. Matemáticas vs. Biomedicina).
-* `Journal Normalized Citation Impact (JNCI)`: Citas recibidas normalizadas respecto al promedio de la revista donde se publicó ($\text{Mundial} = 1.0$). Revela si los autores superan el impacto medio de los journals donde publican.
-* `Times Cited`: Citas brutas acumuladas recibidas en Web of Science.
-* `Citation Impact`: Promedio simple de citas por documento ($\text{Times Cited} / \text{WoS Documents}$).
-* `Average Percentile`: Percentil promedio en la distribución mundial de citas ($\text{Mundial} = 50.0$). En el estándar de InCites, un valor menor indica mayor impacto (e.g. Percentil 10 es más alto que Percentil 60); en KnoMap se maneja de forma coherente con la escala de percentiles de excelencia.
-* `% Documents Cited`: Proporción de la producción que ha recibido al menos una cita.
-* `H-Index`: Índice h de Hirsch calculado sobre el conjunto de obras indexadas.
+* `Category Normalized Citation Impact (CNCI)`: **Flagship InCites indicator**. Ratio of observed citations to expected citations for documents of the same type, year, and WoS category ($\text{World} = 1.0$). Enables fair comparison across disciplines with disparate citation habits (e.g., Mathematics vs. Biomedicine).
+* `Journal Normalized Citation Impact (JNCI)`: Citations received normalized against the average of the publishing journal ($\text{World} = 1.0$). Reveals whether authors outperform the average impact of the journals in which they publish.
+* `Times Cited`: Cumulative raw citations received in Web of Science.
+* `Citation Impact`: Simple average citations per document ($\text{Times Cited} / \text{WoS Documents}$).
+* `Average Percentile`: Mean percentile in the global citation distribution ($\text{World} = 50.0$). In standard InCites, a lower value indicates higher impact (e.g., Percentile 10 is higher than Percentile 60); KnoMap handles it consistently with the excellence percentile scale.
+* `% Documents Cited`: Proportion of output that has received at least one citation.
+* `H-Index`: Hirsch's h-index computed over the indexed body of work.
 
-### 3. Colaboración e Inserción Transnacional
+### 3. Collaboration and Transnational Integration
 
-* `International Collaborations (%)`: Porcentaje de artículos con coautores afiliados a instituciones de al menos dos países distintos.
-* `Domestic Collaborations (%)`: Colaboración interinstitucional dentro del mismo país.
-* `Industry Collaborations (%)`: Proporción de documentos con coautores del sector empresarial o corporativo (vínculo ciencia-industria).
-* `Academic Collaborations (%)`: Colaboración entre universidades y centros académicos.
+* `International Collaborations (%)`: Percentage of articles with co-authors affiliated with institutions in at least two different countries.
+* `Domestic Collaborations (%)`: Inter-institutional collaboration within the same country.
+* `Industry Collaborations (%)`: Proportion of documents with corporate or business sector co-authors (science-industry linkage).
+* `Academic Collaborations (%)`: Collaboration among universities and academic centers.
 
-### 4. Acceso Abierto (Taxonomía Clarivate Open Access)
+### 4. Open Access (Clarivate Open Access Taxonomy)
 
-* `% All Open Access Documents`: Grado de apertura global de la producción.
-* `% DOAJ Gold Documents`: Artículos en revistas de Acceso Abierto registradas en DOAJ.
-* `% Other Gold Documents`: Publicación en revistas híbridas o con cargo de APC fuera de DOAJ.
-* `% Bronze Documents`: Artículos de libre lectura en la plataforma editorial sin licencia formal abierta.
-* `% Green Published Documents` / `% Green Accepted Documents`: Autoarchivo en repositorios temáticos o institucionales.
+* `% All Open Access Documents`: Overall openness degree of the output.
+* `% DOAJ Gold Documents`: Articles in Open Access journals registered in DOAJ.
+* `% Other Gold Documents`: Publication in hybrid or APC-based journals outside DOAJ.
+* `% Bronze Documents`: Free-to-read articles on the publisher platform without a formal open license.
+* `% Green Published Documents` / `% Green Accepted Documents`: Self-archiving in thematic or institutional repositories.
 
-### 5. Financiamiento e Impacto Tecnológico
+### 5. Funding and Technological Impact
 
-* `Funding Agencies Documents`: Volumen y proporción de publicaciones que declaran explícitamente patrocinio o subsidios en las secciones de agradecimientos.
-* `Patent Citations to Web of Science`: Citas recibidas desde patentes internacionales, evidenciando transferencia tecnológica.
-
----
-
-## 6. Marco Interpretativo de Benchmarking y Paradojas Métricas
-
-Al formular diagnósticos cienciométricos con InCites, el agente debe aplicar los siguientes criterios avanzados:
-
-### A. Auditoría de la Paradoja CNCI vs. Percentil
-
-El `CNCI` es una media aritmética sin cota superior. Un solo mega-artículo multicéntrico hipercitado (e.g. reporte de la OMS, ensayo clínico fase III o física de altas energías con CERN) con cientos de citas puede inflar artificialmente el CNCI institucional por encima de $1.5$ o $2.0$, ocultando que la gran mayoría de la facultad publica en niveles promedio. Por ello:
-
-* **Diagnóstico de Robustez:** Siempre contrastar el CNCI con el `% Documents in Top 10%` y el `% Documents in Q1 Journals`.
-* Si $\text{CNCI} > 2.0$ pero el $\% \text{Top 10\%} < 8\%$, el agente debe alertar de un **sesgo por hipercitación singular**.
-
-### B. Ventana Reciente (5 años) vs. Ventana Histórica
-
-* **Ventana Reciente (2021–2025):** Es la ventana recomendada para la toma de decisiones institucionales, evaluación de políticas de contratación y asignación presupuestal actual.
-* **Ventana Histórica (`Whole`):** Refleja la inercia y reputación de largo plazo acumulada durante décadas, pero suele sobreestimar a instituciones tradicionales que pudieron haber desacelerado en años recientes.
+* `Funding Agencies Documents`: Volume and proportion of publications explicitly declaring sponsorship or grants in acknowledgment sections.
+* `Patent Citations to Web of Science`: Citations received from international patents, evidencing technology transfer.
 
 ---
 
-## 7. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## 7. Benchmarking Interpretive Framework and Metric Paradoxes
 
-- ❌ **Anti-patrón 1: Lectura de CSV sin saltar metadatos iniciales de Clarivate**  
-  Usar `pd.read_csv()` directo sin saltar las 1 a 3 líneas de metadatos (`"InCites dataset updated Feb 28, 2026..."`), provocando que la tabla entera colapse en una sola columna corrupta.  
-  **Solución:** Escanear las primeras 15 líneas buscando la cabecera real o utilizar la función canónica `clean_and_read_file()` de `incites_parser.py`.
-- ❌ **Anti-patrón 2: Promedio aritmético simple de ratios en Micro Topics**  
-  Calcular la media simple de `CNCI`, `JNCI` o `% Documents in Top 10%` al agregar Micro Topics a Meso o Macro Topics.  
-  **Solución:** Los conteos de producción absoluta (`Web of Science Documents`, `Times Cited`) se suman; los indicadores normalizados de impacto se calculan como promedio ponderado por documentos: $\frac{\sum (\text{CNCI}_i \cdot \text{Docs}_i)}{\sum \text{Docs}_i}$.
-- ❌ **Anti-patrón 3: No prever codificaciones alternativas de InCites (UTF-16 LE)**  
-  Asumir que todos los archivos vienen en UTF-8 estándar. Las descargas directas de InCites formateadas para Excel frecuentemente usan `utf-16-le` con BOM o `latin-1`.  
-  **Solución:** Implementar fallback dinámico: `utf-8-sig` $\rightarrow$ `utf-16-le` $\rightarrow$ `latin-1`.
-- ❌ **Anti-patrón 4: Saturación de la conversación con arrays masivos (Violación de File-Output First)**  
-  Volcar matrices numéricas completas de 50 instituciones o series anuales de 20 años en la respuesta textual del LLM.  
-  **Solución:** Persistir la matriz limpia en `session_dir/matrix_incites.json` o en el directorio de scratch/artefactos, y retornar únicamente dimensiones, estadísticas descriptivas y la ruta del archivo.
-- ❌ **Anti-patrón 5: Asumir excelencia generalizada a partir de un CNCI elevado**  
-  Diagnosticar a una institución como líder mundial únicamente porque su CNCI excede 2.0 sin contrastar con el percentil promedio o el % Top 10%.  
-  **Solución:** Auditar siempre la presencia de mega-colaboraciones atípicas (*Black Swans*) antes de certificar liderazgo institucional.
+When formulating scientometric diagnoses with InCites, the agent must apply the following advanced criteria:
+
+### A. Auditing the CNCI vs. Percentile Paradox
+
+`CNCI` is an arithmetic mean with no upper bound. A single hyper-cited multicenter mega-article (e.g., WHO report, Phase III clinical trial, or CERN high-energy physics paper) with hundreds of citations can artificially inflate institutional CNCI above $1.5$ or $2.0$, masking the fact that most faculty publish at average levels. Therefore:
+
+* **Robustness Diagnosis:** Always contrast CNCI against `% Documents in Top 10%` and `% Documents in Q1 Journals`.
+* If $\text{CNCI} > 2.0$ but $\% \text{Top 10\%} < 8\%$, the agent must flag a **singular hyper-citation bias**.
+
+### B. Recent Window (5 Years) vs. Historical Window
+
+* **Recent Window (2021–2025):** Recommended window for institutional decision-making, hiring policy evaluation, and current budget allocation.
+* **Historical Window (`Whole`):** Reflects long-term inertia and reputation accumulated over decades, but often overestimates traditional institutions that may have slowed down in recent years.
 
 ---
 
-## 8. Referencias Técnicas
+## 8. Common Mistakes and Anti-Patterns (Avoid Frequent Errors)
+
+- ❌ **Anti-pattern 1: Reading CSVs without skipping initial Clarivate metadata**  
+  Calling `pd.read_csv()` directly without skipping the 1 to 3 metadata lines (`"InCites dataset updated Feb 28, 2026..."`), causing the entire table to collapse into a single corrupted column.  
+  **Solution:** Scan the first 15 lines looking for the real header or use the canonical `clean_and_read_file()` function from `incites_parser.py`.
+- ❌ **Anti-pattern 2: Simple arithmetic average of ratios in Micro Topics**  
+  Computing the simple mean of `CNCI`, `JNCI`, or `% Documents in Top 10%` when aggregating Micro Topics to Meso or Macro Topics.  
+  **Solution:** Absolute production counts (`Web of Science Documents`, `Times Cited`) are summed; normalized impact indicators are computed as a document-weighted average: $\frac{\sum (\text{CNCI}_i \cdot \text{Docs}_i)}{\sum \text{Docs}_i}$.
+- ❌ **Anti-pattern 3: Failing to handle alternative InCites encodings (UTF-16 LE)**  
+  Assuming all files use standard UTF-8. Direct InCites downloads formatted for Excel frequently use `utf-16-le` with BOM or `latin-1`.  
+  **Solution:** Implement dynamic fallback: `utf-8-sig` $\rightarrow$ `utf-16-le` $\rightarrow$ `latin-1`.
+- ❌ **Anti-pattern 4: Saturating the conversation with massive arrays (Violating File-Output First)**  
+  Dumping complete numeric matrices of 50 institutions or 20-year annual series into the LLM text response.  
+  **Solution:** Persist the clean matrix in `session_dir/matrix_incites.json` or the scratch/artifacts directory, returning only dimensions, descriptive statistics, and the file path.
+- ❌ **Anti-pattern 5: Assuming widespread excellence from a high CNCI alone**  
+  Diagnosing an institution as a world leader solely because its CNCI exceeds 2.0 without contrasting against Average Percentile or % Top 10%.  
+  **Solution:** Always audit for outlier mega-collaborations (*Black Swans*) before certifying institutional leadership.
+
+---
+
+## 9. Technical References
 
 - [SOM Methodological Expert](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/SKILL.md)
 - [SOM Trajectory Mapping](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/SKILL.md)
@@ -326,4 +328,4 @@ El `CNCI` es una media aritmética sin cota superior. Un solo mega-artículo mul
 - [TlachIA Metrics Handler](file:///mnt/expansion/desplegados/sos-mcp-services/.agents/skills/tlachia-metrics-handler/SKILL.md)
 - [KnoMap Engine InCites Parser](file:///c:/Users/jlja/Documents/Proyectos/knomap/engine/incites_parser.py)
 - [KnoMap Frontend InCites Explorer](file:///c:/Users/jlja/Documents/Proyectos/knomap/frontend/src/components/InCitesExplorer.tsx)
-- [InCites Tools en sos-mcp-services](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py)
+- [InCites Tools in sos-mcp-services](file:///mnt/expansion/desplegados/sos-mcp-services/services/knomap/tools/incites_tools.py)

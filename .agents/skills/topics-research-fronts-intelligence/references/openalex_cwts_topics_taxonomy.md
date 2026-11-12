@@ -1,75 +1,74 @@
-# Taxonomía Canónica de Topics de OpenAlex y Metodología CWTS Leiden
+# Canonical OpenAlex Topics Taxonomy and CWTS Leiden Methodology
 
-### *Estructura Jerárquica Multinivel, Mapeo en ClickHouse y Reglas de Consulta*
-
----
-
-## 1. Origen y Metodología CWTS Leiden
-
-En enero de 2024, **OpenAlex** reemplazó el sistema anterior de "Concepts" (heredado de Microsoft Academic Graph) por una taxonomía abierta, jerárquica y reproducible de **Topics**, desarrollada en colaboración directa con el **Centre for Science and Technology Studies (CWTS)** de la Universidad de Leiden.
-
-### 1.1. Procedimiento de Construcción
-1. **Grafo Mundial de Citas Directas:** El CWTS procesó el grafo global de citación directa de OpenAlex (más de 250 millones de publicaciones interconectadas por citas explícitas).
-2. **Algoritmo Leiden con Modelo CPM:**
-   Se aplicó el algoritmo Leiden (Traag, Waltman & van Eck, 2019) optimizando la función de calidad *Constant Potts Model* (CPM) a múltiples niveles de resolución modular ($\gamma$). Esto garantizó:
-   - Que todos los clusters resultantes fueran internamente conexos (sin subcomunidades aisladas).
-   - Ausencia total del límite de resolución de la modularidad tradicional.
-3. **Etiquetado y Clasificación con Modelos de Lenguaje (LLMs):**
-   Para cada cluster identificado, se extrajeron las palabras clave más discriminantes y se emplearon modelos de lenguaje avanzados para asignar un título descriptivo formal al Topic.
-4. **Clasificador Basado en Texto y Citas:**
-   Para obras recientes o preprints que aún no cuentan con citas en el grafo, se entrenó un clasificador neuronal profundo que predice el Topic más probable a partir del título, resumen, fuentes y citas salientes.
+### *Multi-Level Hierarchical Structure, ClickHouse Mapping, and Query Rules*
 
 ---
 
-## 2. Jerarquía Taxonómica en 4 Niveles
+## 1. Origin and CWTS Leiden Methodology
 
-La taxonomía organiza la totalidad del conocimiento científico mundial en cuatro niveles jerárquicos estrictos:
+In January 2024, **OpenAlex** replaced its legacy "Concepts" system (inherited from Microsoft Academic Graph) with an open, hierarchical, and reproducible **Topics** taxonomy developed in direct collaboration with the **Centre for Science and Technology Studies (CWTS)** at Leiden University.
+
+### 1.1. Construction Procedure
+1. **Global Direct Citation Graph:** CWTS processed OpenAlex's global direct citation graph (over 250 million publications interconnected by explicit citations).
+2. **Leiden Algorithm with CPM Model:**
+   The Leiden algorithm (Traag, Waltman & van Eck, 2019) was applied by optimizing the *Constant Potts Model* (CPM) quality function across multiple modular resolution levels ($\gamma$). This guaranteed:
+   - That all resulting clusters are internally connected (no isolated subcommunities).
+   - Complete freedom from the resolution limit of traditional modularity.
+3. **Labeling and Classification with Large Language Models (LLMs):**
+   For each identified cluster, the most discriminative keywords were extracted and advanced language models were used to assign a formal descriptive title to the Topic.
+4. **Text- and Citation-Based Classifier:**
+   For recent works or preprints not yet linked by citations in the graph, a deep neural classifier was trained to predict the most probable Topic from the title, abstract, source venue, and outgoing citations.
+
+---
+
+## 2. 4-Level Taxonomic Hierarchy
+
+The taxonomy organizes the entirety of global scientific knowledge into four strict hierarchical levels:
 
 ```mermaid
 graph TD
-    Domain["1. Dominio Global (4 Dominios)<br><i>Physical Sciences, Life Sciences, Health Sciences, Social Sciences</i>"]
-    Field["2. Campo Científico (26 Campos)<br><i>Computer Science, Physics, Medicine, Mathematics, etc.</i>"]
-    Subfield["3. Subcampo Especializado (252 Subcampos)<br><i>Artificial Intelligence, Condensed Matter, Immunology, etc.</i>"]
-    Topic["4. Frente / Topic Canónico (~4,516 Topics)<br><i>T10023: Polariton Condensation, T10142: Causal Inference, etc.</i>"]
+    Domain["1. Global Domain (4 Domains)<br><i>Physical Sciences, Life Sciences, Health Sciences, Social Sciences</i>"]
+    Field["2. Scientific Field (26 Fields)<br><i>Computer Science, Physics, Medicine, Mathematics, etc.</i>"]
+    Subfield["3. Specialized Subfield (252 Subfields)<br><i>Artificial Intelligence, Condensed Matter, Immunology, etc.</i>"]
+    Topic["4. Canonical Front / Topic (~4,516 Topics)<br><i>T10023: Polariton Condensation, T10142: Causal Inference, etc.</i>"]
 
     Domain --> Field
     Field --> Subfield
     Subfield --> Topic
 ```
 
-### 2.1. Los 4 Dominios Globales
-1. **Physical Sciences (Ciencias Físicas y Matemáticas):** Física, Astronomía, Química, Ciencias de la Computación, Matemáticas, Ingeniería y Ciencias de la Tierra.
-2. **Life Sciences (Ciencias de la Vida):** Biología Molecular, Bioquímica, Genética, Neurociencias, Ciencias Agrícolas y Ecología.
-3. **Health Sciences (Ciencias de la Salud):** Medicina, Odontología, Farmacología, Enfermería y Salud Pública.
-4. **Social Sciences (Ciencias Sociales y Humanidades):** Economía, Sociología, Psicología, Educación, Derecho, Humanidades y Artes.
+### 2.1. The 4 Global Domains
+1. **Physical Sciences:** Physics, Astronomy, Chemistry, Computer Science, Mathematics, Engineering, and Earth Sciences.
+2. **Life Sciences:** Molecular Biology, Biochemistry, Genetics, Neuroscience, Agricultural Sciences, and Ecology.
+3. **Health Sciences:** Medicine, Dentistry, Pharmacology, Nursing, and Public Health.
+4. **Social Sciences:** Economics, Sociology, Psychology, Education, Law, Humanities, and Arts.
 
 ---
 
-## 3. Mapeo en ClickHouse (`rag.works_flat`)
+## 3. Mapping in ClickHouse (`rag.works_flat`)
 
-En la base de datos columnar global `rag.works_flat` (464.8M de registros), los niveles de la taxonomía se encuentran desnormalizados en columnas nativas de alto rendimiento:
+In the global columnar database `rag.works_flat` (464.8M records), the taxonomy levels are denormalized into high-performance native columns:
 
-| Nivel Jerárquico | Columna Primaria (Texto) | Columna Identificador (ID) | Tipo de Dato en ClickHouse |
+| Hierarchical Level | Primary Column (Text) | Identifier Column (ID) | ClickHouse Data Type |
 | :--- | :--- | :--- | :--- |
-| **Dominio (Domain)** | `domain_name` (o `domain`) | — | `LowCardinality(String)` |
-| **Campo (Field)** | `field_name` (o `field`) | — | `LowCardinality(String)` |
-| **Subcampo (Subfield)**| `subfield_name` (o `subfield`)| `subfield_id` | `LowCardinality(String)` |
-| **Topic Canónico** | `topic` | `topic_id` (ej. `T10023`) | `String` / `LowCardinality(String)` |
-| **Topic Primario** | — | `primary_topic_id` | `String` |
-| **Todos los Topics** | — | `all_topics` | `Array(LowCardinality(String))` |
+| **Domain** | `domain_name` (or `domain`) | — | `LowCardinality(String)` |
+| **Field** | `field_name` (or `field`) | — | `LowCardinality(String)` |
+| **Subfield**| `subfield_name` (or `subfield`)| `subfield_id` | `LowCardinality(String)` |
+| **Canonical Topic** | `topic` | `topic_id` (e.g., `T10023`) | `String` / `LowCardinality(String)` |
+| **Primary Topic** | — | `primary_topic_id` | `String` |
+| **All Topics** | — | `all_topics` | `Array(LowCardinality(String))` |
 
 > [!TIP]
-> **Optimización Columnar (CERO JOINs):**
-> Al consultar `rag.works_flat`, nunca se debe realizar un `JOIN` con tablas externas de temas. Filtrar directamente utilizando `subfield_name = 'Artificial Intelligence'` o `topic_id = 'T10142'`. Para verificar temas secundarios, emplear la función nativa `has(all_topics, 'T10142')`.
+> **Columnar Optimization (ZERO JOINs):**
+> When querying `rag.works_flat`, never perform a `JOIN` with external topic tables. Filter directly using `subfield_name = 'Artificial Intelligence'` or `topic_id = 'T10142'`. To check secondary topics, use the native function `has(all_topics, 'T10142')`.
 
 ---
 
-## 4. Cuándo Usar OpenAlex Topics vs. Acoplamiento Bibliográfico Ad-Hoc
+## 4. When to Use OpenAlex Topics vs. Ad-Hoc Bibliographic Coupling
 
-| Escenario de Análisis | Elección Recomendada | Razón Técnica |
+| Analysis Scenario | Recommended Choice | Technical Reason |
 | :--- | :--- | :--- |
-| **Mapeo a nivel de toda una Universidad o País** | **OpenAlex Topics (`rag.works_flat`)** | Evalúa miles de publicaciones en segundos sin necesidad de reconstruir grafos de citas. |
-| **Diagrama Sunburst de Concentración Temática** | **Jerarquía OpenAlex (Domain $\to$ Field $\to$ Subfield $\to$ Topic)** | Estructura multinivel 100% precalculada y compatible con Plotly `go.Sunburst`. |
-| **Delimitación de un Frente de Investigación Emergente Específico (micro-frente)** | **Acoplamiento Bibliográfico Contemporáneo Ad-Hoc** | Granularidad fina. Los Topics de OpenAlex agrupan ~50 a 200 papers por año; el acoplamiento ad-hoc permite aislar clusters específicos de 10 a 30 artículos de frontera. |
-| **Evolución Temporal de un Tema Multidisciplinar** | **Híbrido: Filtrado por Subfield/Topic + Linajes AMI** | Se extrae la literatura del subcampo y se rastrean las bifurcaciones y fusiones anuales con la métrica AMI. |
-
+| **University- or Country-wide Mapping** | **OpenAlex Topics (`rag.works_flat`)** | Evaluates thousands of publications in seconds without reconstructing citation graphs. |
+| **Thematic Concentration Sunburst Diagram** | **OpenAlex Hierarchy (Domain $\to$ Field $\to$ Subfield $\to$ Topic)** | 100% precomputed multi-level structure directly compatible with Plotly `go.Sunburst`. |
+| **Delineating a Specific Emerging Research Front (micro-front)** | **Ad-Hoc Contemporary Bibliographic Coupling** | Fine granularity. OpenAlex Topics group ~50 to 200 papers per year; ad-hoc coupling isolates specific frontier clusters of 10 to 30 articles. |
+| **Temporal Evolution of a Multidisciplinary Topic** | **Hybrid: Subfield/Topic Filtering + AMI Lineages** | Extracts the subfield literature and tracks annual bifurcations and merges using the AMI metric. |

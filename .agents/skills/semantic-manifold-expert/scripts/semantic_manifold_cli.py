@@ -3,7 +3,7 @@
 Standalone CLI for semantic-manifold-expert
 Computes local Intrinsic Dimension (MLE p95 ceiling, TwoNN) using skdim and UMAP 2D topological projection
 on indicator matrices (.parquet, .csv) or SOM synaptic states (som_state.json), and exports 300 DPI
-bilingual figures (manifold_umap_es.png and manifold_umap_en.png).
+bilingual figures (manifold_umap_en.png and manifold_umap_es.png).
 """
 
 import os
@@ -21,6 +21,21 @@ LIB_DIR = ENGINE_DIR / "lib"
 for p in [str(BASE_DIR), str(ENGINE_DIR), str(LIB_DIR)]:
     if os.path.exists(p) and p not in sys.path:
         sys.path.insert(0, p)
+
+I18N = {
+    "en": {
+        "title": "Semantic Manifold Projection (UMAP 2D) & Local Intrinsic Dimension",
+        "xlabel": "UMAP Dimension 1",
+        "ylabel": "UMAP Dimension 2",
+        "badge": "Local Intrinsic Dimension (MLE): Mean = {mle_mean}D | Ceiling p95 = {mle_p95}D | TwoNN = {twonn}D",
+    },
+    "es": {
+        "title": "Proyección de Variedad Semántica (UMAP 2D) y Dimensión Intrínseca Local",
+        "xlabel": "Dimensión UMAP 1",
+        "ylabel": "Dimensión UMAP 2",
+        "badge": "Dimensión Intrínseca Local (MLE): Media = {mle_mean}D | Techo p95 = {mle_p95}D | TwoNN = {twonn}D",
+    },
+}
 
 
 def load_matrix_or_som(input_path: str):
@@ -110,7 +125,8 @@ def render_manifold_figures(coords_2d, labels, clusters, id_metrics, plot_dir: s
 
     c_list = [get_col(c) for c in clusters] if clusters is not None else ["#2563eb"] * len(pts)
 
-    for lang in ["es", "en"]:
+    for lang in ["en", "es"]:
+        t = I18N[lang]
         fig, ax = plt.subplots(figsize=(9.5, 7.2), dpi=dpi, facecolor="white")
         ax.set_facecolor("white")
         ax.scatter(pts[:, 0], pts[:, 1], c=c_list, s=65, alpha=0.88, edgecolors="#0f172a", linewidths=0.6, zorder=4)
@@ -128,14 +144,10 @@ def render_manifold_figures(coords_2d, labels, clusters, id_metrics, plot_dir: s
         mle_p95 = id_metrics.get("mle_p95_ceiling", "-")
         twonn = id_metrics.get("twonn_global", "-")
 
-        if lang == "es":
-            ax.set_xlabel("Dimensión UMAP 1", fontsize=11, fontweight="bold", color="#0f172a")
-            ax.set_ylabel("Dimensión UMAP 2", fontsize=11, fontweight="bold", color="#0f172a")
-            badge = f"Dimensión Intrínseca Local (MLE): Media = {mle_mean}D | Techo p95 = {mle_p95}D | TwoNN = {twonn}D"
-        else:
-            ax.set_xlabel("UMAP Dimension 1", fontsize=11, fontweight="bold", color="#0f172a")
-            ax.set_ylabel("UMAP Dimension 2", fontsize=11, fontweight="bold", color="#0f172a")
-            badge = f"Local Intrinsic Dimension (MLE): Mean = {mle_mean}D | Ceiling p95 = {mle_p95}D | TwoNN = {twonn}D"
+        ax.set_title(t["title"], fontsize=12, fontweight="bold", color="#0f172a", pad=10)
+        ax.set_xlabel(t["xlabel"], fontsize=11, fontweight="bold", color="#0f172a")
+        ax.set_ylabel(t["ylabel"], fontsize=11, fontweight="bold", color="#0f172a")
+        badge = t["badge"].format(mle_mean=mle_mean, mle_p95=mle_p95, twonn=twonn)
 
         ax.text(
             0.02, 0.98, badge, transform=ax.transAxes, ha="left", va="top",
@@ -155,8 +167,9 @@ def main():
     parser = argparse.ArgumentParser(description="Standalone CLI for Semantic Manifold Expert (MLE ID + UMAP)")
     parser.add_argument("--input", required=True, help="Path to .parquet, .csv, or som_state.json")
     parser.add_argument("--output", required=True, help="Path to write JSON analysis results")
-    parser.add_argument("--plot-dir", default=None, help="Directory to export 300 DPI bilingual figures (manifold_umap_es.png / _en.png)")
+    parser.add_argument("--plot-dir", default=None, help="Directory to export 300 DPI bilingual figures (manifold_umap_en.png / _es.png)")
     parser.add_argument("--dpi", type=int, default=300, help="Resolution in DPI (default: 300)")
+    parser.add_argument("--lang", choices=["en", "es"], default="en", help="Preferred language for labels and output (default: en)")
     args = parser.parse_args()
 
     X, labels, clusters, existing_umap = load_matrix_or_som(args.input)
@@ -204,4 +217,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

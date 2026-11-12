@@ -56,7 +56,24 @@ ISO2_TO_ISO3: Dict[str, str] = {
     "ZW": "ZWE"
 }
 
-ISO3_TO_NAME: Dict[str, str] = {
+ISO3_TO_NAME_EN: Dict[str, str] = {
+    "MEX": "Mexico", "USA": "United States", "ESP": "Spain", "FRA": "France", "BRA": "Brazil",
+    "GBR": "United Kingdom", "DEU": "Germany", "CAN": "Canada", "CHL": "Chile", "COL": "Colombia",
+    "ARG": "Argentina", "CHN": "China", "JPN": "Japan", "ITA": "Italy", "PRT": "Portugal",
+    "IND": "India", "ZAF": "South Africa", "KOR": "South Korea", "NLD": "Netherlands",
+    "CHE": "Switzerland", "AUS": "Australia", "AUT": "Austria", "BEL": "Belgium", "SWE": "Sweden",
+    "NOR": "Norway", "DNK": "Denmark", "FIN": "Finland", "POL": "Poland", "CZE": "Czechia",
+    "HUN": "Hungary", "GRC": "Greece", "TUR": "Turkey", "ISR": "Israel", "RUS": "Russia",
+    "EGY": "Egypt", "PER": "Peru", "CUB": "Cuba", "ECU": "Ecuador", "URY": "Uruguay",
+    "VEN": "Venezuela", "CRI": "Costa Rica", "PAN": "Panama", "BOL": "Bolivia", "PRY": "Paraguay",
+    "GTM": "Guatemala", "DOM": "Dominican Republic", "HND": "Honduras", "SLV": "El Salvador",
+    "NIC": "Nicaragua", "TWN": "Taiwan", "SGP": "Singapore", "MYS": "Malaysia", "THA": "Thailand",
+    "VNM": "Vietnam", "IDN": "Indonesia", "PHL": "Philippines", "PAK": "Pakistan", "IRN": "Iran",
+    "SAU": "Saudi Arabia", "ARE": "United Arab Emirates", "NZL": "New Zealand", "IRL": "Ireland",
+    "UKR": "Ukraine", "KEN": "Kenya", "NGA": "Nigeria", "MAR": "Morocco", "DZA": "Algeria"
+}
+
+ISO3_TO_NAME_ES: Dict[str, str] = {
     "MEX": "México", "USA": "Estados Unidos", "ESP": "España", "FRA": "Francia", "BRA": "Brasil",
     "GBR": "Reino Unido", "DEU": "Alemania", "CAN": "Canadá", "CHL": "Chile", "COL": "Colombia",
     "ARG": "Argentina", "CHN": "China", "JPN": "Japón", "ITA": "Italia", "PRT": "Portugal",
@@ -72,6 +89,15 @@ ISO3_TO_NAME: Dict[str, str] = {
     "SAU": "Arabia Saudita", "ARE": "Emiratos Árabes Unidos", "NZL": "Nueva Zelanda", "IRL": "Irlanda",
     "UKR": "Ucrania", "KEN": "Kenia", "NGA": "Nigeria", "MAR": "Marruecos", "DZA": "Argelia"
 }
+
+ISO3_TO_NAME = ISO3_TO_NAME_EN
+
+
+def get_country_name(iso3: str, lang: str = "en") -> str:
+    if lang == "es":
+        return ISO3_TO_NAME_ES.get(iso3, iso3)
+    return ISO3_TO_NAME_EN.get(iso3, iso3)
+
 
 # Multi-lingual & Bibliographic name alias mappings
 COUNTRY_NAME_VARIANTS: Dict[str, str] = {
@@ -180,6 +206,25 @@ REGIONAL_GROUPINGS: Dict[str, Set[str]] = {
     }
 }
 
+REGION_DISPLAY_NAMES = {
+    "en": {
+        "iberoamerica": "Ibero-America",
+        "globalsouth": "Global South",
+        "oecd": "OECD",
+        "brics": "BRICS",
+        "european_union": "European Union",
+        "other": "Rest of the World"
+    },
+    "es": {
+        "iberoamerica": "Iberoamérica",
+        "globalsouth": "Sur Global",
+        "oecd": "OCDE",
+        "brics": "BRICS",
+        "european_union": "Unión Europea",
+        "other": "Resto del Mundo"
+    }
+}
+
 # ==============================================================================
 # 3. TEXT NORMALIZATION & ADDRESS PARSING
 # ==============================================================================
@@ -214,7 +259,6 @@ def resolve_country_code(raw: str) -> Optional[str]:
         return upper_raw
 
     # 3. Check tokens from rightmost end (address ends with country, possibly with zip code)
-    # e.g., "Honolulu, HI 96822 USA" -> tokens: ["honolulu", "hi", "96822", "usa"]
     tokens = raw_clean.split()
     for n in (1, 2, 3, 4):
         if len(tokens) >= n:
@@ -259,12 +303,10 @@ def split_wos_c1_blocks(c1_str: str) -> List[str]:
             current = []
             i += 1
         elif not in_bracket and ch == '.' and i + 1 < n and (chars[i+1] == '[' or (chars[i+1] == ' ' and i + 2 < n and chars[i+2] == '[')):
-            # Matches ".[", ". [", or ".; [" outside brackets
             b = "".join(current).strip()
             if b:
                 blocks.append(b)
             current = []
-            # skip the period and optional spaces
             i += 1
             while i < n and chars[i] in (' ', ';'):
                 i += 1
@@ -279,7 +321,6 @@ def split_wos_c1_blocks(c1_str: str) -> List[str]:
 def extract_countries_from_wos_address(address_str: str) -> List[str]:
     """Extracts unique ISO3 country codes from a single or multi-affiliation address block."""
     countries = []
-    # Strip brackets containing author names
     cleaned = re.sub(r"\[.*?\]", "", address_str)
     aff_blocks = [b.strip() for b in cleaned.split(";") if b.strip()]
 
@@ -456,13 +497,15 @@ def load_corpus(filepath: str) -> List[Dict[str, Any]]:
 def compute_country_analysis(
     records: List[Dict[str, Any]],
     anchor_country: str = "MEX",
-    top_n: int = 25
+    top_n: int = 25,
+    lang: str = "en"
 ) -> Dict[str, Any]:
     """
     Computes country co-authorship matrix, Salton cosine similarity,
     regional geopolitical breakdowns, and scientific leadership rates.
     """
     anchor = anchor_country.upper().strip()
+    reg_labels = REGION_DISPLAY_NAMES.get(lang, REGION_DISPLAY_NAMES["en"])
     country_doc_counts = Counter()
     collab_pairs = Counter()
 
@@ -522,15 +565,15 @@ def compute_country_analysis(
             jaccard = count / (anchor_total_papers + partner_total - count) if (anchor_total_papers + partner_total - count) > 0 else 0.0
 
             # Determine primary region of partner
-            p_region = "Resto del Mundo"
+            p_region = reg_labels["other"]
             for r_name, r_set in REGIONAL_GROUPINGS.items():
                 if partner in r_set:
-                    p_region = r_name.title()
+                    p_region = reg_labels.get(r_name, r_name.title())
                     break
 
             anchor_collabs.append({
                 "partner_country_iso3": partner,
-                "partner_country_name": ISO3_TO_NAME.get(partner, partner),
+                "partner_country_name": get_country_name(partner, lang=lang),
                 "region": p_region,
                 "coauthored_papers": count,
                 "partner_total_papers": partner_total,
@@ -551,7 +594,7 @@ def compute_country_analysis(
         reg_count = sum(p["coauthored_papers"] for p in reg_partners)
         reg_share = (reg_count / total_collab_instances * 100.0) if total_collab_instances > 0 else 0.0
         regional_breakdown[reg_key] = {
-            "region_name": reg_key.title(),
+            "region_name": reg_labels.get(reg_key, reg_key.title()),
             "collaborations_count": reg_count,
             "percentage_share": round(reg_share, 2),
             "partner_countries_count": len(reg_partners),
@@ -562,22 +605,36 @@ def compute_country_analysis(
     first_author_rate = (first_author_anchor_count / anchor_intl_papers * 100.0) if anchor_intl_papers > 0 else 0.0
     corr_author_rate = (corr_author_anchor_count / anchor_intl_papers * 100.0) if anchor_intl_papers > 0 else 0.0
 
-    if first_author_rate >= 50.0:
-        sovereignty_status = "Liderazgo Preponderante (Soberanía Científica)"
-        sovereignty_badge = "Soberano"
-    elif first_author_rate >= 40.0:
-        sovereignty_status = "Colaboración Simétrica (Equitativa)"
-        sovereignty_badge = "Simétrico"
-    elif first_author_rate >= 30.0:
-        sovereignty_status = "Participación Secundaria (Dirección Compartida)"
-        sovereignty_badge = "Intermedio"
+    if lang == "es":
+        if first_author_rate >= 50.0:
+            sovereignty_status = "Liderazgo Preponderante (Soberanía Científica)"
+            sovereignty_badge = "Soberano"
+        elif first_author_rate >= 40.0:
+            sovereignty_status = "Colaboración Simétrica (Equitativa)"
+            sovereignty_badge = "Simétrico"
+        elif first_author_rate >= 30.0:
+            sovereignty_status = "Participación Secundaria (Dirección Compartida)"
+            sovereignty_badge = "Intermedio"
+        else:
+            sovereignty_status = "Asimetría Epistemológica (Dependencia Norte-Sur)"
+            sovereignty_badge = "Asimétrico"
     else:
-        sovereignty_status = "Asimetría Epistemológica (Dependencia Norte-Sur)"
-        sovereignty_badge = "Asimétrico"
+        if first_author_rate >= 50.0:
+            sovereignty_status = "Preponderant Leadership (Scientific Sovereignty)"
+            sovereignty_badge = "Sovereign"
+        elif first_author_rate >= 40.0:
+            sovereignty_status = "Symmetrical Collaboration (Equitable)"
+            sovereignty_badge = "Symmetrical"
+        elif first_author_rate >= 30.0:
+            sovereignty_status = "Secondary Participation (Shared Direction)"
+            sovereignty_badge = "Intermediate"
+        else:
+            sovereignty_status = "Epistemological Asymmetry (North-South Dependency)"
+            sovereignty_badge = "Asymmetrical"
 
     return {
         "anchor_country_iso3": anchor,
-        "anchor_country_name": ISO3_TO_NAME.get(anchor, anchor),
+        "anchor_country_name": get_country_name(anchor, lang=lang),
         "total_documents_analyzed": len(records),
         "anchor_total_papers": anchor_total_papers,
         "total_international_papers_corpus": total_intl_papers,
@@ -601,7 +658,7 @@ def compute_country_analysis(
 # 6. STANDALONE INTERACTIVE HTML DASHBOARD GENERATOR
 # ==============================================================================
 
-def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[str] = None) -> str:
+def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[str] = None, lang: str = "en") -> str:
     """
     Renders an interactive, standalone HTML dashboard with Plotly charts:
     - Global Choropleth Map of collaboration intensity and Salton affinity.
@@ -610,9 +667,15 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     - Scientific Leadership & Sovereignty Balance Bar.
     - Searchable and sortable data table.
     """
+    is_es = (lang == "es")
     anchor = data["anchor_country_iso3"]
     anchor_name = data["anchor_country_name"]
-    doc_title = title or f"Cartografía Geopolítica de Colaboración Científica: {anchor_name} ({anchor})"
+    default_title = (
+        f"Cartografía Geopolítica de Colaboración Científica: {anchor_name} ({anchor})"
+        if is_es
+        else f"Geopolitical Mapping of Scientific Collaboration: {anchor_name} ({anchor})"
+    )
+    doc_title = title or default_title
     partners = data.get("top_partners", [])
     leadership = data.get("scientific_leadership", {})
     regions = data.get("regional_breakdown", {})
@@ -620,25 +683,30 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     # Prepare Choropleth data
     choro_locations = [p["partner_country_iso3"] for p in partners]
     choro_z = [p["coauthored_papers"] for p in partners]
-    choro_text = [
-        f"{p['partner_country_name']} ({p['partner_country_iso3']})<br>Coautorías: {p['coauthored_papers']}<br>Salton: {p['salton_cosine_similarity']}<br>Región: {p['region']}"
-        for p in partners
-    ]
+    if is_es:
+        choro_text = [
+            f"{p['partner_country_name']} ({p['partner_country_iso3']})<br>Coautorías: {p['coauthored_papers']}<br>Salton: {p['salton_cosine_similarity']}<br>Región: {p['region']}"
+            for p in partners
+        ]
+    else:
+        choro_text = [
+            f"{p['partner_country_name']} ({p['partner_country_iso3']})<br>Co-authorships: {p['coauthored_papers']}<br>Salton: {p['salton_cosine_similarity']}<br>Region: {p['region']}"
+            for p in partners
+        ]
 
     # Add Anchor Country in map
     choro_locations.append(anchor)
     choro_z.append(max(choro_z) if choro_z else 10)
-    choro_text.append(f"País Ancla: {anchor_name} ({anchor})<br>Total Producción: {data['anchor_total_papers']}")
+    if is_es:
+        choro_text.append(f"País Ancla: {anchor_name} ({anchor})<br>Total Producción: {data['anchor_total_papers']}")
+    else:
+        choro_text.append(f"Anchor Country: {anchor_name} ({anchor})<br>Total Output: {data['anchor_total_papers']}")
 
     # Prepare Sankey Nodes & Links
-    # Level 0: Anchor
-    # Level 1: Regional Blocks (Iberoamerica, GlobalSouth, OECD, BRICS, Other)
-    # Level 2: Top 10 Partners
     sankey_labels = [f"{anchor_name} ({anchor})"]
     sankey_colors = ["#58a6ff"]
     node_index = {anchor: 0}
 
-    # Add regions
     region_keys = ["iberoamerica", "globalsouth", "oecd", "brics"]
     reg_colors = {
         "iberoamerica": "#2ea043",
@@ -654,7 +722,6 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
         sankey_labels.append(r_info.get("region_name", r_k.title()))
         sankey_colors.append(reg_colors.get(r_k, "#8b949e"))
 
-    # Add top 12 partners
     top_sankey_partners = partners[:12]
     for p in top_sankey_partners:
         p_iso = p["partner_country_iso3"]
@@ -668,7 +735,6 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     sankey_values = []
     sankey_link_colors = []
 
-    # Links: Anchor -> Regions
     for r_k in region_keys:
         r_info = regions.get(r_k, {})
         c_count = r_info.get("collaborations_count", 0)
@@ -678,10 +744,8 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
             sankey_values.append(c_count)
             sankey_link_colors.append("rgba(88, 166, 255, 0.4)")
 
-    # Links: Regions -> Top Partners
     for p in top_sankey_partners:
         p_iso = p["partner_country_iso3"]
-        # Find which region it belongs to first
         matched_reg = None
         for r_k in region_keys:
             if p_iso in REGIONAL_GROUPINGS.get(r_k, set()):
@@ -693,14 +757,12 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
             sankey_values.append(p["coauthored_papers"])
             sankey_link_colors.append("rgba(46, 160, 67, 0.4)")
 
-    # Prepare Scatter Quadrants data
     scatter_x = [p["coauthored_papers"] for p in partners]
     scatter_y = [p["salton_cosine_similarity"] for p in partners]
     scatter_text = [f"{p['partner_country_name']} ({p['partner_country_iso3']})" for p in partners]
     med_x = sorted(scatter_x)[len(scatter_x)//2] if scatter_x else 1
     med_y = sorted(scatter_y)[len(scatter_y)//2] if scatter_y else 0.1
 
-    # Prepare Leadership data (Top 10 partners)
     lead_partners = partners[:10]
     lead_p_names = [p["partner_country_name"] for p in lead_partners]
     lead_anchor_first = [p["anchor_first_author_count"] for p in lead_partners]
@@ -708,9 +770,84 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
 
     badge_color = "#2ea043" if leadership.get("first_author_rate_pct", 0) >= 50 else ("#f0883e" if leadership.get("first_author_rate_pct", 0) >= 40 else "#f85149")
 
-    # Build HTML
+    # Localized UI Labels
+    if is_es:
+        ui = {
+            "subtitle": "Ecosistema SOS Science of Science • Análisis Geopolítico y Liderazgo Epistemológico",
+            "badge_default": "Análisis",
+            "first_author_short": "1er Autor",
+            "kpi1_title": "Producción País Ancla",
+            "kpi2_title": "Colaboraciones Internacionales",
+            "kpi2_sub": f"Tasa Intl: {data['internationalization_rate_pct']}%",
+            "kpi3_title": "Países Socios Mapeados",
+            "kpi3_sub": f"Instancias Bilaterales: {data['total_collaborations_count']}",
+            "kpi4_title": "Tasa de Liderazgo (1er Autor)",
+            "kpi4_sub": f"{leadership.get('first_author_led_papers', 0)} papers liderados",
+            "kpi5_title": "Autor de Correspondencia",
+            "kpi5_sub": f"{leadership.get('corresponding_author_led_papers', 0)} artículos",
+            "c1_title": "Cartografía Global de Coautorías Internacionales",
+            "c1_sub": f"Intensidad de Colaboración vs. {anchor_name}",
+            "c2_title": "Flujos Geopolíticos de Colaboración",
+            "c2_sub": f"{anchor} → Bloques → Países",
+            "c3_title": "Matriz Estratégica Bilateral (Salton vs. Volumen)",
+            "c3_sub": "Identificación de Socios Nucleares",
+            "c4_title": "Balance de Liderazgo Epistemológico por País Socio",
+            "c4_sub": f"Primer Autor: {anchor_name} vs. País Contraparte (Top 10)",
+            "tbl_title": "Directorio de Países Socios y Métricas de Afinidad",
+            "tbl_filter": "Filtrar por país o región...",
+            "th_rank": "Rango",
+            "th_partner": "País Socio",
+            "th_region": "Región Geopolítica",
+            "th_collabs": "Coautorías",
+            "th_anchor_1st": f"1er Autor {anchor}",
+            "th_partner_1st": "1er Autor Socio",
+            "colorbar_title": "Coautorías",
+            "scatter_x": "Volumen de Coautorías",
+            "scatter_y": "Coseno de Salton Bilateral",
+            "lead_s1": f"{anchor_name} (1er Autor)",
+            "lead_s2": "País Socio (1er Autor)",
+            "lead_y": "Artículos en Coautoría"
+        }
+    else:
+        ui = {
+            "subtitle": "SOS Science of Science Ecosystem • Geopolitical Analysis & Epistemological Leadership",
+            "badge_default": "Analysis",
+            "first_author_short": "1st Author",
+            "kpi1_title": "Anchor Country Output",
+            "kpi2_title": "International Collaborations",
+            "kpi2_sub": f"Intl Rate: {data['internationalization_rate_pct']}%",
+            "kpi3_title": "Mapped Partner Countries",
+            "kpi3_sub": f"Bilateral Instances: {data['total_collaborations_count']}",
+            "kpi4_title": "Leadership Rate (1st Author)",
+            "kpi4_sub": f"{leadership.get('first_author_led_papers', 0)} led papers",
+            "kpi5_title": "Corresponding Author",
+            "kpi5_sub": f"{leadership.get('corresponding_author_led_papers', 0)} articles",
+            "c1_title": "Global Map of International Co-authorships",
+            "c1_sub": f"Collaboration Intensity vs. {anchor_name}",
+            "c2_title": "Geopolitical Collaboration Flows",
+            "c2_sub": f"{anchor} → Blocs → Countries",
+            "c3_title": "Strategic Bilateral Matrix (Salton vs. Volume)",
+            "c3_sub": "Core Partner Identification",
+            "c4_title": "Epistemological Leadership Balance by Partner Country",
+            "c4_sub": f"First Author: {anchor_name} vs. Counterpart Country (Top 10)",
+            "tbl_title": "Partner Country Directory & Affinity Metrics",
+            "tbl_filter": "Filter by country or region...",
+            "th_rank": "Rank",
+            "th_partner": "Partner Country",
+            "th_region": "Geopolitical Region",
+            "th_collabs": "Co-authorships",
+            "th_anchor_1st": f"1st Author {anchor}",
+            "th_partner_1st": "1st Author Partner",
+            "colorbar_title": "Co-authorships",
+            "scatter_x": "Co-authorship Volume",
+            "scatter_y": "Bilateral Salton Cosine",
+            "lead_s1": f"{anchor_name} (1st Author)",
+            "lead_s2": "Partner Country (1st Author)",
+            "lead_y": "Co-authored Papers"
+        }
+
     html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang}">
 <head>
   <meta charset="UTF-8">
   <title>{doc_title}</title>
@@ -812,38 +949,38 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
   <div class="header">
     <div>
       <h1>{doc_title}</h1>
-      <div class="subtitle">Ecosistema SOS Science of Science • Análisis Geopolítico y Liderazgo Epistemológico</div>
+      <div class="subtitle">{ui['subtitle']}</div>
     </div>
     <div>
-      <span class="badge">{leadership.get('sovereignty_badge', 'Análisis')}: {leadership.get('first_author_rate_pct', 0)}% 1er Autor</span>
+      <span class="badge">{leadership.get('sovereignty_badge', ui['badge_default'])}: {leadership.get('first_author_rate_pct', 0)}% {ui['first_author_short']}</span>
     </div>
   </div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-title">Producción País Ancla</div>
+      <div class="kpi-title">{ui['kpi1_title']}</div>
       <div class="kpi-value">{data['anchor_total_papers']:,}</div>
       <div class="kpi-sub">{anchor_name} ({anchor})</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Colaboraciones Internacionales</div>
+      <div class="kpi-title">{ui['kpi2_title']}</div>
       <div class="kpi-value">{data['anchor_international_papers']:,}</div>
-      <div class="kpi-sub">Tasa Intl: {data['internationalization_rate_pct']}%</div>
+      <div class="kpi-sub">{ui['kpi2_sub']}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Países Socios Mapeados</div>
+      <div class="kpi-title">{ui['kpi3_title']}</div>
       <div class="kpi-value">{data['total_partner_countries']}</div>
-      <div class="kpi-sub">Instancias Bilaterales: {data['total_collaborations_count']}</div>
+      <div class="kpi-sub">{ui['kpi3_sub']}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Tasa de Liderazgo (1er Autor)</div>
+      <div class="kpi-title">{ui['kpi4_title']}</div>
       <div class="kpi-value">{leadership.get('first_author_rate_pct', 0)}%</div>
-      <div class="kpi-sub">{leadership.get('first_author_led_papers', 0)} papers liderados</div>
+      <div class="kpi-sub">{ui['kpi4_sub']}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Autor de Correspondencia</div>
+      <div class="kpi-title">{ui['kpi5_title']}</div>
       <div class="kpi-value">{leadership.get('corresponding_author_rate_pct', 0)}%</div>
-      <div class="kpi-sub">{leadership.get('corresponding_author_led_papers', 0)} artículos</div>
+      <div class="kpi-sub">{ui['kpi5_sub']}</div>
     </div>
   </div>
 
@@ -851,8 +988,8 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     <!-- Chart 1: World Map -->
     <div class="chart-card full-width">
       <div class="chart-title">
-        <span>Cartografía Global de Coautorías Internacionales</span>
-        <span style="font-size:12px; color:var(--text-muted);">Intensidad de Colaboración vs. {anchor_name}</span>
+        <span>{ui['c1_title']}</span>
+        <span style="font-size:12px; color:var(--text-muted);">{ui['c1_sub']}</span>
       </div>
       <div id="map-chart" style="height: 480px;"></div>
     </div>
@@ -860,8 +997,8 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     <!-- Chart 2: Sankey Regional Flows -->
     <div class="chart-card">
       <div class="chart-title">
-        <span>Flujos Geopolíticos de Colaboración</span>
-        <span style="font-size:12px; color:var(--text-muted);">{anchor} → Bloques → Países</span>
+        <span>{ui['c2_title']}</span>
+        <span style="font-size:12px; color:var(--text-muted);">{ui['c2_sub']}</span>
       </div>
       <div id="sankey-chart" style="height: 400px;"></div>
     </div>
@@ -869,8 +1006,8 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     <!-- Chart 3: Quadrants Matrix (Salton vs Papers) -->
     <div class="chart-card">
       <div class="chart-title">
-        <span>Matriz Estratégica Bilateral (Salton vs. Volumen)</span>
-        <span style="font-size:12px; color:var(--text-muted);">Identificación de Socios Nucleares</span>
+        <span>{ui['c3_title']}</span>
+        <span style="font-size:12px; color:var(--text-muted);">{ui['c3_sub']}</span>
       </div>
       <div id="scatter-chart" style="height: 400px;"></div>
     </div>
@@ -878,8 +1015,8 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     <!-- Chart 4: Scientific Leadership Balance -->
     <div class="chart-card full-width">
       <div class="chart-title">
-        <span>Balance de Liderazgo Epistemológico por País Socio</span>
-        <span style="font-size:12px; color:var(--text-muted);">Primer Autor: {anchor_name} vs. País Contraparte (Top 10)</span>
+        <span>{ui['c4_title']}</span>
+        <span style="font-size:12px; color:var(--text-muted);">{ui['c4_sub']}</span>
       </div>
       <div id="leadership-chart" style="height: 340px;"></div>
     </div>
@@ -888,21 +1025,21 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
   <!-- Data Table -->
   <div class="table-container">
     <div class="chart-title">
-      <span>Directorio de Países Socios y Métricas de Afinidad</span>
-      <input type="text" id="tableFilter" class="filter-input" placeholder="Filtrar por país o región..." onkeyup="filterTable()">
+      <span>{ui['tbl_title']}</span>
+      <input type="text" id="tableFilter" class="filter-input" placeholder="{ui['tbl_filter']}" onkeyup="filterTable()">
     </div>
     <table id="partnersTable">
       <thead>
         <tr>
-          <th>Rango</th>
-          <th>País Socio</th>
+          <th>{ui['th_rank']}</th>
+          <th>{ui['th_partner']}</th>
           <th>ISO-3</th>
-          <th>Región Geopolítica</th>
-          <th>Coautorías</th>
+          <th>{ui['th_region']}</th>
+          <th>{ui['th_collabs']}</th>
           <th>Salton Cosine</th>
           <th>Jaccard</th>
-          <th>1er Autor {anchor}</th>
-          <th>1er Autor Socio</th>
+          <th>{ui['th_anchor_1st']}</th>
+          <th>{ui['th_partner_1st']}</th>
         </tr>
       </thead>
       <tbody>"""
@@ -937,7 +1074,7 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
       colorscale: 'Blues',
       reversescale: false,
       marker: {{ line: {{ color: '#30363d', width: 0.5 }} }},
-      colorbar: {{ title: 'Coautorías', tickfont: {{ color: '#c9d1d9' }}, titlefont: {{ color: '#c9d1d9' }} }}
+      colorbar: {{ title: {json.dumps(ui['colorbar_title'])}, tickfont: {{ color: '#c9d1d9' }}, titlefont: {{ color: '#c9d1d9' }} }}
     }}];
     const mapLayout = {{
       geo: {{
@@ -1000,12 +1137,12 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
       plot_bgcolor: 'rgba(0,0,0,0)',
       font: {{ color: '#c9d1d9' }},
       xaxis: {{
-        title: 'Volumen de Coautorías',
+        title: {json.dumps(ui['scatter_x'])},
         gridcolor: '#21262d',
         zerolinecolor: '#30363d'
       }},
       yaxis: {{
-        title: 'Coseno de Salton Bilateral',
+        title: {json.dumps(ui['scatter_y'])},
         gridcolor: '#21262d',
         zerolinecolor: '#30363d'
       }},
@@ -1020,14 +1157,14 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
     // 4. Leadership Stacked Bar Chart
     const leadData = [
       {{
-        name: '{anchor_name} (1er Autor)',
+        name: {json.dumps(ui['lead_s1'])},
         x: {json.dumps(lead_p_names)},
         y: {json.dumps(lead_anchor_first)},
         type: 'bar',
         marker: {{ color: '#2ea043' }}
       }},
       {{
-        name: 'País Socio (1er Autor)',
+        name: {json.dumps(ui['lead_s2'])},
         x: {json.dumps(lead_p_names)},
         y: {json.dumps(lead_partner_first)},
         type: 'bar',
@@ -1040,7 +1177,7 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
       plot_bgcolor: 'rgba(0,0,0,0)',
       font: {{ color: '#c9d1d9' }},
       xaxis: {{ gridcolor: '#21262d' }},
-      yaxis: {{ title: 'Artículos en Coautoría', gridcolor: '#21262d' }},
+      yaxis: {{ title: {json.dumps(ui['lead_y'])}, gridcolor: '#21262d' }},
       legend: {{ orientation: 'h', y: 1.15 }},
       margin: {{ l: 50, r: 20, t: 40, b: 60 }}
     }};
@@ -1066,9 +1203,10 @@ def generate_interactive_dashboard_html(data: Dict[str, Any], title: Optional[st
 
 def cmd_country_matrix(args):
     """Calculates country co-authorship matrix and Salton cosine index."""
+    lang = getattr(args, "lang", "en") or "en"
     records = load_corpus(args.input)
     anchor = (args.anchor_country or "MEX").upper()
-    analysis = compute_country_analysis(records, anchor_country=anchor, top_n=args.top_n or 25)
+    analysis = compute_country_analysis(records, anchor_country=anchor, top_n=args.top_n or 25, lang=lang)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
@@ -1077,17 +1215,20 @@ def cmd_country_matrix(args):
     print(f"Country matrix generated for {anchor}: {analysis['total_partner_countries']} partners mapped ({analysis['total_collaborations_count']} collabs).")
     print(f"JSON saved to: {args.output}")
 
-    if getattr(args, "html", None):
-        html_content = generate_interactive_dashboard_html(analysis, title=getattr(args, "title", None))
-        os.makedirs(os.path.dirname(os.path.abspath(args.html)), exist_ok=True)
-        with open(args.html, "w", encoding="utf-8") as f:
+    html_out = getattr(args, "html", None) or getattr(args, "html_output", None)
+    if html_out:
+        html_content = generate_interactive_dashboard_html(analysis, title=getattr(args, "title", None), lang=lang)
+        os.makedirs(os.path.dirname(os.path.abspath(html_out)), exist_ok=True)
+        with open(html_out, "w", encoding="utf-8") as f:
             f.write(html_content)
-        print(f"Interactive HTML dashboard saved to: {args.html}")
+        print(f"Interactive HTML dashboard saved to: {html_out}")
 
     sys.exit(0)
 
 def cmd_regional(args):
     """Benchmarks collaboration share across geopolitical regions."""
+    lang = getattr(args, "lang", "en") or "en"
+    reg_labels = REGION_DISPLAY_NAMES.get(lang, REGION_DISPLAY_NAMES["en"])
     matrix_file = args.matrix_file
     if not os.path.exists(matrix_file):
         sys.stderr.write(f"Error: Matrix file does not exist: {matrix_file}\n")
@@ -1112,7 +1253,7 @@ def cmd_regional(args):
 
     result = {
         "anchor_country_iso3": anchor,
-        "region_name": args.region.title(),
+        "region_name": reg_labels.get(region_key, args.region.title()),
         "region_member_countries_iso3": sorted(list(region_countries)),
         "regional_collaborations_count": total_regional_collabs,
         "percentage_of_total_collaborations": round(share_pct, 2),
@@ -1128,9 +1269,10 @@ def cmd_regional(args):
 
 def cmd_leadership(args):
     """Evaluates scientific leadership by first author and corresponding author status."""
+    lang = getattr(args, "lang", "en") or "en"
     records = load_corpus(args.input)
     target_country = (args.country or "MEX").upper()
-    analysis = compute_country_analysis(records, anchor_country=target_country)
+    analysis = compute_country_analysis(records, anchor_country=target_country, lang=lang)
     leadership = analysis.get("scientific_leadership", {})
 
     result = {
@@ -1157,17 +1299,20 @@ def cmd_leadership(args):
 
 def cmd_analyze_all(args):
     """Executes full pipeline: country matrix, regional benchmarking, leadership, and HTML dashboard."""
+    lang = getattr(args, "lang", "en") or "en"
     records = load_corpus(args.input)
     anchor = (args.anchor_country or "MEX").upper()
-    analysis = compute_country_analysis(records, anchor_country=anchor, top_n=args.top_n or 30)
+    analysis = compute_country_analysis(records, anchor_country=anchor, top_n=args.top_n or 30, lang=lang)
 
     # Export JSON
-    os.makedirs(os.path.dirname(os.path.abspath(args.output_json)), exist_ok=True)
-    with open(args.output_json, "w", encoding="utf-8") as f:
-        json.dump(analysis, f, indent=2, ensure_ascii=False)
-    print(f"Analysis JSON saved to: {args.output_json}")
+    out_json = getattr(args, "output_json", None) or getattr(args, "output", None)
+    if out_json:
+        os.makedirs(os.path.dirname(os.path.abspath(out_json)), exist_ok=True)
+        with open(out_json, "w", encoding="utf-8") as f:
+            json.dump(analysis, f, indent=2, ensure_ascii=False)
+        print(f"Analysis JSON saved to: {out_json}")
 
-    # Export CSV
+    # Export CSV (canonical column names preserved)
     if getattr(args, "output_csv", None):
         os.makedirs(os.path.dirname(os.path.abspath(args.output_csv)), exist_ok=True)
         with open(args.output_csv, "w", encoding="utf-8-sig", newline="") as f:
@@ -1182,12 +1327,13 @@ def cmd_analyze_all(args):
         print(f"Partners CSV saved to: {args.output_csv}")
 
     # Export HTML Dashboard
-    if getattr(args, "html", None):
-        html_content = generate_interactive_dashboard_html(analysis, title=getattr(args, "title", None))
-        os.makedirs(os.path.dirname(os.path.abspath(args.html)), exist_ok=True)
-        with open(args.html, "w", encoding="utf-8") as f:
+    html_out = getattr(args, "html", None) or getattr(args, "html_output", None)
+    if html_out:
+        html_content = generate_interactive_dashboard_html(analysis, title=getattr(args, "title", None), lang=lang)
+        os.makedirs(os.path.dirname(os.path.abspath(html_out)), exist_ok=True)
+        with open(html_out, "w", encoding="utf-8") as f:
             f.write(html_content)
-        print(f"Interactive HTML dashboard saved to: {args.html}")
+        print(f"Interactive HTML dashboard saved to: {html_out}")
 
     sys.exit(0)
 
@@ -1195,22 +1341,34 @@ def cmd_analyze_all(args):
 # 8. MAIN ENTRYPOINT
 # ==============================================================================
 
+def _add_lang_arg(p: argparse.ArgumentParser, is_root: bool = False) -> None:
+    p.add_argument(
+        "--lang",
+        choices=["en", "es"],
+        default="en" if is_root else argparse.SUPPRESS,
+        help="Language for labels, charts, and dashboards (default: en)",
+    )
+
 def main():
     parser = argparse.ArgumentParser(description="CLI for Geopolitical Collaboration Analyst (SOS Ecosystem)")
+    _add_lang_arg(parser, is_root=True)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Subcommand: country-matrix
-    p_mat = subparsers.add_parser("country-matrix", help="Generate country co-authorship matrix (ISO-3)")
-    p_mat.add_argument("--input", required=True, help="Path to corpus file (.txt, .csv, .parquet, .json)")
-    p_mat.add_argument("--anchor-country", default="MEX", help="Anchor country ISO-3 (default: MEX)")
-    p_mat.add_argument("--top-n", type=int, default=25, help="Number of top partners to output")
-    p_mat.add_argument("--html", help="Path to output standalone interactive HTML dashboard")
-    p_mat.add_argument("--title", help="Optional title for the dashboard")
-    p_mat.add_argument("--output", required=True, help="Path to output JSON")
-    p_mat.set_defaults(func=cmd_country_matrix)
+    # Subcommand: country-matrix (and alias dashboard)
+    for cmd_name in ("country-matrix", "dashboard"):
+        p_mat = subparsers.add_parser(cmd_name, help="Generate country co-authorship matrix (ISO-3) and optional HTML dashboard")
+        _add_lang_arg(p_mat)
+        p_mat.add_argument("--input", required=True, help="Path to corpus file (.txt, .csv, .parquet, .json)")
+        p_mat.add_argument("--anchor-country", default="MEX", help="Anchor country ISO-3 (default: MEX)")
+        p_mat.add_argument("--top-n", type=int, default=25, help="Number of top partners to output")
+        p_mat.add_argument("--html", "--html-output", dest="html", help="Path to output standalone interactive HTML dashboard")
+        p_mat.add_argument("--title", help="Optional title for the dashboard")
+        p_mat.add_argument("--output", required=True, help="Path to output JSON")
+        p_mat.set_defaults(func=cmd_country_matrix)
 
     # Subcommand: regional-benchmark
     p_reg = subparsers.add_parser("regional-benchmark", help="Benchmark across geopolitical regions")
+    _add_lang_arg(p_reg)
     p_reg.add_argument("--matrix-file", required=True, help="Path to country matrix JSON from country-matrix")
     p_reg.add_argument("--region", choices=["iberoamerica", "globalsouth", "oecd", "brics", "european_union", "Iberoamerica", "GlobalSouth", "OECD", "BRICS"], required=True)
     p_reg.add_argument("--anchor-country", default="MEX", help="Anchor country ISO-3")
@@ -1219,6 +1377,7 @@ def main():
 
     # Subcommand: scientific-leadership
     p_lea = subparsers.add_parser("scientific-leadership", help="Calculate first & corresponding author leadership in international papers")
+    _add_lang_arg(p_lea)
     p_lea.add_argument("--input", required=True, help="Path to corpus file (.txt, .csv, .parquet, .json)")
     p_lea.add_argument("--country", default="MEX", help="Target country ISO-3 (default: MEX)")
     p_lea.add_argument("--output", required=True, help="Path to output JSON")
@@ -1226,12 +1385,13 @@ def main():
 
     # Subcommand: analyze-all
     p_all = subparsers.add_parser("analyze-all", help="Execute complete pipeline: matrix, regional benchmark, leadership, CSV, and HTML dashboard")
+    _add_lang_arg(p_all)
     p_all.add_argument("--input", required=True, help="Path to corpus file (.txt, .csv, .parquet, .json)")
     p_all.add_argument("--anchor-country", default="MEX", help="Anchor country ISO-3 (default: MEX)")
     p_all.add_argument("--top-n", type=int, default=30, help="Number of top partners")
-    p_all.add_argument("--output-json", required=True, help="Path to output JSON")
+    p_all.add_argument("--output-json", "--output", dest="output_json", required=True, help="Path to output JSON")
     p_all.add_argument("--output-csv", help="Path to output partners CSV")
-    p_all.add_argument("--html", help="Path to output interactive HTML dashboard")
+    p_all.add_argument("--html", "--html-output", dest="html", help="Path to output interactive HTML dashboard")
     p_all.add_argument("--title", help="Optional title for dashboard")
     p_all.set_defaults(func=cmd_analyze_all)
 

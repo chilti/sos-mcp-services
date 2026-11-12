@@ -1,29 +1,29 @@
-# Esquema de rag.works_academic_all (~1,652,927 filas)
+# Schema of rag.works_academic_all (~1,652,927 rows)
 
-Tabla analítica central de la producción científica en México en ClickHouse.
+Central analytical table of scientific production in Mexico in ClickHouse.
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |---|---|---|
-| `id` | String | URI canónica (`https://openalex.org/W...`) |
-| `title` | String | Título del artículo o publicación |
-| `doi` | String | Enlace DOI resuelto |
-| `publication_year` | Int32 | Año de publicación |
-| `cited_by_count` | Int64 | Citas acumuladas globales |
-| `is_oa` | String | Indicador booleano de acceso abierto (`"1"` o `"0"`) |
-| `oa_status` | String | Vía canónica: `diamond`, `gold`, `hybrid`, `bronze`, `green`, `closed` |
-| `fwci` | Float32 | Field-Weighted Citation Impact normalizado por categoría |
-| `percentile` | Float32 | Percentil global de citación en su disciplina |
-| `is_top_10` | UInt8 | Indicador binario si pertenece al decil superior mundial |
-| `is_top_1` | UInt8 | Indicador binario si pertenece al 1% de élite mundial |
-| `apc_paid_usd` | Float64 | Costo estimado de APC pagado a la editorial comercial en USD |
-| `apc_list_usd` | Float64 | Tarifa oficial de lista de APC reportada |
-| `author_names` | Array(String) | Lista de coautoras/es |
-| `institution_names`| Array(String) | Nombres de instituciones de adscripción |
-| `institution_rors` | Array(String) | URIs ROR de las instituciones |
-| `topic` | String | Nombre del tópico OpenAlex Topics v5.0 |
-| `subfield` | String | Subcampo cienciométrico |
-| `field` | String | Campo general |
-| `domain` | String | Gran área del conocimiento |
-| `sdg_ids` | Array(String) | Identificadores de Objetivos de Desarrollo Sostenible |
-| `sdgs` | Array(String) | Nombres de los ODS alineados |
-| `all_country_codes`| Array(String) | Países participantes en la coautoría |
+| `id` | String | Canonical URI (`https://openalex.org/W...`) |
+| `title` | String | Article or publication title |
+| `doi` | String | Resolved DOI link |
+| `publication_year` | Int32 | Publication year |
+| `cited_by_count` | Int64 | Cumulative global citations |
+| `is_oa` | String | Boolean Open Access indicator (`"1"` or `"0"`) |
+| `oa_status` | String | Canonical OA route: `diamond`, `gold`, `hybrid`, `bronze`, `green`, `closed` |
+| `fwci` | Float32 | Field-Weighted Citation Impact normalized by category |
+| `percentile` | Float32 | Global citation percentile within its discipline |
+| `is_top_10` | UInt8 | Binary indicator for membership in the global top 10% decile |
+| `is_top_1` | UInt8 | Binary indicator for membership in the global top 1% elite |
+| `apc_paid_usd` | Float64 | Estimated APC cost paid to commercial publishers in USD |
+| `apc_list_usd` | Float64 | Official reported list-price APC in USD |
+| `author_names` | Array(String) | List of co-authors |
+| `institution_names`| Array(String) | Names of affiliated institutions |
+| `institution_rors` | Array(String) | Institutional ROR URIs |
+| `topic` | String | OpenAlex Topics v5.0 topic name |
+| `subfield` | String | Scientometric subfield |
+| `field` | String | General field |
+| `domain` | String | Broad knowledge domain |
+| `sdg_ids` | Array(String) | Sustainable Development Goal identifiers |
+| `sdgs` | Array(String) | Aligned SDG names |
+| `all_country_codes`| Array(String) | Participating countries in co-authorship |

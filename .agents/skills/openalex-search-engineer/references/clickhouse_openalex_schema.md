@@ -1,24 +1,24 @@
-# Esquema de Tablas OpenAlex en ClickHouse Local
+# Local ClickHouse OpenAlex Table Schema
 
-OpenAlex cuenta con un volcado completo materializado localmente en ClickHouse conteniendo 569 millones de trabajos y 337 millones de autores.
+OpenAlex has a complete dump materialized locally in ClickHouse containing 569 million works and 337 million authors.
 
 ---
 
-## 1. Tablas Principales
+## 1. Core Tables
 
-| Tabla | Registros Aprox. | Descripción y Uso Óptimo |
+| Table | Approx. Records | Description and Optimal Use |
 |---|---|---|
-| `openalex.works_flat` | 569,000,000 | Catálogo global de todas las publicaciones científicas mundiales |
-| `openalex.works_academic_all` | 1,652,927 | Publicaciones con autores adscritos a instituciones de México |
-| `openalex.authors` | 337,000,000 | Autores normalizados con ORCID, métricas y afiliación canónica |
-| `openalex.institutions` | 110,000 | Universidades y centros con identificador ROR |
-| `openalex.sources` | 250,000 | Revistas, repositorios y editoriales |
-| `openalex.topics` | 4,500 | Tópicos jerárquicos del modelo OpenAlex Topics v5.0 |
+| `openalex.works_flat` | 569,000,000 | Global catalog of all scholarly publications worldwide |
+| `openalex.works_academic_all` | 1,652,927 | Publications with authors affiliated with institutions in Mexico |
+| `openalex.authors` | 337,000,000 | Normalized authors with ORCID, metrics, and canonical affiliation |
+| `openalex.institutions` | 110,000 | Universities and research centers with ROR identifier |
+| `openalex.sources` | 250,000 | Journals, repositories, and publishers |
+| `openalex.topics` | 4,500 | Hierarchical topics from the OpenAlex Topics v5.0 model |
 
 ---
 
-## 2. Regla Estricta: Prohibición de JOINs Directos
+## 2. Strict Rule: Prohibition of Direct JOINs
 
-Debido al volumen de las tablas ($> 500\text{M}$ de registros), **no se deben formular sentencias con `JOIN` directo en ClickHouse sin autorización previa**.
-* Para consultas sobre autores en México $\to$ Consultar directamente la tabla materializada `works_academic_all`.
-* Para búsquedas de texto en autores $\to$ Usar `positionCaseInsensitiveUTF8(display_name, 'termino') > 0` sobre `authors`.
+Due to the massive size of the tables ($> 500\text{M}$ records), **do not formulate queries with direct `JOIN` clauses in ClickHouse without prior authorization**.
+* For queries on authors in Mexico $\to$ Query the materialized table `works_academic_all` directly.
+* For text searches on authors $\to$ Use `positionCaseInsensitiveUTF8(display_name, 'term') > 0` on `authors`.

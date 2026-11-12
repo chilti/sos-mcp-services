@@ -1,170 +1,172 @@
 ---
 name: classical-bibliometrics-laws
 description: >-
-  Modelado matemático y validación empírica de leyes bibliométricas clásicas (Ley de Lotka con conteo full/frac y prueba KS, Ley de Bradford con formulación continua de Egghe, Índice de Price de obsolescencia y ajuste de curvas de crecimiento exponencial vs logístico).
+  Mathematical modeling and empirical validation of classical bibliometric laws (Lotka's Law with full/fractional counting and KS test, Bradford's Law with Egghe's continuous formulation, Price's Index of obsolescence, and exponential vs. logistic growth curve fitting). Respond and label outputs in the user's language.
 metadata:
   python: ">=3.10"
   script: "scripts/bibliometric_laws_cli.py"
 ---
 
-# Classical Bibliometrics Laws: Modelado Informétrico y Validación Empírica
+# Classical Bibliometrics Laws: Informetric Modeling and Empirical Validation
 
-## 1. Overview y Propósito
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-El módulo cuantitativo **`classical-bibliometrics-laws`** proporciona un entorno de cómputo riguroso para la contrastación empírica de los modelos matemáticos fundamentales de la ciencia de la información e informetría. Permite responder preguntas clave sobre la consolidación disciplinar, la concentración de autorías, la dispersión de revistas, el recambio teórico del conocimiento y las fases evolutivas de un paradigma científico.
+## 1. Overview and Purpose
+
+The quantitative module **`classical-bibliometrics-laws`** provides a rigorous computing environment for empirically testing the foundational mathematical models of information science and informetrics. It answers key questions regarding disciplinary consolidation, authorship concentration, journal dispersion, theoretical turnover of knowledge, and the evolutionary phases of a scientific paradigm.
 
 ---
 
-## 2. Ámbito de Aplicación de cada Ley Bibliométrica
+## 2. Scope of Application of Each Bibliometric Law
 
-A continuación se detalla a qué entidad analítica aplica cada modelo, su formulación y su utilidad en la toma de decisiones cienciométricas:
+Below is a summary of which analytical entity each model applies to, its formulation, and its utility in scientometric decision-making:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                      MATRIZ DE APLICABILIDAD DE LEYES CLÁSICAS                         │
+│                      APPLICABILITY MATRIX OF CLASSICAL LAWS                            │
 ├──────────────────────────┬─────────────────────────────┬───────────────────────────────┤
-│ Ley Bibliométrica        │ Entidad a la que Aplica     │ Pregunta / Decisión que Resuelve│
+│ Bibliometric Law         │ Target Entity               │ Question / Decision Answered  │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 1. Ley de Lotka (1926)   │ Autoras e Investigadores    │ ¿Qué tan concentrada o equi-   │
-│                          │ (Población de autores)      │ tativa es la producción en la  │
-│                          │                             │ disciplina? ¿Hay élite activa?│
+│ 1. Lotka's Law (1926)    │ Authors & Researchers       │ How concentrated or equitable │
+│                          │ (Author population)         │ is production in the field?   │
+│                          │                             │ Is there an active elite?     │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 2. Ley de Bradford (1934 │ Revistas Científicas        │ ¿Cuáles son las Core Journals  │
-│    / Egghe 1990)         │ (Fuentes de publicación)    │ indispensables para suscrip-  │
-│                          │                             │ ción o envío de manuscritos?  │
+│ 2. Bradford's Law (1934  │ Scientific Journals         │ Which are the essential Core  │
+│    / Egghe 1990)         │ (Publication sources)       │ Journals for subscriptions or │
+│                          │                             │ manuscript submissions?       │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 3. Índice de Price (1965)│ Referencias Bibliográficas  │ ¿Es una ciencia dura o blanda?│
-│    y Half-Life           │ (Aparato crítico citado)    │ ¿Con qué rapidez envejecen    │
-│                          │                             │ los conceptos teóricos?       │
+│ 3. Price's Index (1965)  │ Bibliographic References    │ Is it a hard or soft science? │
+│    and Half-Life         │ (Cited reference apparatus) │ How quickly do theoretical    │
+│                          │                             │ concepts become obsolete?     │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 4. Fases de Crecimiento  │ Producción Cronológica      │ ¿El campo está emergiendo, en │
-│    de la Ciencia (1963)  │ (Series anuales de trabajos)│ expansión exponencial o en    │
-│                          │                             │ saturación/madurez paradigmá- │
-│                          │                             │ tica?                         │
+│ 4. Growth Phases of      │ Chronological Production    │ Is the field emerging, in     │
+│    Science (1963)        │ (Annual publication series) │ exponential expansion, or in  │
+│                          │                             │ paradigmatic saturation/matu- │
+│                          │                             │ rity?                         │
 └──────────────────────────┴─────────────────────────────┴───────────────────────────────┘
 ```
 
-### 2.1 Ley de Lotka (Productividad de Autores, 1926)
-* **A qué aplica:** A la frecuencia con la que investigadoras e investigadores publican $x$ trabajos ($x = 1, 2, 3, \dots$).
-* **Fórmula:** $y_x = \frac{C}{x^c}$, con $c \approx 2.0$ y constante $C = \frac{1}{\zeta(c)}$.
-* **Utilidad práctica y toma de decisiones:**
-  - **Detección de estratificación:** Evalúa si la producción científica sigue el principio del cuadrado inverso (pequeña élite prolífica vs. 60% de autores ocasionales de un solo artículo).
-  - **Diagnóstico institucional:** Mide si un departamento o instituto depende de unos pocos líderes consolidados o cuenta con masa crítica distribuida.
-  - **Decisión metodológica:** Permite comparar el conteo completo (*full counting*, 1 crédito por coautoría) frente al conteo fraccional (*fractional counting*, $1/k$) para neutralizar el sesgo de hiper-coautoría.
+### 2.1 Lotka's Law (Author Productivity, 1926)
+* **Applies to:** The frequency with which researchers publish $x$ works ($x = 1, 2, 3, \dots$).
+* **Formula:** $y_x = \frac{C}{x^c}$, with $c \approx 2.0$ and constant $C = \frac{1}{\zeta(c)}$.
+* **Practical utility and decision-making:**
+  - **Stratification detection:** Evaluates whether scientific output follows the inverse square principle (a small prolific elite vs. ~60% occasional one-time authors).
+  - **Institutional diagnosis:** Measures whether a department or institute relies on a few established leaders or possesses distributed critical mass.
+  - **Methodological decision:** Compares *full counting* (1 credit per co-authorship) against *fractional counting* ($1/k$) to neutralize hyper-authorship bias.
 
-### 2.2 Ley de Bradford (Dispersión de la Literatura en Fuentes, 1934 / Egghe 1990)
-* **A qué aplica:** A la distribución de artículos entre las revistas o fuentes especializadas de un campo temático específico.
-* **Fórmula:** División continua en $p=3$ zonas de igual producción ($A/3$), verificando la progresión geométrica $1 : k : k^2$.
-* **Utilidad práctica y toma de decisiones:**
-  - **Identificación del Núcleo (*Core Journals*):** Delimita la **Zona 1 (Núcleo)** que concentra un tercio de toda la literatura relevante en un grupo selecto de títulos.
-  - **Optimización presupuestal:** Guía a consorcios y bibliotecas universitarias en la priorización de suscripciones indexadas indispensables, evitando el gasto en revistas periféricas de baja densidad (Zona 3).
-  - **Estrategia de publicación:** Asesora a grupos de investigación sobre las revistas más canónicas para someter manuscritos.
+### 2.2 Bradford's Law (Literature Scattering Across Sources, 1934 / Egghe 1990)
+* **Applies to:** The distribution of articles across specialized journals or sources in a specific thematic field.
+* **Formula:** Continuous division into $p=3$ zones of equal output ($A/3$), verifying the geometric progression $1 : k : k^2$.
+* **Practical utility and decision-making:**
+  - **Core Journals identification:** Delineates **Zone 1 (Core)**, which concentrates one-third of all relevant literature in a select group of titles.
+  - **Budget optimization:** Guides university consortia and libraries in prioritizing essential indexed subscriptions while avoiding expenditure on low-density peripheral journals (Zone 3).
+  - **Publication strategy:** Advises research groups on the most canonical journals for manuscript submission.
 
-### 2.3 Índice de Price y Vida Media Citacional (*Citing Half-Life*, 1965)
-* **A qué aplica:** A las fechas de publicación del aparato crítico (referencias citadas) de los artículos del corpus.
-* **Fórmula:** $I_{\text{Price}} = \frac{R_{\le 5}}{R_{\text{total}}} \times 100\%$, y mediana cronológica de la edad de citación.
-* **Utilidad práctica y toma de decisiones:**
-  - **Clasificación epistemológica:** Discrimina entre **Ciencias Duras (*Hard Sciences*)** ($I_{\text{Price}} \ge 50\%$, rápida obsolescencia, frentes de investigación efímeros como IA o Biomedicina) y **Ciencias Sociales / Humanidades (*Soft Sciences*)** ($I_{\text{Price}} \le 30\%$, conocimiento de larga acumulación histórica).
-  - **Ritmo de recambio teórico:** Evalúa si una disciplina está recurriendo a literatura de frontera reciente o si reposa en fundamentos clásicos.
+### 2.3 Price's Index and Citing Half-Life (1965)
+* **Applies to:** The publication dates of the cited references in the corpus articles.
+* **Formula:** $I_{\text{Price}} = \frac{R_{\le 5}}{R_{\text{total}}} \times 100\%$, plus the chronological median of citation age.
+* **Practical utility and decision-making:**
+  - **Epistemological classification:** Discriminates between **Hard Sciences** ($I_{\text{Price}} \ge 50\%$, rapid obsolescence, fast-moving research fronts such as AI or Biomedicine) and **Social Sciences / Humanities (Soft Sciences)** ($I_{\text{Price}} \le 30\%$, long-term historical accumulation of knowledge).
+  - **Pace of theoretical turnover:** Evaluates whether a discipline draws on recent frontier literature or rests on classical foundations.
 
-### 2.4 Fases de Crecimiento de la Ciencia (Price, Modelos Exponencial vs. Logístico, 1963)
-* **A qué aplica:** A las series anuales no acumuladas de publicaciones de un campo o línea de investigación.
-* **Fórmulas:** Exponencial $N(t) = a e^{bt}$ vs. Logística $N(t) = \frac{K}{1 + e^{-r(t - t_0)}}$.
-* **Utilidad práctica y toma de decisiones:**
-  - **Fase I (Emergencia):** Inicio lento y fluctuante de un área pionera.
-  - **Fase II (Expansión Exponencial):** Crecimiento vigoroso sin restricciones; calcula el **tiempo de duplicación (*doubling time*)**, p. ej.: "la literatura en IA se duplica cada 2.1 años".
-  - **Fase III (Madurez / Saturación Logística):** Desaceleración por límites de financiamiento o estabilización paradigmática; estima la **capacidad de carga ($K$)**, alertando sobre la saturación de una línea de investigación.
+### 2.4 Growth Phases of Science (Price, Exponential vs. Logistic Models, 1963)
+* **Applies to:** Non-cumulative annual publication series of a field or research line.
+* **Formulas:** Exponential $N(t) = a e^{bt}$ vs. Logistic $N(t) = \frac{K}{1 + e^{-r(t - t_0)}}$.
+* **Practical utility and decision-making:**
+  - **Phase I (Emergence):** Slow, fluctuating start of a pioneering area.
+  - **Phase II (Exponential Expansion):** Vigorous, unconstrained growth; computes the **doubling time** (e.g., "AI literature doubles every 2.1 years").
+  - **Phase III (Logistic Maturity / Saturation):** Deceleration due to funding limits or paradigmatic stabilization; estimates the **carrying capacity ($K$)**, signaling saturation of a research line.
 
 ---
 
-## 3. Dependencies y Cadena de Valor
+## 3. Dependencies and Value Chain
 
 ```
 ┌─────────────────────────────────┐
-│     Habilidades Upstream        │
+│     Upstream Skills             │
 │ • openalex-mexico-works-search  │──┐
-│ • openalex-harvester / scopus   │  │  Corpus tabular estructurado
+│ • openalex-harvester / scopus   │  │  Structured tabular corpus
 │ • tlachia-metrics-handler (ZIP) │  │  (.parquet, .csv, .json)
 └─────────────────────────────────┘  │
                                      ▼
                   ┌─────────────────────────────────────┐
                   │      classical-bibliometrics-laws   │
-                  │  (Lotka, Bradford, Price, Crecim.)  │
+                  │  (Lotka, Bradford, Price, Growth)   │
                   └─────────────────────────────────────┘
                                      │
-                                     ▼  Resultados JSON y gráficos PNG
+                                     ▼  JSON results and PNG charts
 ┌────────────────────────────────────┴────────────────────────────────────┐
-│                       Habilidades Downstream                            │
-│ • som-methodological-expert (U-Matrix y perfiles de productividad)       │
-│ • bibliometric-network-analyst (Acoplamiento de revistas en el Core)    │
-│ • Reportes cienciométricos institucionales y de política científica    │
+│                       Downstream Skills                                 │
+│ • som-methodological-expert (U-Matrix and productivity profiles)        │
+│ • bibliometric-network-analyst (Journal coupling in Bradford's Core)    │
+│ • Institutional scientometric and science policy reports                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-* **Habilidades Upstream (Proveedores del corpus):**
-  - [`openalex-mexico-works-search`](../openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extracción de corpus de publicaciones de México en formato Parquet/JSON.
-  - [`openalex-harvester`](../openalex-harvester/SKILL.md) / [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`arxiv-harvester`](../arxiv-harvester/SKILL.md): Descarga normalizada de literatura científica.
-  - [`tlachia-metrics-handler`](../tlachia-metrics-handler/SKILL.md): Extracción de paquetes canónicos de metadatos de documentos.
-* **Habilidades Downstream (Consumidores del análisis):**
-  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Incorporación de indicadores clásicos a perfiles multidimensionales para entrenamiento SOM.
-  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Acoplamiento bibliográfico y redes de co-citación restringidas al Core de Bradford.
-* **Entorno de Ejecución:**
-  - Python `>=3.10` con paquetes requeridos: `numpy`, `scipy`, `matplotlib`, `pandas`.
-  - Script CLI: [`scripts/bibliometric_laws_cli.py`](scripts/bibliometric_laws_cli.py).
+* **Upstream Skills (Corpus Providers):**
+  - [`openalex-mexico-works-search`](../openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extraction of Mexican publication corpora in Parquet/JSON format.
+  - [`openalex-harvester`](../openalex-harvester/SKILL.md) / [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`arxiv-harvester`](../arxiv-harvester/SKILL.md): Normalized scientific literature downloads.
+  - [`tlachia-metrics-handler`](../tlachia-metrics-handler/SKILL.md): Extraction of canonical document metadata packages.
+* **Downstream Skills (Analysis Consumers):**
+  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Incorporation of classical indicators into multidimensional profiles for SOM training.
+  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Bibliographic coupling and co-citation networks restricted to Bradford's Core.
+* **Execution Environment:**
+  - Python `>=3.10` with required packages: `numpy`, `scipy`, `matplotlib`, `pandas`.
+  - CLI Script: [`scripts/bibliometric_laws_cli.py`](scripts/bibliometric_laws_cli.py).
 
 ---
 
-## 4. Protocolo de Ejecución CLI (File-Output First)
+## 4. CLI Execution Protocol (File-Output First)
 
-Todos los comandos reciben un archivo estructurado de entrada (`--input <ruta>`) en formato `.parquet`, `.csv` o `.json` y requieren obligatoriamente una ruta de salida JSON (`--output <ruta>`), con opción de generar un gráfico de alta resolución en PNG (`--plot-output <ruta>`).
+All commands accept a structured input file (`--input <path>`) in `.parquet`, `.csv`, or `.json` format and strictly require a JSON output path (`--output <path>`), with options to generate high-resolution PNG charts (`--plot-output <path>`) and interactive HTML plots.
 
-### 4.1 Ley de Lotka (`lotka`)
-Ajusta la distribución de productividad autoral y calcula la prueba Kolmogorov-Smirnov:
+### 4.1 Lotka's Law (`lotka`)
+Fits the author productivity distribution and computes the Kolmogorov-Smirnov test:
 ```bash
 python scripts/bibliometric_laws_cli.py lotka \
-  --input ./data/corpus_cientifico.parquet \
+  --input ./data/scientific_corpus.parquet \
   --counting full \
   --plot-es ./reports/lotka_distribution_es.png \
   --plot-en ./reports/lotka_distribution_en.png \
   --plotly-html ./reports/lotka_distribution.html \
-  --output ./reports/resultado_lotka.json
+  --output ./reports/lotka_result.json
 ```
-* **Opciones de `--counting`:**
-  - `full`: Conteo completo (1 crédito por coautoría; estándar para sociología de la ciencia).
-  - `fractional`: Conteo fraccional ($1/k$; recomendado ante hiper-coautoría o equipos extensos).
+* **Options for `--counting`:**
+  - `full`: Full counting (1 credit per co-authorship; standard for sociology of science).
+  - `fractional`: Fractional counting ($1/k$; recommended for hyper-authorship or large teams).
 
-### 4.2 Ley de Bradford (`bradford`)
-Divide las fuentes en 3 zonas de igual producción aplicando la formulación continua de Egghe:
+### 4.2 Bradford's Law (`bradford`)
+Divides sources into 3 zones of equal output applying Egghe's continuous formulation:
 ```bash
 python scripts/bibliometric_laws_cli.py bradford \
-  --input ./data/corpus_cientifico.parquet \
-  --output ./data/zonas_bradford.json
+  --input ./data/scientific_corpus.parquet \
+  --output ./data/bradford_zones.json
 ```
 
-### 4.3 Índice de Price y Obsolescencia (`price-index`)
-Calcula la proporción de referencias con $\le 5$ años y la vida media citacional:
+### 4.3 Price's Index and Obsolescence (`price-index`)
+Computes the proportion of references $\le 5$ years old and the citing half-life:
 ```bash
 python scripts/bibliometric_laws_cli.py price-index \
-  --input ./data/corpus_cientifico.parquet \
-  --output ./data/indice_price.json
+  --input ./data/scientific_corpus.parquet \
+  --output ./data/price_index.json
 ```
 
-### 4.4 Fases de Crecimiento de la Ciencia (`growth-phase`)
-Compara el ajuste Exponencial vs. Logístico para diagnosticar la fase de madurez del campo:
+### 4.4 Growth Phases of Science (`growth-phase`)
+Compares Exponential vs. Logistic curve fits to diagnose the maturity phase of the field:
 ```bash
 python scripts/bibliometric_laws_cli.py growth-phase \
-  --input ./data/corpus_cientifico.parquet \
+  --input ./data/scientific_corpus.parquet \
   --plot-es ./reports/growth_kinetics_es.png \
   --plot-en ./reports/growth_kinetics_en.png \
   --plotly-html ./reports/growth_kinetics.html \
-  --output ./reports/diagnostico_fase.json
+  --output ./reports/phase_diagnosis.json
 ```
 
 ---
 
-## 5. Especificación de Métricas y Contratos de Datos (JSON)
+## 5. Metrics Specification and Data Contracts (JSON)
 
-### 5.1 Salida de `lotka` (`resultado_lotka.json`)
+### 5.1 Output of `lotka` (`lotka_result.json`)
 ```json
 {
   "law": "Lotka's Law",
@@ -180,11 +182,11 @@ python scripts/bibliometric_laws_cli.py growth-phase \
     {"papers": 1, "authors": 7800},
     {"papers": 2, "authors": 1950}
   ],
-  "plot_path": "./data/grafico_lotka.png"
+  "plot_path": "./data/lotka_plot.png"
 }
 ```
 
-### 5.2 Salida de `bradford` (`zonas_bradford.json`)
+### 5.2 Output of `bradford` (`bradford_zones.json`)
 ```json
 {
   "law": "Bradford's Law (Egghe Demarcation)",
@@ -192,18 +194,18 @@ python scripts/bibliometric_laws_cli.py growth-phase \
   "total_articles": 4200,
   "zones": {
     "zone_1_core": {
-      "description": "Núcleo de Revistas (Core)",
+      "description": "Core Journals (Zone 1)",
       "sources_count": 18,
       "articles_count": 1400,
       "top_sources": ["Journal of Informetrics", "Scientometrics"]
     },
     "zone_2_moderate": {
-      "description": "Zona de Concentración Moderada",
+      "description": "Moderate Concentration Zone",
       "sources_count": 95,
       "articles_count": 1400
     },
     "zone_3_peripheral": {
-      "description": "Zona Periférica / Alta Dispersión",
+      "description": "Peripheral / High Dispersion Zone",
       "sources_count": 737,
       "articles_count": 1400
     }
@@ -213,7 +215,7 @@ python scripts/bibliometric_laws_cli.py growth-phase \
 }
 ```
 
-### 5.3 Salida de `price-index` (`indice_price.json`)
+### 5.3 Output of `price-index` (`price_index.json`)
 ```json
 {
   "law": "Price's Index of Obsolescence",
@@ -221,11 +223,11 @@ python scripts/bibliometric_laws_cli.py growth-phase \
   "references_le_5_years": 29810,
   "price_index_percentage": 55.0,
   "citing_half_life_years": 4.5,
-  "interpretation": "Hard Science (Rápida obsolescencia)"
+  "interpretation": "Hard Science (Fast obsolescence)"
 }
 ```
 
-### 5.4 Salida de `growth-phase` (`diagnostico_fase.json`)
+### 5.4 Output of `growth-phase` (`phase_diagnosis.json`)
 ```json
 {
   "law": "Scientific Growth Phases",
@@ -238,41 +240,41 @@ python scripts/bibliometric_laws_cli.py growth-phase \
     "r_squared": 0.885,
     "estimated_saturation_carrying_capacity_K": 1250.0
   },
-  "diagnosed_phase": "Fase II: Crecimiento Exponencial (Expansión Activa)",
-  "plot_path": "./data/grafico_crecimiento.png"
+  "diagnosed_phase": "Phase II: Exponential Growth (Active Expansion)",
+  "plot_path": "./data/growth_plot.png"
 }
 ```
 
 ---
 
-## 6. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## 6. Common Mistakes and Anti-Patterns
 
-- ❌ **Anti-patrón 1: Mezclar disciplinas heterogéneas al aplicar Bradford**  
-  Aplicar el análisis de Bradford sobre un corpus multidisciplinario o institucional global (ej. toda la producción de una universidad que combina medicina, derecho, física y sociología) en lugar de un campo temático específico.  
-  *Efecto:* Destruye la relación geométrica ($1 : k : k^2$), inflando artificialmente el tamaño del núcleo y falseando la dispersión.  
-  **Solución:** Segmentar el corpus por dominio temático específico (vía `openalex-mexico-works-search --topic` o categorías normalizadas).
-- ❌ **Anti-patrón 2: Asumir validez de Lotka sin prueba formal Kolmogorov-Smirnov**  
-  Ajustar una regresión lineal sobre log(autores) vs. log(artículos) y reportar sólo $R^2$ alto, sin verificar el estadístico de prueba $D_{\max}$ frente al valor crítico $1.36/\sqrt{N}$.  
-  *Efecto:* Aceptar erróneamente que una comunidad obedece la ley cuando la prueba estadística no paramétrica la rechaza a $\alpha=0.05$.  
-  **Solución:** Inspeccionar siempre `"goodness_of_fit_accepted"` y `"ks_statistic_d_max"` en la salida JSON.
-- ❌ **Anti-patrón 3: Omitir la distinción entre Conteo Completo (*Full*) y Fraccional (*Fractional*)**  
-  Utilizar conteo completo por defecto en campos dominados por hiper-coautoría (e.g. física de partículas o medicina genómica con decenas o cientos de autores por trabajo).  
-  *Efecto:* Se distorsiona la distribución, creando una falsa abundancia de autores hiperproductivos y alterando el exponente $c$.  
-  **Solución:** Usar `--counting fractional` cuando el corpus presente promedio de coautores $> 5$, distribuyendo $1/k$ créditos por autor.
-- ❌ **Anti-patrón 4: Sesgo temporal en Price por referencias no fechadas o anacrónicas**  
-  Asumir que todas las referencias citadas contienen un año interpretable o incluir citas con fechas posteriores al artículo (citas anacrónicas o *in press* con edad negativa).  
-  *Efecto:* Distorsión severa del porcentaje del índice de Price y de la vida media citacional.  
-  **Solución:** Descartar referencias no parseables y filtrar referencias donde $\text{año}_{\text{referencia}} \le \text{año}_{\text{documento}}$, como implementa de forma segura el CLI.
-- ❌ **Anti-patrón 5: Ajustar curvas de crecimiento sobre menos de 4 años o sobre series acumuladas**  
-  Ejecutar `growth-phase` en rangos temporales demasiado estrechos (ej. 2023–2024) o acumular manualmente las publicaciones antes de pasarlas al script.  
-  *Efecto:* El algoritmo de optimización no lineal de Levenberg-Marquardt para la curva logística diverge o falla (`Insufficient variation`).  
-  **Solución:** Disponer de un mínimo de 4 a 5 años de producción anual no acumulada para evaluar la curvatura sigmoide y el punto de inflexión.
+- ❌ **Anti-pattern 1: Mixing heterogeneous disciplines when applying Bradford's Law**  
+  Applying Bradford's analysis to a multidisciplinary or global institutional corpus (e.g., an entire university's output combining medicine, law, physics, and sociology) rather than a specific thematic field.  
+  *Effect:* Destroys the geometric relationship ($1 : k : k^2$), artificially inflating the core size and distorting scattering estimates.  
+  **Solution:** Segment the corpus by specific thematic domain (via `openalex-mexico-works-search --topic` or normalized categories).
+- ❌ **Anti-pattern 2: Assuming Lotka's Law holds without a formal Kolmogorov-Smirnov test**  
+  Fitting a linear regression on $\log(\text{authors})$ vs. $\log(\text{articles})$ and reporting only a high $R^2$, without checking the test statistic $D_{\max}$ against the critical value $1.36/\sqrt{N}$.  
+  *Effect:* Erroneously accepting that a community obeys the law when the non-parametric statistical test rejects it at $\alpha=0.05$.  
+  **Solution:** Always inspect `"goodness_of_fit_accepted"` and `"ks_statistic_d_max"` in the JSON output.
+- ❌ **Anti-pattern 3: Ignoring the distinction between Full and Fractional Counting**  
+  Using full counting by default in fields dominated by hyper-authorship (e.g., particle physics or genomic medicine with dozens or hundreds of authors per work).  
+  *Effect:* Distorts the distribution, creating a false abundance of hyper-productive authors and altering the exponent $c$.  
+  **Solution:** Use `--counting fractional` when the corpus exhibits an average co-author count $> 5$, distributing $1/k$ credits per author.
+- ❌ **Anti-pattern 4: Temporal bias in Price's Index from undated or anachronistic references**  
+  Assuming all cited references contain a valid year or including citations dated later than the citing article (anachronistic or *in press* citations with negative age).  
+  *Effect:* Severe distortion of the Price Index percentage and citing half-life.  
+  **Solution:** Discard unparseable references and filter references where $\text{year}_{\text{reference}} \le \text{year}_{\text{document}}$, as safely implemented by the CLI.
+- ❌ **Anti-pattern 5: Fitting growth curves over fewer than 4 years or on cumulative series**  
+  Running `growth-phase` on overly narrow time ranges (e.g., 2023–2024) or manually accumulating publications before passing them to the script.  
+  *Effect:* The non-linear Levenberg-Marquardt optimization algorithm for the logistic curve diverges or fails (`Insufficient variation`).  
+  **Solution:** Provide at least 4 to 5 years of non-cumulative annual output to evaluate sigmoid curvature and the inflection point.
 
 ---
 
-## 7. Referencias Técnicas
+## 7. Technical References
 
-- [Fundamentos Matemáticos de Leyes Clásicas](references/classical_laws_mathematical_foundations.md)
-- [Formulación Continua de Bradford (Egghe)](references/egghe_continuous_bradford.md)
-- [Estándar Canónico de Diseño de Skills Científicas](../../docs/estandar_diseno_skills_cientificas.md)
-- [Script CLI Canónico](scripts/bibliometric_laws_cli.py)
+- [Mathematical Foundations of Classical Laws](references/classical_laws_mathematical_foundations.md)
+- [Continuous Formulation of Bradford's Law (Egghe)](references/egghe_continuous_bradford.md)
+- [Canonical Design Standard for Scientific Skills](../../docs/estandar_diseno_skills_cientificas.md)
+- [Canonical CLI Script](scripts/bibliometric_laws_cli.py)

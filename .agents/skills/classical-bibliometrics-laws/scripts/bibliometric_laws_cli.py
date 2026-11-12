@@ -138,6 +138,7 @@ def cmd_lotka(args):
     }
 
     # Plot if requested
+    default_lang = getattr(args, "lang", "en") or "en"
     dpi = getattr(args, "dpi", 300) or 300
     plot_paths = {}
     if getattr(args, "plot_es", None):
@@ -145,7 +146,7 @@ def cmd_lotka(args):
     if getattr(args, "plot_en", None):
         plot_paths["en"] = args.plot_en
     if getattr(args, "plot_output", None) and not plot_paths:
-        plot_paths["en"] = args.plot_output
+        plot_paths[default_lang] = args.plot_output
 
     for lang, p_out in plot_paths.items():
         os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
@@ -174,28 +175,33 @@ def cmd_lotka(args):
 
     if plot_paths:
         result["plot_paths"] = plot_paths
-        if "en" in plot_paths:
-            result["plot_path"] = plot_paths["en"]
+        result["plot_path"] = plot_paths.get(default_lang) or next(iter(plot_paths.values()))
     # Plotly interactive figure if requested
     plotly_path = getattr(args, "plotly_html", None)
     if plotly_path and HAS_PLOTLY:
+        is_es = (default_lang == "es")
+        cnt_txt = "Completo" if counting == "full" else "Fraccionario"
         fig_lotka = go.Figure()
         fig_lotka.add_trace(go.Scatter(
             x=log_x.tolist(), y=log_y.tolist(),
-            mode="markers", name="Empirical Data",
+            mode="markers", name="Datos empíricos" if is_es else "Empirical Data",
             marker=dict(color="#2563eb", size=8),
-            hovertemplate="ln(Papers): %{x:.2f}<br>ln(Authors): %{y:.2f}<extra></extra>"
+            hovertemplate=(
+                "ln(Artículos): %{x:.2f}<br>ln(Autores): %{y:.2f}<extra></extra>"
+                if is_es else "ln(Papers): %{x:.2f}<br>ln(Authors): %{y:.2f}<extra></extra>"
+            )
         ))
         pred_line = (intercept + slope * log_x).tolist()
         fig_lotka.add_trace(go.Scatter(
             x=log_x.tolist(), y=pred_line,
-            mode="lines", name=f"Lotka Fit (c={c_exponent:.2f}, R²={r_value**2:.2f})",
+            mode="lines",
+            name=(f"Ajuste Lotka (c={c_exponent:.2f}, R²={r_value**2:.2f})" if is_es else f"Lotka Fit (c={c_exponent:.2f}, R²={r_value**2:.2f})"),
             line=dict(color="#dc2626", dash="dash", width=2.5)
         ))
         fig_lotka.update_layout(
-            title=f"Lotka's Law Distribution ({counting.capitalize()} Counting)",
-            xaxis_title="ln(Papers per Author)",
-            yaxis_title="ln(Number of Authors)",
+            title=(f"Distribución de la Ley de Lotka (Conteo {cnt_txt})" if is_es else f"Lotka's Law Distribution ({counting.capitalize()} Counting)"),
+            xaxis_title="ln(Artículos por Autor)" if is_es else "ln(Papers per Author)",
+            yaxis_title="ln(Número de Autores)" if is_es else "ln(Number of Authors)",
             template="plotly_white",
             hovermode="closest",
             margin=dict(l=60, r=40, t=60, b=60)
@@ -260,24 +266,25 @@ def cmd_bradford(args):
     k2 = n3 / n2 if n2 > 0 else 1.0
     avg_k = round((k1 + k2) / 2.0, 2)
 
+    is_es = (getattr(args, "lang", "en") == "es")
     result = {
         "law": "Bradford's Law (Egghe Demarcation)",
         "total_sources": int(T),
         "total_articles": int(A),
         "zones": {
             "zone_1_core": {
-                "description": "Núcleo de Revistas (Core)",
+                "description": "Núcleo de Revistas (Core)" if is_es else "Core Journals (Zone 1)",
                 "sources_count": n1,
                 "articles_count": zone_articles[1],
                 "top_sources": [s["source"] for s in zones[1][:10]]
             },
             "zone_2_moderate": {
-                "description": "Zona de Concentración Moderada",
+                "description": "Zona de Concentración Moderada" if is_es else "Moderate Concentration Zone",
                 "sources_count": n2,
                 "articles_count": zone_articles[2]
             },
             "zone_3_peripheral": {
-                "description": "Zona Periférica / Alta Dispersión",
+                "description": "Zona Periférica / Alta Dispersión" if is_es else "Peripheral / High Dispersion Zone",
                 "sources_count": n3,
                 "articles_count": zone_articles[3]
             }
@@ -349,6 +356,12 @@ def cmd_price_index(args):
 
     price_idx = (recent_refs / total_refs * 100.0) if total_refs > 0 else 0.0
     half_life = float(np.median(ref_ages)) if ref_ages else 0.0
+    is_es = (getattr(args, "lang", "en") == "es")
+
+    if is_es:
+        interp = "Hard Science (Rápida obsolescencia)" if price_idx >= 50 else ("Soft Science / Humanidades (Larga vida citacional)" if price_idx <= 30 else "Transicional")
+    else:
+        interp = "Hard Science (Fast obsolescence)" if price_idx >= 50 else ("Soft Science / Humanities (Long citation half-life)" if price_idx <= 30 else "Transitional")
 
     result = {
         "law": "Price's Index of Obsolescence",
@@ -356,7 +369,7 @@ def cmd_price_index(args):
         "references_le_5_years": recent_refs,
         "price_index_percentage": round(price_idx, 2),
         "citing_half_life_years": round(half_life, 1),
-        "interpretation": "Hard Science (Rápida obsolescencia)" if price_idx >= 50 else ("Soft Science / Humanidades (Larga vida citacional)" if price_idx <= 30 else "Transicional")
+        "interpretation": interp
     }
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
@@ -422,12 +435,20 @@ def cmd_growth(args):
         saturation_K = None
         docs_pred_log = None
 
+    default_lang = getattr(args, "lang", "en") or "en"
+    is_es_default = (default_lang == "es")
+
     if r2_exp > r2_log:
-        growth_phase = "Fase II: Crecimiento Exponencial (Expansión Activa)"
+        growth_phase_es = "Fase II: Crecimiento Exponencial (Expansión Activa)"
+        growth_phase_en = "Phase II: Exponential Growth (Active Expansion)"
     elif r2_log > 0.7:
-        growth_phase = "Fase III: Madurez / Saturación Logística"
+        growth_phase_es = "Fase III: Madurez / Saturación Logística"
+        growth_phase_en = "Phase III: Maturity / Logistic Saturation"
     else:
-        growth_phase = "Fase I: Emergencia / Fluctuación Inicial"
+        growth_phase_es = "Fase I: Emergencia / Fluctuación Inicial"
+        growth_phase_en = "Phase I: Emergence / Early Fluctuation"
+
+    growth_phase = growth_phase_es if is_es_default else growth_phase_en
 
     result = {
         "law": "Scientific Growth Phases",
@@ -450,7 +471,7 @@ def cmd_growth(args):
     if getattr(args, "plot_en", None):
         plot_paths["en"] = args.plot_en
     if getattr(args, "plot_output", None) and not plot_paths:
-        plot_paths["en"] = args.plot_output
+        plot_paths[default_lang] = args.plot_output
 
     for lang, p_out in plot_paths.items():
         os.makedirs(os.path.dirname(os.path.abspath(p_out)), exist_ok=True)
@@ -471,13 +492,7 @@ def cmd_growth(args):
             plt.plot(years, docs_pred_log, color="#16a34a", linestyle="-", linewidth=2.2, label=log_lbl)
         plt.xlabel("Año de Publicación" if lang == "es" else "Publication Year", fontsize=10, fontweight="bold")
         plt.ylabel("Volumen Anual de Producción" if lang == "es" else "Annual Publication Volume", fontsize=10, fontweight="bold")
-        phase_txt = (
-            growth_phase
-            if lang == "es"
-            else growth_phase.replace("Fase II: Crecimiento Exponencial (Expansión Activa)", "Phase II: Exponential Growth (Active Expansion)")
-                            .replace("Fase III: Madurez / Saturación Logística", "Phase III: Maturity / Logistic Saturation")
-                            .replace("Fase I: Emergencia / Fluctuación Inicial", "Phase I: Emergence / Early Fluctuation")
-        )
+        phase_txt = growth_phase_es if lang == "es" else growth_phase_en
         title_txt = (
             f"Cinética de Crecimiento Científico ({phase_txt})"
             if lang == "es"
@@ -492,36 +507,39 @@ def cmd_growth(args):
 
     if plot_paths:
         result["plot_paths"] = plot_paths
-        if "en" in plot_paths:
-            result["plot_path"] = plot_paths["en"]
+        result["plot_path"] = plot_paths.get(default_lang) or next(iter(plot_paths.values()))
 
-    
     # Plotly interactive figure if requested
     plotly_path = getattr(args, "plotly_html", None)
     if plotly_path and HAS_PLOTLY:
         fig_gro = go.Figure()
         fig_gro.add_trace(go.Scatter(
             x=years.tolist(), y=docs.tolist(),
-            mode="markers+lines", name="Empirical Output",
+            mode="markers+lines", name="Producción empírica" if is_es_default else "Empirical Output",
             marker=dict(color="#1e293b", size=7),
             line=dict(color="#94a3b8", width=1),
-            hovertemplate="Year: %{x}<br>Publications: %{y:,}<extra></extra>"
+            hovertemplate=(
+                "Año: %{x}<br>Publicaciones: %{y:,}<extra></extra>"
+                if is_es_default else "Year: %{x}<br>Publications: %{y:,}<extra></extra>"
+            )
         ))
         fig_gro.add_trace(go.Scatter(
             x=years.tolist(), y=docs_pred_exp.tolist(),
-            mode="lines", name=f"Exponential Model (R²={r2_exp:.2f})",
+            mode="lines",
+            name=(f"Modelo Exponencial (R²={r2_exp:.2f})" if is_es_default else f"Exponential Model (R²={r2_exp:.2f})"),
             line=dict(color="#2563eb", dash="dash", width=2.5)
         ))
         if docs_pred_log is not None:
             fig_gro.add_trace(go.Scatter(
                 x=years.tolist(), y=docs_pred_log.tolist(),
-                mode="lines", name=f"Logistic Model (R²={r2_log:.2f})",
+                mode="lines",
+                name=(f"Modelo Logístico (R²={r2_log:.2f})" if is_es_default else f"Logistic Model (R²={r2_log:.2f})"),
                 line=dict(color="#16a34a", width=2.5)
             ))
         fig_gro.update_layout(
-            title=f"Scientific Growth Curve ({growth_phase})",
-            xaxis_title="Year",
-            yaxis_title="Annual Publication Volume",
+            title=(f"Curva de Crecimiento Científico ({growth_phase})" if is_es_default else f"Scientific Growth Curve ({growth_phase})"),
+            xaxis_title="Año" if is_es_default else "Year",
+            yaxis_title="Volumen Anual de Producción" if is_es_default else "Annual Publication Volume",
             template="plotly_white",
             hovermode="x unified",
             margin=dict(l=60, r=40, t=60, b=60)
@@ -539,10 +557,13 @@ def cmd_growth(args):
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Classical Bibliometrics Laws")
+    parser.set_defaults(lang="en")
+    parser.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language for plots and labels (default: en)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcommand: lotka
     p_lot = subparsers.add_parser("lotka", help="Fit Lotka's Law of author productivity")
+    p_lot.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_lot.add_argument("--input", required=True, help="Path to corpus file")
     p_lot.add_argument("--output", required=True, help="Path to output JSON")
     p_lot.add_argument("--counting", choices=["full", "fractional"], default="full")
@@ -555,18 +576,21 @@ def main():
 
     # Subcommand: bradford
     p_bra = subparsers.add_parser("bradford", help="Compute Bradford's Law continuous zones")
+    p_bra.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_bra.add_argument("--input", required=True, help="Path to corpus file")
     p_bra.add_argument("--output", required=True, help="Path to output JSON")
     p_bra.set_defaults(func=cmd_bradford)
 
     # Subcommand: price-index
     p_pri = subparsers.add_parser("price-index", help="Calculate Price's obsolescence index")
+    p_pri.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_pri.add_argument("--input", required=True, help="Path to corpus file")
     p_pri.add_argument("--output", required=True, help="Path to output JSON")
     p_pri.set_defaults(func=cmd_price_index)
 
     # Subcommand: growth-phase
     p_gro = subparsers.add_parser("growth-phase", help="Fit Exponential vs Logistic growth models")
+    p_gro.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
     p_gro.add_argument("--input", required=True, help="Path to corpus file")
     p_gro.add_argument("--output", required=True, help="Path to output JSON")
     p_gro.add_argument("--plot-output", help="Optional path to output PNG plot")

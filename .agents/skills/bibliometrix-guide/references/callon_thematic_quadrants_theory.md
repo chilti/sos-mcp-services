@@ -1,80 +1,80 @@
-# Fundamentos Teóricos del Diagrama Estratégico de Callon (1991)
+# Theoretical Foundations of Callon's Strategic Diagram (1991)
 
-El **Diagrama Estratégico de Callon** (Callon, Courtial & Laville, 1991; Cobo et al., 2011; Aria & Cuccurullo, 2017) es una de las metodologías centrales de cartografía de la ciencia implementadas en el paquete `bibliometrix` a través de la función `thematicMap()`.
+**Callon's Strategic Diagram** (Callon, Courtial & Laville, 1991; Cobo et al., 2011; Aria & Cuccurullo, 2017) is one of the core science mapping methodologies implemented in the `bibliometrix` package through the `thematicMap()` function.
 
 ---
 
-## 1. Métricas Estructurales de Callon
+## 1. Callon's Structural Metrics
 
-Dado un grafo de coocurrencia de palabras clave particionado en clusters o subredes temáticas $C_k$:
+Given a keyword co-occurrence graph partitioned into thematic clusters or subnetworks $C_k$:
 
-### 1.1 Centralidad de Callon ($c$)
-Mide el grado de interacción de una red temática con otras partes del grafo de conocimiento. Cuantifica la fuerza de los enlaces externos que unen los términos del cluster con términos pertenecientes a otros clusters:
+### 1.1 Callon's Centrality ($c$)
+Measures the degree of interaction of a thematic network with other parts of the knowledge graph. It quantifies the strength of external links connecting terms in the cluster with terms belonging to other clusters:
 
 $$c = 10 \sum e_{ij}$$
 
-donde $i$ es una palabra clave del cluster analizado y $j$ es una palabra clave externa perteneciente a otro cluster.
-* **Alta Centralidad:** El tema es estructuralmente medular, transversal y actúa como nodo conector en la disciplina.
-* **Baja Centralidad:** El tema es periférico o marginal en el intercambio conceptual global.
+where $i$ is a keyword in the analyzed cluster and $j$ is an external keyword belonging to another cluster.
+* **High Centrality:** The theme is structurally core, transversal, and acts as a connector node across the discipline.
+* **Low Centrality:** The theme is peripheral or marginal in global conceptual exchange.
 
-### 1.2 Densidad de Callon ($d$)
-Mide la cohesión interna o nivel de desarrollo conceptual del cluster temático. Cuantifica la fuerza media de los enlaces internos entre los términos que componen el cluster:
+### 1.2 Callon's Density ($d$)
+Measures the internal cohesion or level of conceptual development of the thematic cluster. It quantifies the mean strength of internal links among the terms making up the cluster:
 
 $$d = 100 \frac{\sum e_{ij}}{w}$$
 
-donde $i$ y $j$ son palabras clave dentro del mismo cluster y $w$ es el número de términos del cluster.
-* **Alta Densidad:** El tema posee un aparato teórico fuertemente articulado, vocabulario técnico especializado y comunidad científica madura.
-* **Baja Densidad:** El tema tiene enlaces internos débiles, conceptos dispersos o se encuentra en etapa exploratoria no consolidada.
+where $i$ and $j$ are keywords within the same cluster and $w$ is the number of terms in the cluster.
+* **High Density:** The theme possesses a strongly articulated theoretical apparatus, specialized technical vocabulary, and a mature scientific community.
+* **Low Density:** The theme has weak internal links, dispersed concepts, or is in an unconsolidated exploratory stage.
 
 ---
 
-## 2. Los Cuatro Cuadrantes del Diagrama Estratégico
+## 2. The Four Quadrants of the Strategic Diagram
 
-Al graficar la **Centralidad** en el eje de las abscisas ($X$) y la **Densidad** en el eje de las ordenadas ($Y$), habitualmente centrando el origen en la mediana de ambas distribuciones, se configuran 4 cuadrantes analíticos:
+By plotting **Centrality** on the horizontal axis ($X$) and **Density** on the vertical axis ($Y$), typically centering the origin at the median of both distributions, 4 analytical quadrants are formed:
 
 ```
-                  Densidad (Cohesión Interna)
-                              ▲
-                              │
-          CUADRANTE II        │        CUADRANTE I
-     Temas Muy Especializados │       Temas Motores
-         / Temas de Nicho     │     (Motor Themes)
-   (Alta Densidad, Baja Centr.)│ (Alta Densidad, Alta Centr.)
-                              │
-  ────────────────────────────┼────────────────────────────► Centralidad
-                              │                              (Enlaces Externos)
-         CUADRANTE III        │        CUADRANTE IV
-      Temas Emergentes o      │       Temas Básicos y
-         en Declinación       │        Transversales
-   (Baja Densidad, Baja Centr.)│ (Baja Densidad, Alta Centr.)
-                              │
+                   Density (Internal Cohesion)
+                               ▲
+                               │
+           QUADRANT II         │        QUADRANT I
+      Highly Specialized /     │       Motor Themes
+          Niche Themes         │     (Motor Themes)
+    (High Density, Low Centr.) │ (High Density, High Centr.)
+                               │
+   ────────────────────────────┼────────────────────────────► Centrality
+                               │                              (External Links)
+          QUADRANT III         │        QUADRANT IV
+       Emerging or Declining   │   Basic and Transversal
+             Themes            │          Themes
+    (Low Density, Low Centr.)  │ (Low Density, High Centr.)
+                               │
 ```
 
-### Cuadrante I: Temas Motores (*Motor Themes*)
-* **Coordenadas:** Alta Centralidad y Alta Densidad.
-* **Significado:** Temas bien desarrollados internamente y con fuerte conexión estructural con el resto de la disciplina. Son los motores intelectuales y las líneas de investigación prioritarias del campo.
+### Quadrant I: Motor Themes
+* **Coordinates:** High Centrality and High Density.
+* **Meaning:** Themes that are well developed internally and strongly connected structurally to the rest of the discipline. They are the intellectual drivers and priority research lines of the field.
 
-### Cuadrante II: Temas de Nicho / Muy Especializados (*Niche Themes*)
-* **Coordenadas:** Baja Centralidad y Alta Densidad.
-* **Significado:** Temas con sólida cohesión interna y vocabulario técnico altamente consolidado, pero con pocas conexiones con otras áreas. Representan especialidades periféricas, subdisciplinas de nicho o técnicas muy específicas.
+### Quadrant II: Niche / Highly Specialized Themes
+* **Coordinates:** Low Centrality and High Density.
+* **Meaning:** Themes with strong internal cohesion and highly consolidated technical vocabulary, but few connections to other areas. They represent peripheral specialties, niche subdisciplines, or highly specific techniques.
 
-### Cuadrante III: Temas Emergentes o en Declinación (*Emerging or Declining Themes*)
-* **Coordenadas:** Baja Centralidad y Baja Densidad.
-* **Significado:** Temas débilmente estructurados internamente y marginales respecto al resto del campo. Pueden representar frentes embrionarios en gestación (*emerging*) o, por el contrario, modas pasadas en proceso de abandono (*declining*). El análisis longitudinal intertemporal (`thematicEvolution()`) es el criterio decisivo para distinguir entre ambas trayectorias.
+### Quadrant III: Emerging or Declining Themes
+* **Coordinates:** Low Centrality and Low Density.
+* **Meaning:** Themes that are weakly structured internally and marginal relative to the rest of the field. They may represent embryonic fronts in gestation (*emerging*) or, conversely, past trends being abandoned (*declining*). Longitudinal intertemporal analysis (`thematicEvolution()`) is the decisive criterion to distinguish between the two trajectories.
 
-### Cuadrante IV: Temas Básicos y Transversales (*Basic and Transversal Themes*)
-* **Coordenadas:** Alta Centralidad y Baja Densidad.
-* **Significado:** Temas con amplia presencia en toda la literatura y conexiones transversales múltiples, pero con baja densidad interna (conceptos generales o fundacionales de la disciplina, p. ej. "metodología", "salud", "educación", "modelo"). Son pilares necesarios pero no conforman líneas hiper-especializadas por sí mismos.
+### Quadrant IV: Basic and Transversal Themes
+* **Coordinates:** High Centrality and Low Density.
+* **Meaning:** Themes with broad presence across the literature and multiple transversal connections, but low internal density (general or foundational concepts of the discipline, e.g., "methodology", "health", "education", "model"). They are necessary pillars but do not constitute hyper-specialized research lines on their own.
 
 ---
 
-## 3. Evolución Temática Longitudinal (`thematicEvolution`)
+## 3. Longitudinal Thematic Evolution (`thematicEvolution`)
 
-La función `thematicEvolution()` divide el corpus en periodos cronológicos discretos ($T_1, T_2, \dots, T_k$), calcula los clusters de coocurrencia en cada periodo y traza los flujos de términos compartidos mediante diagramas de Sankey / aluviales ponderados por el Índice de Inclusión de Cowen:
+The `thematicEvolution()` function splits the corpus into discrete chronological periods ($T_1, T_2, \dots, T_k$), computes co-occurrence clusters in each period, and traces shared term flows via Sankey / alluvial diagrams weighted by the Inclusion Index:
 
 $$I_{ij} = \frac{\#(C_i \cap C_j)}{\min(\#C_i, \#C_j)}$$
 
-Este flujo cuantitativo revela:
-1. **Fusión temática (*Convergence*):** Múltiples clusters de $T_1$ convergen en un único cluster en $T_2$.
-2. **Escisión temática (*Divergence*):** Un tema general en $T_1$ se subdivide en varias sublíneas independientes en $T_2$.
-3. **Continuidad (*Stability*):** El núcleo de vocabulario permanece estable a lo largo del tiempo.
+This quantitative flow reveals:
+1. **Thematic Convergence (Merge):** Multiple clusters from $T_1$ converge into a single cluster in $T_2$.
+2. **Thematic Divergence (Split):** A general theme in $T_1$ subdivides into several independent sublines in $T_2$.
+3. **Stability (Continuity):** The core vocabulary remains stable over time.

@@ -27,15 +27,27 @@ from services.knomap.tools.tlachia_tools import (
 )
 
 
+def _add_lang_arg(p: argparse.ArgumentParser, is_root: bool = False) -> None:
+    p.add_argument(
+        "--lang",
+        choices=["en", "es"],
+        default="en" if is_root else argparse.SUPPRESS,
+        help="Language for output labels and summaries (default: en)",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Standalone CLI for TlachIA Metrics Package Handler")
+    _add_lang_arg(parser, is_root=True)
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     p_ins = subparsers.add_parser("inspect", help="Inspect TlachIA Metrics package (.zip or directory)")
+    _add_lang_arg(p_ins)
     p_ins.add_argument("--input", required=True, help="Path to TlachIA Metrics .zip or directory")
     p_ins.add_argument("--output", default=None, help="Optional JSON output file")
 
     p_mat = subparsers.add_parser("unit-matrix", help="Extract multidimensional matrix for SOM")
+    _add_lang_arg(p_mat)
     p_mat.add_argument("--session-dir", required=True, help="Session dir or .zip path")
     p_mat.add_argument("--unit", default="Locations", help="Unit name (Locations, Organizations, etc.)")
     p_mat.add_argument("--period-mode", default="Whole", choices=["Whole", "5Years"], help="Whole or 5Years")
@@ -45,6 +57,7 @@ def main():
     p_mat.add_argument("--output", required=True, help="Output file (.json or .parquet)")
 
     p_tr = subparsers.add_parser("trend", help="Extract annual Trend series with ECMA smoothing")
+    _add_lang_arg(p_tr)
     p_tr.add_argument("--session-dir", required=True, help="Session dir or .zip path")
     p_tr.add_argument("--unit", default="Locations", help="Unit name")
     p_tr.add_argument("--entities", default=None, help="Comma-separated entity codes/names")
@@ -53,13 +66,16 @@ def main():
     p_tr.add_argument("--output", required=True, help="Output JSON file")
 
     p_wk = subparsers.add_parser("works-meta", help="Locate and validate canonical works metadata file")
+    _add_lang_arg(p_wk)
     p_wk.add_argument("--session-dir", required=True, help="Session dir or .zip path")
     p_wk.add_argument("--output", default=None, help="Optional JSON output file")
 
     args = parser.parse_args()
+    lang = getattr(args, "lang", "en") or "en"
 
     if args.subcommand == "inspect":
         res = inspect_tlachia_package(args.input)
+        res["lang"] = lang
         if args.output:
             os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
             with open(args.output, "w", encoding="utf-8") as f:
@@ -85,7 +101,7 @@ def main():
         else:
             with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(res, f, indent=2, ensure_ascii=False)
-        print(json.dumps({"status": res.get("status"), "rows": len(res.get("labels", [])), "output": args.output}, indent=2))
+        print(json.dumps({"status": res.get("status"), "rows": len(res.get("labels", [])), "lang": lang, "output": args.output}, indent=2))
 
     elif args.subcommand == "trend":
         ents = [x.strip() for x in args.entities.split(",") if x.strip()] if args.entities else None
@@ -100,10 +116,11 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(res, f, indent=2, ensure_ascii=False)
-        print(json.dumps({"status": res.get("status"), "output": args.output}, indent=2))
+        print(json.dumps({"status": res.get("status"), "lang": lang, "output": args.output}, indent=2))
 
     elif args.subcommand == "works-meta":
         res = get_tlachia_works_metadata(args.session_dir)
+        res["lang"] = lang
         if args.output:
             os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
             with open(args.output, "w", encoding="utf-8") as f:
@@ -113,4 +130,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

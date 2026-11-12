@@ -1,165 +1,165 @@
-# Benchmark Metodológico de Detección de Frentes de Investigación en Redes Bibliométricas
+# Methodological Benchmark for Research Front Detection in Bibliometric Networks
 
-### *Fundamentación Teórica, Formalizaciones Matemáticas y Análisis Comparativo*
+### *Theoretical Foundations, Mathematical Formalizations, and Comparative Analysis*
 
 ---
 
-## 1. Introducción y Marco Epistemológico
+## 1. Introduction and Epistemological Framework
 
-El concepto de **Frente de Investigación (*Research Front*)** fue introducido originalmente por **Derek John de Solla Price (1965)** en su trabajo seminal *"Networks of Scientific Papers"* (*Science*). Price postuló que la literatura científica no se distribuye de manera homogénea ni crece como una masa informe; por el contrario, cada nuevo artículo científico conecta selectivamente con una banda estrecha y densamente interconectada de publicaciones recientes (la literatura de los últimos 2 a 5 años). Esta "piel en crecimiento" o franja activa de la ciencia constituye la frontera epistémica en rápido avance: el frente de investigación.
+The concept of a **Research Front** was originally introduced by **Derek John de Solla Price (1965)** in his seminal paper *"Networks of Scientific Papers"* (*Science*). Price postulated that scientific literature is neither homogeneously distributed nor grows as an amorphous mass; rather, each new scientific article selectively connects to a narrow, densely interconnected band of recent publications (the literature of the last 2 to 5 years). This "growing skin" or active strip of science constitutes the rapidly advancing epistemic frontier: the research front.
 
-En la cienciometría contemporánea, un frente de investigación se define como:
-> **Definición Operativa:** Un agrupamiento denso (*cluster*) de documentos, conceptos y autores que comparten problemas empíricos, marcos metodológicos y recursos teóricos contemporáneos, representando el estado del arte activo de una especialidad científica.
+In contemporary scientometrics, a research front is defined as:
+> **Operational Definition:** A dense cluster of documents, concepts, and authors sharing contemporary empirical problems, methodological frameworks, and theoretical resources, representing the active state of the art of a scientific specialty.
 
-A lo largo de seis décadas de desarrollo en la Ciencia de la Ciencia (*Science of Science*), se han consolidado **cuatro escuelas metodológicas principales** para operacionalizar y cartografiar frentes de investigación a partir de redes de citación:
+Across six decades of development in the Science of Science, **four main methodological schools** have consolidated to operationalize and map research fronts from citation networks:
 
 ```mermaid
 graph TD
-    subgraph Escuelas["Escuelas Metodológicas de Detección de Frentes"]
-        E1["1. Cocitación de Documentos (DCA)<br><i>Small & Griffith (1974), Clarivate ESI</i><br>Base Intelectual = Nodos Pasados Citados<br>Frente = Artículos Contemporáneos Citantes"]
-        E2["2. Acoplamiento Bibliográfico (BC)<br><i>Kessler (1963), Jarneving (2007), Boyack & Klavans (2010)</i><br>Frente = Clusters directos de artículos contemporáneos<br>Nula latencia temporal"]
-        E3["3. Citas Directas (DC) & Algoritmo Leiden<br><i>Shibata et al. (2009), CWTS Leiden / OpenAlex (2024)</i><br>Grafo dirigido a macro-escala<br>Detección más temprana de saltos de ruptura"]
-        E4["4. Enfoque Híbrido (Redes + Semántica)<br><i>Glänzel & Thijs (2011, 2012), Boyack et al. (2011)</i><br>Fusión: Acoplamiento + Text Embeddings<br>Máxima coherencia temática"]
+    subgraph Schools["Methodological Schools of Research Front Detection"]
+        E1["1. Document Co-Citation Analysis (DCA)<br><i>Small & Griffith (1974), Clarivate ESI</i><br>Intellectual Base = Cited Past Nodes<br>Front = Citing Contemporary Articles"]
+        E2["2. Bibliographic Coupling (BC)<br><i>Kessler (1963), Jarneving (2007), Boyack & Klavans (2010)</i><br>Front = Direct clusters of contemporary articles<br>Zero temporal latency"]
+        E3["3. Direct Citation (DC) & Leiden Algorithm<br><i>Shibata et al. (2009), CWTS Leiden / OpenAlex (2024)</i><br>Macro-scale directed graph<br>Earliest detection of breakthrough leaps"]
+        E4["4. Hybrid Approach (Networks + Semantics)<br><i>Glänzel & Thijs (2011, 2012), Boyack et al. (2011)</i><br>Fusion: Coupling + Text Embeddings<br>Maximum thematic coherence"]
     end
 ```
 
 ---
 
-## 2. Las Cuatro Escuelas Metodológicas
+## 2. The Four Methodological Schools
 
-### 2.1. Escuela de Cocitación de Documentos (*Document Co-Citation Analysis - DCA*)
-- **Pioneros:** Henry Small (1973), Irina V. Marshakova (1973), Belver C. Griffith & Henry Small (1974).
-- **Mecanismo Operativo:**
-  Dos documentos anteriores $d_i$ y $d_j$ se consideran cocitados si un documento posterior $d_k$ incluye a ambos en su lista de referencias bibliográficas. La fuerza de cocitación $C_{ij}$ es el conteo total de documentos posteriores que citan conjuntamente a $d_i$ y $d_j$.
-- **La Dualidad Estructural Fundamental (Small & Griffith, 1974):**
-  Small y Griffith establecieron que el análisis de cocitación divide la literatura en dos componentes acoplados:
-  1. **Base Intelectual (*Intellectual Base*):** El cluster formado por los documentos pasados altamente cocitados. Representa los fundamentos conceptuales consolidados, teorías de base y metodologías de consenso.
-  2. **Frente de Investigación (*Research Front*):** El conjunto de artículos recientes que citan a los documentos miembros del cluster de la base intelectual.
-- **Implementación Canónica en Clarivate Essential Science Indicators (ESI):**
-  Clarivate define los *Research Fronts* oficiales de la siguiente manera:
-  1. Se seleccionan los *Highly Cited Papers* (el top 1% de artículos más citados por campo temático en los últimos 10 años).
-  2. Se identifican pares de artículos altamente citados con frecuencia de cocitación superior a un umbral variable según la disciplina.
-  3. Se forman clusters de cocitación mediante enlace único (*single-linkage*) o enlace promedio (*average-linkage*): estos son los **Documentos Núcleo (*Core Documents*)**.
-  4. El **Frente de Investigación** es el conjunto formado por los documentos núcleo junto con todos los artículos recientes que los citan. El título del frente se genera algorítmicamente mediante las palabras clave más frecuentes en los títulos de los artículos citantes.
-- **Limitación Estructural — El Rezago de Citación (*Citation Lag*):**
-  El análisis de cocitación requiere que los descubrimientos acumulen citas de forma independiente antes de que puedan establecerse enlaces de cocitación. Esto genera un **retraso de 2 a 5 años**, haciendo que la cocitación sea un método retrospectivo que mapea paradigmas consolidados pero tiene dificultad para detectar áreas nacientes de ruptura en tiempo real.
+### 2.1. Document Co-Citation Analysis School (DCA)
+- **Pioneers:** Henry Small (1973), Irina V. Marshakova (1973), Belver C. Griffith & Henry Small (1974).
+- **Operational Mechanism:**
+  Two earlier documents $d_i$ and $d_j$ are co-cited if a subsequent document $d_k$ includes both in its bibliographic reference list. The co-citation strength $C_{ij}$ is the total count of subsequent documents that jointly cite $d_i$ and $d_j$.
+- **The Fundamental Structural Duality (Small & Griffith, 1974):**
+  Small and Griffith established that co-citation analysis divides the literature into two coupled components:
+  1. **Intellectual Base:** The cluster formed by highly co-cited past documents. It represents consolidated conceptual foundations, core theories, and consensus methodologies.
+  2. **Research Front:** The set of recent articles citing the documents in the intellectual base cluster.
+- **Canonical Implementation in Clarivate Essential Science Indicators (ESI):**
+  Clarivate defines official *Research Fronts* as follows:
+  1. *Highly Cited Papers* (the top 1% most cited articles by thematic field over the last 10 years) are selected.
+  2. Pairs of highly cited articles with co-citation frequency above a discipline-specific threshold are identified.
+  3. Co-citation clusters are formed via single-linkage or average-linkage clustering: these are the **Core Documents**.
+  4. The **Research Front** consists of the core documents together with all recent articles citing them. The front's title is algorithmically generated from the most frequent keywords in the titles of the citing articles.
+- **Structural Limitation — Citation Lag:**
+  Co-citation analysis requires discoveries to independently accumulate citations before co-citation links can form. This introduces a **2- to 5-year lag**, making co-citation a retrospective method that maps consolidated paradigms well but struggles to detect nascent breakthrough areas in real time.
 
 ---
 
-### 2.2. Escuela de Acoplamiento Bibliográfico (*Bibliographic Coupling - BC*)
-- **Pioneros:** M. M. Kessler (1963), Bo Jarneving (2005, 2007), Kevin W. Boyack & Richard Klavans (2010).
-- **Mecanismo Operativo:**
-  Dos documentos contemporáneos $d_A$ y $d_B$ están acoplados bibliográficamente si comparten una o más referencias en sus respectivas bibliografías ($R_A \cap R_B \neq \emptyset$). La fuerza de acoplamiento es el número de referencias compartidas:
+### 2.2. Bibliographic Coupling School (BC)
+- **Pioneers:** M. M. Kessler (1963), Bo Jarneving (2005, 2007), Kevin W. Boyack & Richard Klavans (2010).
+- **Operational Mechanism:**
+  Two contemporary documents $d_A$ and $d_B$ are bibliographically coupled if they share one or more references in their respective bibliographies ($R_A \cap R_B \neq \emptyset$). The coupling strength is the number of shared references:
   $$B_{AB} = |R_A \cap R_B|$$
-- **Conceptualización Directa del Frente:**
-  A diferencia de la cocitación, donde el frente es una entidad derivada indirectamente de los documentos citados, en el acoplamiento bibliográfico **los clusters resultantes están compuestos directamente por los artículos activos actuales**.
-- **Ventaja Decisiva — Latencia Temporal Nula:**
-  Las referencias bibliográficas de un artículo se definen de manera permanente en el instante de su publicación (o al subirse a un servidor de preprints como arXiv o bioRxiv). Por lo tanto, el acoplamiento bibliográfico permite asignar inmediatamente un nuevo documento a un frente de investigación **sin esperar a que reciba citas**.
-- **El Gran Benchmark de Boyack & Klavans (2010):**
-  En su riguroso estudio comparativo a escala masiva publicado en *JASIST*, Kevin Boyack y Richard Klavans compararon directamente la cocitación, el acoplamiento bibliográfico y las citas directas utilizando dos criterios objetivos de validación:
-  1. **Coherencia textual (Textual Coherence):** Similitud de vocabulario entre los miembros de un cluster medida con BM25.
-  2. **Concentración de financiamiento:** Correlación entre los clusters y las subvenciones de agencias otorgantes.
-  *Hallazgo Concluyente:* **El acoplamiento bibliográfico superó a la cocitación y a las citas directas como el método puro de citación más preciso para representar el frente de investigación activo.**
+- **Direct Conceptualization of the Front:**
+  Unlike co-citation, where the front is an entity indirectly derived from cited documents, in bibliographic coupling **the resulting clusters are composed directly of active contemporary articles**.
+- **Decisive Advantage — Zero Temporal Latency:**
+  An article's bibliographic references are permanently fixed at the moment of publication (or when uploaded to a preprint server such as arXiv or bioRxiv). Consequently, bibliographic coupling immediately assigns a new document to a research front **without waiting for it to accumulate citations**.
+- **The Landmark Boyack & Klavans Benchmark (2010):**
+  In their rigorous large-scale comparative study published in *JASIST*, Kevin Boyack and Richard Klavans directly compared co-citation, bibliographic coupling, and direct citation using two objective validation criteria:
+  1. **Textual Coherence:** Vocabulary similarity among cluster members measured via BM25.
+  2. **Grant Concentration:** Correlation between clusters and funding agency grants.
+  *Conclusive Finding:* **Bibliographic coupling outperformed both co-citation and direct citation as the most accurate pure citation method for representing active research fronts.**
 
 ---
 
-### 2.3. Escuela de Citas Directas (*Direct Citation - DC*) y Algoritmo Leiden
-- **Pioneros:** Richard Klavans & Kevin Boyack (2006, 2017), Naoki Shibata, Yuya Kajikawa, Yoshiyuki Takeda & Katsumori Matsushima (2008, 2009, 2011), Ludo Waltman & Nees Jan van Eck (2012, 2020), Vincent Traag, Ludo Waltman & Nees Jan van Eck (2019).
-- **Mecanismo Operativo:**
-  Se construye un grafo dirigido $G = (V, E)$ donde los nodos son las publicaciones y las aristas dirigidas representan citas explícitas ($d_i \to d_j$). Para el clustering, el grafo puede tratarse como no dirigido o ponderado por flujo extendido (*extended direct citation*).
-- **El Benchmark de Shibata et al. (2009):**
-  Shibata y colaboradores compararon citas directas, acoplamiento bibliográfico y cocitación en tres campos tecnológicos emergentes (Nitruro de Galio, Redes Complejas y Nanotubos de Carbono).
-  *Hallazgo Concluyente:* **Las redes de citas directas detectan frentes emergentes antes que el acoplamiento bibliográfico y la cocitación**, ya que una investigación pionera que cita a un trabajo canónico queda de inmediato interconectada a la componente gigante del grafo, facilitando la detección de núcleos nacientes.
-- **El Algoritmo Leiden (Traag, Waltman & van Eck, 2019):**
-  Para particionar redes masivas de citas directas, el algoritmo Louvain tradicional adolece de un defecto grave: tiende a generar comunidades desconectadas internamente o mal cohesionadas. El **algoritmo Leiden** soluciona esta limitación mediante tres fases iterativas:
-  1. Movimiento local de nodos.
-  2. Refinamiento de la partición (donde se garantiza que cada subcomunidad sea conexa).
-  3. Agregación de la red basada en la partición refinada.
-- **La Taxonomía de Topics de OpenAlex (CWTS Leiden, 2024):**
-  El Centro de Estudios de Ciencia y Tecnología (CWTS) de la Universidad de Leiden procesó el grafo mundial de citas directas de OpenAlex utilizando el algoritmo Leiden bajo el modelo *Constant Potts Model* (CPM), generando una taxonomía jerárquica abierta de ~4,500 Topics, agrupados en 252 Subfields, 26 Fields y 4 Domains globales.
+### 2.3. Direct Citation School (DC) and the Leiden Algorithm
+- **Pioneers:** Richard Klavans & Kevin Boyack (2006, 2017), Naoki Shibata, Yuya Kajikawa, Yoshiyuki Takeda & Katsumori Matsushima (2008, 2009, 2011), Ludo Waltman & Nees Jan van Eck (2012, 2020), Vincent Traag, Ludo Waltman & Nees Jan van Eck (2019).
+- **Operational Mechanism:**
+  A directed graph $G = (V, E)$ is constructed where nodes are publications and directed edges represent explicit citations ($d_i \to d_j$). For clustering, the graph can be treated as undirected or weighted by extended flow (*extended direct citation*).
+- **The Shibata et al. Benchmark (2009):**
+  Shibata and colleagues compared direct citation, bibliographic coupling, and co-citation across three emerging technological fields (Gallium Nitride, Complex Networks, and Carbon Nanotubes).
+  *Conclusive Finding:* **Direct citation networks detect emerging fronts earlier than bibliographic coupling and co-citation**, because pioneering research citing a canonical work is immediately connected to the giant component of the graph, facilitating early detection of nascent cores.
+- **The Leiden Algorithm (Traag, Waltman & van Eck, 2019):**
+  When partitioning massive direct citation networks, the traditional Louvain algorithm suffers from a severe defect: it tends to produce internally disconnected or poorly cohesive communities. The **Leiden algorithm** resolves this limitation through three iterative phases:
+  1. Local moving of nodes.
+  2. Refinement of the partition (guaranteeing that every subcommunity is connected).
+  3. Aggregation of the network based on the refined partition.
+- **The OpenAlex Topics Taxonomy (CWTS Leiden, 2024):**
+  The Centre for Science and Technology Studies (CWTS) at Leiden University processed the global OpenAlex direct citation graph using the Leiden algorithm under the *Constant Potts Model* (CPM), generating an open hierarchical taxonomy of ~4,500 Topics grouped into 252 Subfields, 26 Fields, and 4 global Domains.
 
 ---
 
-### 2.4. Escuela Híbrida / Multimodal (Redes + Similitud Semántica)
-- **Pioneros:** Wolfgang Glänzel & Bart Thijs (2011, 2012), Kevin Boyack et al. (2011).
-- **Mecanismo Operativo:**
-  Integra la topología estructural de citación con la semántica del lenguaje natural (títulos, resúmenes, descriptores MeSH o embeddings densos tipo SPECTER2 / SciBERT / Nomic).
-  La matriz de adyacencia combinada se formula comúnmente como una combinación lineal convexa:
-  $$S_{ij}^{\text{híbrido}} = \lambda \cdot S_{ij}^{\text{red}} + (1 - \lambda) \cdot S_{ij}^{\text{texto}}, \quad \text{con } \lambda \in [0, 1]$$
-- **Ventajas:**
-  - Resuelve el problema del vocabulario (sinonimia y polisemia) mediante la restricción bibliográfica.
-  - Resuelve la dispersión de citas en artículos muy recientes mediante la proximidad semántica.
+### 2.4. Hybrid / Multimodal School (Networks + Semantic Similarity)
+- **Pioneers:** Wolfgang Glänzel & Bart Thijs (2011, 2012), Kevin Boyack et al. (2011).
+- **Operational Mechanism:**
+  Integrates structural citation topology with natural language semantics (titles, abstracts, MeSH descriptors, or dense embeddings such as SPECTER2 / SciBERT / Nomic).
+  The combined adjacency matrix is commonly formulated as a convex linear combination:
+  $$S_{ij}^{\text{hybrid}} = \lambda \cdot S_{ij}^{\text{network}} + (1 - \lambda) \cdot S_{ij}^{\text{text}}, \quad \text{with } \lambda \in [0, 1]$$
+- **Advantages:**
+  - Resolves vocabulary issues (synonymy and polysemy) through bibliographic constraints.
+  - Mitigates citation sparsity in very recent articles through semantic proximity.
 
 ---
 
-## 3. Tabla Comparativa de las Cuatro Escuelas
+## 3. Comparative Table of the Four Schools
 
-| Criterio | Cocitación (DCA) | Acoplamiento Bibliográfico (BC) | Citas Directas (DC) | Enfoque Híbrido |
+| Criterion | Co-Citation (DCA) | Bibliographic Coupling (BC) | Direct Citation (DC) | Hybrid Approach |
 | :--- | :--- | :--- | :--- | :--- |
-| **Referencia Fundacional** | Small & Griffith (1974) | Kessler (1963); Boyack & Klavans (2010) | Shibata et al. (2009); Traag et al. (2019) | Glänzel & Thijs (2012) |
-| **Definición del Frente** | Documentos recientes que citan al cluster de clásicos | Clusters directos de artículos contemporáneos | Comunidades de alta densidad en el grafo de citas | Clusters optimizados por citas y texto |
-| **Naturaleza de los Nodos** | Documentos pasados citados (*Core*) | Documentos contemporáneos | Todos los documentos del grafo | Documentos contemporáneos |
-| **Latencia Temporal** | Alta (2 a 5 años) | **Nula (Inmediata)** | Baja | **Nula (Inmediata)** |
-| **Coherencia Temática** | Media-Alta | **Máxima (Método puro)** | Media (Sensible a densidad) | **Óptima absoluta** |
-| **Velocidad de Detección** | Lenta | Alta | **Muy Alta (Shibata et al.)** | Muy Alta |
-| **Complejidad de Cálculo** | $O(N_{\text{citados}}^2)$ | $O(N_{\text{recientes}}^2)$ sobre sparse matrices | $O(|E|)$ sobre grafos dirigidos | Media-Alta |
-| **Uso Canónico** | Clarivate ESI, CiteSpace | VOSviewer, mapeos de vanguardia | CWTS Leiden, OpenAlex Topics | Modelos avanzados de IA / NLP |
+| **Foundational Reference** | Small & Griffith (1974) | Kessler (1963); Boyack & Klavans (2010) | Shibata et al. (2009); Traag et al. (2019) | Glänzel & Thijs (2012) |
+| **Front Definition** | Recent documents citing the cluster of classics | Direct clusters of contemporary articles | High-density communities in the citation graph | Clusters jointly optimized by citations and text |
+| **Node Nature** | Cited past documents (*Core*) | Contemporary documents | All documents in the graph | Contemporary documents |
+| **Temporal Latency** | High (2 to 5 years) | **Zero (Immediate)** | Low | **Zero (Immediate)** |
+| **Thematic Coherence** | Medium-High | **Maximum (Pure method)** | Medium (Density-sensitive) | **Absolute optimum** |
+| **Detection Speed** | Slow | High | **Very High (Shibata et al.)** | Very High |
+| **Computational Complexity** | $O(N_{\text{cited}}^2)$ | $O(N_{\text{recent}}^2)$ over sparse matrices | $O(|E|)$ over directed graphs | Medium-High |
+| **Canonical Use** | Clarivate ESI, CiteSpace | VOSviewer, frontier mappings | CWTS Leiden, OpenAlex Topics | Advanced AI / NLP models |
 
 ---
 
-## 4. Formalizaciones Matemáticas de Similitud y Normalización
+## 4. Mathematical Formalizations of Similarity and Normalization
 
-Para construir la red de frentes de investigación, la fuerza cruda de acoplamiento o cocitación debe normalizarse para evitar que artículos con bibliografías extensas (e.g., revisiones sistemáticas) dominen artificialmente la topología:
+To construct a research front network, raw coupling or co-citation counts must be normalized so that articles with long reference lists (e.g., systematic reviews) do not artificially dominate the topology:
 
-### 4.1. Coseno de Salton (*Salton's Cosine*)
-Mide la afinidad relativa entre dos documentos $i$ y $j$ normalizando por el producto geométrico de los tamaños de sus listas de referencias ($|R_i|$ y $|R_j|$):
+### 4.1. Salton's Cosine
+Measures the relative affinity between two documents $i$ and $j$ by normalizing by the geometric mean of their reference list sizes ($|R_i|$ and $|R_j|$):
 $$S_{ij} = \frac{|R_i \cap R_j|}{\sqrt{|R_i| \cdot |R_j|}}$$
-- Rango: $S_{ij} \in [0, 1]$.
-- Propiedad: Si dos artículos citan exactamente las mismas referencias, $S_{ij} = 1.0$, independientemente del tamaño absoluto de la bibliografía.
+- Range: $S_{ij} \in [0, 1]$.
+- Property: If two articles cite the exact same references, $S_{ij} = 1.0$, regardless of absolute bibliography size.
 
-### 4.2. Índice de Jaccard
-Mide la proporción de referencias compartidas sobre la unión total de referencias:
+### 4.2. Jaccard Index
+Measures the proportion of shared references over the total union of references:
 $$J_{ij} = \frac{|R_i \cap R_j|}{|R_i \cup R_j|} = \frac{|R_i \cap R_j|}{|R_i| + |R_j| - |R_i \cap R_j|}$$
-- Rango: $J_{ij} \in [0, 1]$. Tiende a penalizar más severamente las asimetrías de longitud que el Coseno de Salton.
+- Range: $J_{ij} \in [0, 1]$. Tends to penalize length asymmetries more severely than Salton's Cosine.
 
-### 4.3. Fuerza de Asociación (*Association Strength* — Van Eck & Waltman, 2009)
-Es la métrica de normalización estándar utilizada por VOSviewer. Representa el ratio entre la co-ocurrencia observada y la co-ocurrencia esperada bajo un modelo nulo aleatorio:
+### 4.3. Association Strength (Van Eck & Waltman, 2009)
+The standard normalization metric used by VOSviewer. It represents the ratio between observed co-occurrence and expected co-occurrence under a random null model:
 $$A_{ij} = \frac{C_{ij}}{\frac{s_i \cdot s_j}{2m}}$$
-Donde $s_i = \sum_k C_{ik}$ es la fuerza total del nodo $i$, y $m = \frac{1}{2} \sum_{i,j} C_{ij}$ es el peso total de la red.
+Where $s_i = \sum_k C_{ik}$ is the total strength of node $i$, and $m = \frac{1}{2} \sum_{i,j} C_{ij}$ is the total network weight.
 
 ---
 
-## 5. Algoritmos de Detección Comunitaria para Frentes
+## 5. Community Detection Algorithms for Research Fronts
 
-### 5.1. Algoritmo Louvain (Blondel et al., 2008)
-Optimiza la modularidad de Newman-Girvan:
+### 5.1. Louvain Algorithm (Blondel et al., 2008)
+Optimizes Newman-Girvan modularity:
 $$Q = \frac{1}{2m} \sum_{i,j} \left[ A_{ij} - \frac{k_i k_j}{2m} \right] \delta(c_i, c_j)$$
-- **Ventaja:** Extremadamente rápido y escalable.
-- **Defecto en Cienciometría:** Sufre del límite de resolución (incapacidad para detectar clusters pequeños en redes grandes) y puede generar subcomunidades internamente desconectadas (*ill-connected communities*).
+- **Advantage:** Extremely fast and scalable.
+- **Defect in Scientometrics:** Suffers from the resolution limit (inability to detect small clusters in large networks) and can produce internally disconnected subcommunities (*ill-connected communities*).
 
-### 5.2. Algoritmo Leiden (Traag, Waltman & van Eck, 2019)
-Supera las patologías de Louvain introduciendo una fase intermedia de refinamiento. Puede optimizar tanto la modularidad como la función de calidad **Constant Potts Model (CPM)**:
+### 5.2. Leiden Algorithm (Traag, Waltman & van Eck, 2019)
+Overcomes Louvain's pathologies by introducing an intermediate refinement phase. It can optimize either modularity or the **Constant Potts Model (CPM)** quality function:
 $$\mathcal{H}_{CPM} = - \sum_{c} \left[ e_c - \gamma \binom{n_c}{2} \right]$$
-Donde $e_c$ es el número de aristas internas del cluster $c$, $n_c$ es el número de nodos, y $\gamma$ es el parámetro de resolución.
-- **Ventaja Fundamental en Cienciometría:** El CPM es libre del límite de resolución (la partición de un subgrafo no depende del tamaño del grafo global) y garantiza que todas las comunidades encontradas sean conexas.
+Where $e_c$ is the number of internal edges in cluster $c$, $n_c$ is the number of nodes, and $\gamma$ is the resolution parameter.
+- **Fundamental Advantage in Scientometrics:** CPM is resolution-limit-free (partitioning a subgraph does not depend on the size of the global graph) and guarantees that all detected communities are connected.
 
 ---
 
-## 6. Matriz de Decisión Operativa para el Agente
+## 6. Operational Decision Matrix for the Agent
 
-Cuando una investigadora o investigador solicita identificar o analizar frentes de investigación, el agente debe seleccionar la estrategia según la siguiente matriz de correspondencia:
+When a researcher requests identification or analysis of research fronts, the agent must select the strategy according to the following decision matrix:
 
-| Objetivo del Estudio | Estrategia Recomendada | Justificación Cienciométrica |
+| Study Objective | Recommended Strategy | Scientometric Justification |
 | :--- | :--- | :--- |
-| **Identificar frentes activos en los últimos 1–3 años (frente emergente)** | **Acoplamiento Bibliográfico Contemporáneo (BC)** con normalización Salton / Association Strength | Nula latencia de citación. No requiere esperar acumulación de citas; agrupa directamente los papers actuales ([Boyack & Klavans, 2010](https://doi.org/10.1002/asi.21419)). |
-| **Mapear la base teórica e hitos fundacionales de una disciplina** | **Cocitación de Documentos (DCA)** con identificación de Documentos Núcleo | Mapea la estructura del consenso histórico e identifica los clásicos canónicos que sostienen la disciplina ([Small & Griffith, 1974](https://doi.org/10.1177/030631277400400102)). |
-| **Análisis macroscópico rápido de un subcampo a nivel nacional o global** | **Taxonomía Canónica OpenAlex Topics (CWTS Leiden)** | Utiliza los ~4,500 frentes precalculados sobre 464M de trabajos sin requerir recomputar redes de millones de aristas. |
-| **Corpus con baja densidad de citas (e.g., literatura regional o multidisciplinar)** | **Enfoque Híbrido (Acoplamiento + Embeddings Semánticos TF-IDF / Nomic)** | La similitud de texto compensa la escasez de referencias compartidas ([Glänzel & Thijs, 2012](https://doi.org/10.1016/j.joi.2011.12.005)). |
-| **Estudiar la evolución, bifurcación o fusión de un área a lo largo del tiempo** | **Encadenamiento Longitudinal de Frentes con Métrica AMI y Diagrama Aluvial** | Segmentación en ventanas cronológicas móviles y seguimiento de eventos evolutivos ([Rosvall & Bergstrom, 2010](https://doi.org/10.1371/journal.pone.0008694)). |
+| **Identify active fronts in the last 1–3 years (emerging front)** | **Contemporary Bibliographic Coupling (BC)** with Salton / Association Strength normalization | Zero citation latency. Requires no citation accumulation lag; directly clusters current papers ([Boyack & Klavans, 2010](https://doi.org/10.1002/asi.21419)). |
+| **Map the theoretical base and foundational milestones of a discipline** | **Document Co-Citation Analysis (DCA)** with Core Document identification | Maps the structure of historical consensus and identifies the canonical classics sustaining the discipline ([Small & Griffith, 1974](https://doi.org/10.1177/030631277400400102)). |
+| **Rapid macroscopic analysis of a subfield at national or global scale** | **Canonical OpenAlex Topics Taxonomy (CWTS Leiden)** | Leverages ~4,500 precomputed fronts across 464M works without recomputing multi-million-edge networks. |
+| **Corpus with low citation density (e.g., regional or multidisciplinary literature)** | **Hybrid Approach (Coupling + TF-IDF / Nomic Semantic Embeddings)** | Text similarity compensates for sparse shared references ([Glänzel & Thijs, 2012](https://doi.org/10.1016/j.joi.2011.12.005)). |
+| **Study the evolution, bifurcation, or fusion of an area over time** | **Longitudinal Front Chaining with AMI Metric and Alluvial Diagram** | Segments into chronological sliding windows and tracks evolutionary events ([Rosvall & Bergstrom, 2010](https://doi.org/10.1371/journal.pone.0008694)). |
 
 ---
 
-## 7. Referencias Bibliográficas (APA 7ª)
+## 7. Bibliographic References (APA 7th)
 
 1. **Blondel, V. D., Guillaume, J.-L., Lambiotte, R., & Lefebvre, E. (2008).** Fast unfolding of communities in large networks. *Journal of Statistical Mechanics: Theory and Experiment*, 2008(10), P10008. https://doi.org/10.1088/1742-5468/2008/10/P10008
 2. **Boyack, K. W., & Klavans, R. (2010).** Co-citation analysis, bibliographic coupling, and direct citation: Which citation approach represents the research front most accurately? *Journal of the American Society for Information Science and Technology*, 61(12), 2389–2404. https://doi.org/10.1002/asi.21419
@@ -177,4 +177,3 @@ Cuando una investigadora o investigador solicita identificar o analizar frentes 
 14. **Traag, V. A., Waltman, L., & van Eck, N. J. (2019).** From Louvain to Leiden: guaranteeing well-connected communities. *Scientific Reports*, 9(1), 5233. https://doi.org/10.1038/s41598-019-41695-x
 15. **Van Eck, N. J., & Waltman, L. (2009).** How to normalize cooccurrence data? An analysis of some well-known similarity measures. *Journal of the American Society for Information Science and Technology*, 60(8), 1635–1651. https://doi.org/10.1002/asi.21075
 16. **Waltman, L., & van Eck, N. J. (2012).** A new approach to modularity-based community detection for large-scale networks. *Scientometrics*, 94(3), 1181–1198. https://doi.org/10.1007/s11192-012-0707-4
-

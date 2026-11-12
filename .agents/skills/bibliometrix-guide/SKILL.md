@@ -1,7 +1,7 @@
 ---
 name: bibliometrix-guide
 description: >-
-  Mapeo científico, análisis de redes bibliométricas y cartografía temática mediante el paquete canónico R bibliometrix (Aria & Cuccurullo, 2017) y su interfaz web Biblioshiny. Orquesta importación multibase (Scopus, WoS, PubMed, Dimensions, OpenAlex), co-citación, acoplamiento, diagramas estratégicos de Callon (Centralidad vs Densidad) y evolución temática longitudinal.
+  Science mapping, bibliometric network analysis, and thematic cartography using the canonical R package bibliometrix (Aria & Cuccurullo, 2017) and its web interface Biblioshiny. Orchestrates multi-database import (Scopus, WoS, PubMed, Dimensions, OpenAlex), co-citation, coupling, Callon's strategic diagrams (Centrality vs. Density), and longitudinal thematic evolution. Respond and label outputs in the user's language.
 metadata:
   language: "R / Python"
   r_package: "bibliometrix >=4.0"
@@ -10,133 +10,135 @@ metadata:
     - "scripts/bibliometrix_runner.R"
 ---
 
-# Bibliometrix Guide: Mapeo Científico y Cartografía Temática en R
+# Bibliometrix Guide: Science Mapping and Thematic Cartography in R
 
-## 1. Overview y Propósito
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
 
-El ecosistema **`bibliometrix`** (Massimo Aria & Corrado Cuccurullo, 2017; *Journal of Informetrics*) es uno de los paquetes de código abierto más consolidados a nivel internacional para el análisis bibliométrico integral y la cartografía de la ciencia (*Science Mapping*).
+## 1. Overview and Purpose
 
-Esta habilidad proporciona una guía operativa exhaustiva y herramientas de orquestación para agentes y analistas, cubriendo el ciclo de vida completo del descubrimiento de conocimiento en bases de datos bibliográficas (KDD):
-1. **Ingesta y normalización multibase:** Conversión uniforme a dataframes canónicos con `convert2df()` desde Scopus, Web of Science, PubMed, Dimensions, Cochrane y OpenAlex.
-2. **Análisis descriptivo y producción:** Métricas globales, tasas anuales de crecimiento, leyes de productividad y fuentes dominantes con `biblioAnalysis()`.
-3. **Estructura Intelectual y Redes:** Co-citación de referencias/autores, acoplamiento bibliográfico y redes de colaboración con `biblioNetwork()`.
-4. **Estructura Conceptual y Diagramas de Callon:** Coocurrencia de términos, análisis factorial (MCA/CA) y el **Diagrama Estratégico de Cuadrantes de Callon** (Centralidad vs. Densidad) con `thematicMap()`.
-5. **Evolución Temática Longitudinal:** Mapeo de flujos aluviales (Sankey) entre cortes temporales con `thematicEvolution()`.
-6. **Interfaz Web No-Code:** Despliegue interactivo en el navegador mediante `biblioshiny()`.
+The **`bibliometrix`** ecosystem (Massimo Aria & Corrado Cuccurullo, 2017; *Journal of Informetrics*) is one of the most established open-source packages internationally for comprehensive bibliometric analysis and **Science Mapping**.
+
+This skill provides an exhaustive operational guide and orchestration tools for agents and analysts, covering the full lifecycle of knowledge discovery in bibliographic databases (KDD):
+1. **Multi-database ingestion and normalization:** Uniform conversion to canonical data frames with `convert2df()` from Scopus, Web of Science, PubMed, Dimensions, Cochrane, and OpenAlex.
+2. **Descriptive and production analysis:** Global metrics, annual growth rates, productivity laws, and dominant sources with `biblioAnalysis()`.
+3. **Intellectual Structure and Networks:** Reference/author co-citation, bibliographic coupling, and collaboration networks with `biblioNetwork()`.
+4. **Conceptual Structure and Callon's Diagrams:** Term co-occurrence, factorial analysis (MCA/CA), and **Callon's Strategic Four-Quadrant Diagram** (Centrality vs. Density) with `thematicMap()`.
+5. **Longitudinal Thematic Evolution:** Mapping alluvial (Sankey) flows across time slices with `thematicEvolution()`.
+6. **No-Code Web Interface:** Interactive browser deployment via `biblioshiny()`.
 
 ---
 
-## 2. Ámbito de Aplicación y Preguntas Cienciométricas
+## 2. Scope of Application and Scientometric Questions
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                   TIPOLOGÍAS DE ANÁLISIS EN R BIBLIOMETRIX                             │
+│                   ANALYSIS TYPOLOGIES IN R BIBLIOMETRIX                                │
 ├──────────────────────────┬─────────────────────────────┬───────────────────────────────┤
-│ Tipología de Análisis   │ Funciones R Canónicas       │ Pregunta / Decisión que Resuelve│
+│ Analysis Typology        │ Canonical R Functions       │ Question / Decision Answered  │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 1. Estadística           │ `convert2df()`,             │ ¿Cuál es el volumen global, la│
-│    Descriptiva           │ `biblioAnalysis()`,         │ tasa anual de crecimiento y   │
-│                          │ `summary()`                 │ los autores y revistas top?   │
+│ 1. Descriptive           │ `convert2df()`,             │ What is the global volume,    │
+│    Statistics            │ `biblioAnalysis()`,         │ annual growth rate, and top   │
+│                          │ `summary()`                 │ authors and journals?         │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 2. Estructura            │ `citations()`,              │ ¿Cuáles son los documentos y  │
-│    Intelectual           │ `biblioNetwork(co-citation)`│ autores fundacionales citados │
-│                          │ `histNetwork()` (HistCite)  │ conjuntamente en la base?     │
+│ 2. Intellectual          │ `citations()`,              │ What are the foundational     │
+│    Structure             │ `biblioNetwork(co-citation)`│ documents and authors jointly │
+│                          │ `histNetwork()` (HistCite)  │ cited in the field?           │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 3. Estructura Social     │ `biblioNetwork(collab)`     │ ¿Cómo se agrupan los autores, │
-│                          │ `networkPlot(kamada)`       │ instituciones y países en     │
-│                          │ `metaTagExtraction()`       │ colegios invisibles?          │
+│ 3. Social Structure      │ `biblioNetwork(collab)`     │ How do authors, institutions, │
+│                          │ `networkPlot(kamada)`       │ and countries group into      │
+│                          │ `metaTagExtraction()`       │ invisible colleges?           │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 4. Estructura Conceptual │ `thematicMap()`             │ ¿Cuáles son los temas motores,│
-│    (Diagrama de Callon)  │ (Centralidad vs Densidad)   │ especializados de nicho, bási-│
-│                          │ `biblioNetwork(co-occur)`   │ cos o emergentes/declinantes? │
+│ 4. Conceptual Structure  │ `thematicMap()`             │ What are the motor, niche,    │
+│    (Callon's Diagram)    │ (Centrality vs. Density)    │ basic, or emerging/declining  │
+│                          │ `biblioNetwork(co-occur)`   │ themes?                       │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 5. Evolución Temática    │ `thematicEvolution()`       │ ¿Cómo se fusionan o escinden  │
-│    Longitudinal          │ `plotThematicEvolution()`   │ los frentes temáticos a lo    │
-│                          │                             │ largo de periodos históricos? │
+│ 5. Longitudinal          │ `thematicEvolution()`       │ How do thematic fronts merge  │
+│    Thematic Evolution    │ `plotThematicEvolution()`   │ or split across historical    │
+│                          │                             │ periods?                      │
 └──────────────────────────┴─────────────────────────────┴───────────────────────────────┘
 ```
 
-### 2.1 El Diagrama Estratégico de Callon (1991)
-El paquete clasifica los clusters temáticos en 4 cuadrantes analíticos basándose en dos coordenadas ortogonales centradas en sus medianas:
-* **Centralidad de Callon (Eje X - Enlaces Externos):** Mide la transversalidad e interconexión del cluster con el resto de la disciplina.
-* **Densidad de Callon (Eje Y - Enlaces Internos):** Mide la cohesión conceptual y madurez interna del cluster.
+### 2.1 Callon's Strategic Diagram (1991)
+The package classifies thematic clusters into 4 analytical quadrants based on two orthogonal coordinates centered on their medians:
+* **Callon's Centrality (X-Axis - External Links):** Measures the transversality and interconnection of the cluster with the rest of the discipline.
+* **Callon's Density (Y-Axis - Internal Links):** Measures the conceptual cohesion and internal maturity of the cluster.
 
-1. **Cuadrante I: Temas Motores (*Motor Themes*, Alta Centralidad, Alta Densidad):** Líneas consolidadas e influyentes que estructuran la disciplina.
-2. **Cuadrante II: Temas de Nicho (*Niche Themes*, Baja Centralidad, Alta Densidad):** Especialidades altamente desarrolladas pero marginales o aisladas.
-3. **Cuadrante III: Temas Emergentes o Declinantes (*Emerging or Declining Themes*, Baja Centralidad, Baja Densidad):** Frentes embrionarios o líneas de investigación obsoletas.
-4. **Cuadrante IV: Temas Básicos y Transversales (*Basic Themes*, Alta Centralidad, Baja Densidad):** Conceptos nodales compartidos por todo el corpus pero sin híper-especialización interna.
+1. **Quadrant I: Motor Themes (High Centrality, High Density):** Well-developed and influential research lines that structure the discipline.
+2. **Quadrant II: Niche Themes (Low Centrality, High Density):** Highly developed but marginal or isolated specialties.
+3. **Quadrant III: Emerging or Declining Themes (Low Centrality, Low Density):** Embryonic fronts or obsolete research lines.
+4. **Quadrant IV: Basic and Transversal Themes (High Centrality, Low Density):** Core concepts shared across the entire corpus without internal hyper-specialization.
 
 ---
 
-## 3. Dependencies y Cadena de Valor
+## 3. Dependencies and Value Chain
 
 ```
 ┌─────────────────────────────────┐
-│     Habilidades Upstream        │
+│     Upstream Skills             │
 │ • openalex-mexico-works-search  │──┐
-│ • scopus-harvester / pubmed     │  │  Exportaciones tabulares
+│ • scopus-harvester / pubmed     │  │  Tabular exports
 │ • tlachia-metrics-handler (ZIP) │  │  (CSV, BibTeX, TXT, Parquet)
 └─────────────────────────────────┘  │
                                      ▼
                      ┌───────────────────────────────┐
                      │      bibliometrix-guide       │
-                     │  (Mapeo de Ciencia R / Python)│
+                     │  (Science Mapping R / Python) │
                      └───────────────────────────────┘
                                      │
-                                     ▼  Matrices de red, JSON de clusters y figuras PNG
+                                     ▼  Network matrices, cluster JSON, and PNG figures
 ┌────────────────────────────────────┴────────────────────────────────────┐
-│                       Habilidades Downstream                            │
-│ • som-methodological-expert (Contraste con mapas autoorganizados SOM)   │
-│ • bibliometric-network-analyst (Algoritmo Leiden y modularidad estricta)│
-│ • classical-bibliometrics-laws (Validación empírica Lotka / Bradford)   │
-│ • Informes ejecutivos de política científica y benchmarking             │
+│                       Downstream Skills                                 │
+│ • som-methodological-expert (Cross-comparison with self-organizing SOM) │
+│ • bibliometric-network-analyst (Leiden algorithm & strict modularity)   │
+│ • classical-bibliometrics-laws (Empirical Lotka / Bradford validation)  │
+│ • Executive science policy and institutional benchmarking reports       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-* **Habilidades Upstream (Proveedores del corpus):**
-  - [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`pubmed-harvester`](../pubmed-harvester/SKILL.md): Descarga de literatura con aparato crítico.
-  - [`openalex-mexico-works-search`](../openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Publicaciones de México con identificadores DOI y campos normalizados.
-  - [`tlachia-metrics-handler`](../tlachia-metrics-handler/SKILL.md): Paquetes ZIP de metadatos de documentos.
-* **Habilidades Downstream (Consumidores del análisis):**
-  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Proyección neurocomputacional SOM de perfiles cienciométricos.
-  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Partición de redes complejas con algoritmo Leiden.
-  - [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md): Contraste con leyes de Lotka, Bradford y Price.
-* **Entorno y Recursos de Software:**
-  - **Entorno R (Primario):** R `>= 4.0` con librerías `bibliometrix` y `jsonlite`.
-  - **Entorno Python (Orquestador / Fallback):** Python `>= 3.10` con `numpy`, `matplotlib`, `pandas`.
-  - **Scripts CLI:**
-    - [`scripts/bibliometrix_runner.R`](scripts/bibliometrix_runner.R): Script autónomo para ejecución R desatendida vía `Rscript`.
-    - [`scripts/bibliometrix_cli.py`](scripts/bibliometrix_cli.py): Orquestador CLI en Python que genera recetas `.R`, ejecuta el runner o computa nativamente el diagrama de Callon.
+* **Upstream Skills (Corpus Providers):**
+  - [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`pubmed-harvester`](../pubmed-harvester/SKILL.md): Literature downloads with cited references.
+  - [`openalex-mexico-works-search`](../openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Publications from Mexico with normalized DOIs and fields.
+  - [`tlachia-metrics-handler`](../tlachia-metrics-handler/SKILL.md): ZIP packages of document metadata.
+* **Downstream Skills (Analysis Consumers):**
+  - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Neurocomputational SOM projection of scientometric profiles.
+  - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Complex network partitioning with the Leiden algorithm.
+  - [`classical-bibliometrics-laws`](../classical-bibliometrics-laws/SKILL.md): Comparison against Lotka, Bradford, and Price laws.
+* **Software Environment and Resources:**
+  - **R Environment (Primary):** R `>= 4.0` with `bibliometrix` and `jsonlite` libraries.
+  - **Python Environment (Orchestrator / Fallback):** Python `>= 3.10` with `numpy`, `matplotlib`, `pandas`.
+  - **CLI Scripts:**
+    - [`scripts/bibliometrix_runner.R`](scripts/bibliometrix_runner.R): Standalone script for unattended R execution via `Rscript`.
+    - [`scripts/bibliometrix_cli.py`](scripts/bibliometrix_cli.py): Python CLI orchestrator that generates `.R` recipes, runs the R runner, or natively computes Callon's diagram.
 
 ---
 
-## 4. Protocolo de Ejecución CLI (File-Output First)
+## 4. CLI Execution Protocol (File-Output First)
 
-### 4.1 Generación de Recetas R Reproducibles (`generate-script`)
-Cuando el agente o el usuario requiera un script `.R` listo para ejecutar en RStudio o terminal:
+### 4.1 Generating Reproducible R Recipes (`generate-script`)
+When the agent or user needs a ready-to-run `.R` script for RStudio or the terminal:
 ```bash
 python scripts/bibliometrix_cli.py generate-script \
   --input ./data/corpus_scopus.csv \
-  --output ./scripts/analisis_tematico.R \
+  --output ./scripts/thematic_analysis.R \
   --analysis thematic \
   --field DE
 ```
-Opciones de `--analysis`: `summary`, `co-citation`, `collaboration`, `thematic`, `evolution`, `biblioshiny`.
+Options for `--analysis`: `summary`, `co-citation`, `collaboration`, `thematic`, `evolution`, `biblioshiny`.
 
-### 4.2 Ejecución Nativa de Diagrama de Callon (`callon-map`)
-Permite calcular el diagrama estratégico de Callon (Centralidad vs. Densidad) directamente sobre archivos `.parquet`, `.csv` o `.json`, sin necesidad obligatoria de Rscript:
+### 4.2 Native Execution of Callon's Diagram (`callon-map`)
+Computes Callon's strategic diagram (Centrality vs. Density) directly on `.parquet`, `.csv`, or `.json` files without requiring `Rscript`:
 ```bash
 python scripts/bibliometrix_cli.py callon-map \
   --input ./data/corpus_mexico.parquet \
   --field DE \
   --top-terms 50 \
   --min-freq 3 \
-  --plot-output ./data/mapa_callon.png \
-  --output ./data/clusters_callon.json
+  --plot-output ./data/callon_map.png \
+  --output ./data/callon_clusters.json
 ```
 
-### 4.3 Ejecución Desatendida con Rscript (`run`)
-Invoca el runner de R para análisis masivos en servidor o entornos con R instalado:
+### 4.3 Unattended Execution with Rscript (`run`)
+Invokes the R runner for large-scale analyses on servers or environments with R installed:
 ```bash
 python scripts/bibliometrix_cli.py run \
   --command thematic \
@@ -148,9 +150,9 @@ python scripts/bibliometrix_cli.py run \
 
 ---
 
-## 5. Recetas R Canónicas (Quick Reference)
+## 5. Canonical R Recipes (Quick Reference)
 
-### 5.1 Carga e Importación Multibase
+### 5.1 Multi-Database Loading and Import
 ```r
 library(bibliometrix)
 
@@ -164,68 +166,68 @@ M <- convert2df("savedrecs.txt", dbsource = "wos", format = "plaintext")
 M <- convert2df("pubmed-set.txt", dbsource = "pubmed", format = "pubmed")
 ```
 
-### 5.2 Análisis Descriptivo Global
+### 5.2 Global Descriptive Analysis
 ```r
 results <- biblioAnalysis(M, sep = ";")
 summary(results, k = 10, pause = FALSE)
 plot(x = results, k = 10, pause = FALSE)
 ```
 
-### 5.3 Redes Bibliométricas
+### 5.3 Bibliometric Networks
 ```r
-# 1. Co-citación de referencias
+# 1. Reference co-citation
 NetMatrix <- biblioNetwork(M, analysis = "co-citation", network = "references", sep = ";")
-net <- networkPlot(NetMatrix, n = 40, Title = "Red de Co-citación", type = "fruchterman", size = TRUE)
+net <- networkPlot(NetMatrix, n = 40, Title = "Co-Citation Network", type = "fruchterman", size = TRUE)
 
-# 2. Colaboración entre países
+# 2. Country collaboration
 M <- metaTagExtraction(M, Field = "AU_CO", sep = ";")
 NetMatrix <- biblioNetwork(M, analysis = "collaboration", network = "countries", sep = ";")
-net <- networkPlot(NetMatrix, n = 30, Title = "Colaboración Internacional", type = "circle")
+net <- networkPlot(NetMatrix, n = 30, Title = "International Collaboration", type = "circle")
 
-# 3. Coocurrencia de palabras clave de autor
+# 3. Author keyword co-occurrence
 NetMatrix <- biblioNetwork(M, analysis = "co-occurrences", network = "keywords", sep = ";")
-net <- networkPlot(NetMatrix, n = 50, Title = "Red Conceptual", type = "kamada")
+net <- networkPlot(NetMatrix, n = 50, Title = "Conceptual Network", type = "kamada")
 ```
 
-### 5.4 Mapa Temático de Cuadrantes de Callon
+### 5.4 Callon's Four-Quadrant Thematic Map
 ```r
 Map <- thematicMap(M, field = "DE", n = 250, minfreq = 5,
                   stemming = FALSE, size = 0.5, n.labels = 3, repel = TRUE)
 plot(Map$map)
 ```
 
-### 5.5 Lanzamiento de Biblioshiny (Interfaz Web)
+### 5.5 Launching Biblioshiny (Web Interface)
 ```r
 biblioshiny()
 ```
 
 ---
 
-## 6. Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## 6. Common Mistakes and Anti-Patterns
 
-- ❌ **Anti-patrón 1: Mezclar exportaciones de Scopus y WoS sin deduplicación previa de DOIs**  
-  Cargar archivos de múltiples bases con formatos cruzados sin unificar identificadores únicos (`DI` / `UT`). Se generan documentos duplicados que sesgan fuertemente las redes de co-citación e inflan la productividad.  
-  **Solución:** Deduplicar con `bibliometrix::mergeDbSources()` o prefiltrar en Python por DOI normalizado antes de la conversión.
-- ❌ **Anti-patrón 2: Umbrales mínimos de coocurrencia o co-citación demasiado bajos**  
-  Ejecutar `biblioNetwork()` o `thematicMap()` con `minfreq = 1` o sin fijar `n`. Provoca la creación de grafos gigantescos con miles de aristas esporádicas que saturan la memoria de R y generan visualizaciones ilegibles de tipo "bola de estambre" (*hairball*).  
-  **Solución:** Fijar siempre `n` acotado (p. ej. `n = 30` a `50` nodos) y `minfreq >= 3` a `5`.
-- ❌ **Anti-patrón 3: Confundir Palabras Clave de Autor (`DE`) con Keywords Plus (`ID`)**  
-  Usar `field = "ID"` para diagramas de Callon esperando capturar el vocabulario directo de los investigadores. Las Keywords Plus son generadas algorítmicamente a partir de títulos citados e introducen términos genéricos (p. ej. *system*, *model*, *performance*) que contaminan los temas motores.  
-  **Solución:** Usar `field = "DE"` (Author Keywords) para frentes emergentes y análisis temático conceptual riguroso.
-- ❌ **Anti-patrón 4: Omitir la fijación de semilla aleatoria (`set.seed`) en disposiciones de red**  
-  Generar redes con algoritmos de fuerza dirigidos (*Fruchterman-Reingold* o *Kamada-Kawai*) sin fijar una semilla estocástica. Cada ejecución reordena los nodos en coordenadas distintas, impidiendo la reproducibilidad de informes científicos.  
-  **Solución:** Invocar `set.seed(1234)` antes de cualquier `networkPlot()` o `thematicMap()`.
-- ❌ **Anti-patrón 5: Falta de normalización de variantes de nombres o acrónimos institucionales**  
-  Construir redes de coautoría o instituciones directamente desde datos crudos. Un mismo autor puede figurar como `GARCIA, J.`, `GARCIA, J.L.` y `GARCIA-ANDRADE, J.`, fragmentando su centralidad en la red.  
-  **Solución:** Utilizar tablas de sinónimos (*thesaurus*) en `thematicMap(synonyms = ...)` o normalizar previamente las variantes hispanas.
+- ❌ **Anti-pattern 1: Mixing Scopus and WoS exports without prior DOI deduplication**  
+  Loading files from multiple databases with cross-formats without unifying unique identifiers (`DI` / `UT`). This creates duplicate documents that heavily bias co-citation networks and inflate productivity counts.  
+  **Solution:** Deduplicate with `bibliometrix::mergeDbSources()` or pre-filter in Python by normalized DOI before conversion.
+- ❌ **Anti-pattern 2: Setting minimum co-occurrence or co-citation thresholds too low**  
+  Running `biblioNetwork()` or `thematicMap()` with `minfreq = 1` or without capping `n`. This produces massive graphs with thousands of sporadic edges that exhaust R memory and yield illegible "hairball" visualizations.  
+  **Solution:** Always set a bounded `n` (e.g., `n = 30` to `50` nodes) and `minfreq >= 3` to `5`.
+- ❌ **Anti-pattern 3: Confusing Author Keywords (`DE`) with Keywords Plus (`ID`)**  
+  Using `field = "ID"` for Callon diagrams expecting to capture researchers' direct vocabulary. Keywords Plus are algorithmically generated from cited article titles and introduce generic terms (e.g., *system*, *model*, *performance*) that pollute motor themes.  
+  **Solution:** Use `field = "DE"` (Author Keywords) for emerging fronts and rigorous conceptual thematic analysis.
+- ❌ **Anti-pattern 4: Omitting random seed initialization (`set.seed`) in network layouts**  
+  Generating networks with force-directed algorithms (*Fruchterman-Reingold* or *Kamada-Kawai*) without setting a stochastic seed. Each run reorders nodes into different coordinates, hindering reproducibility in scientific reports.  
+  **Solution:** Call `set.seed(1234)` before any `networkPlot()` or `thematicMap()`.
+- ❌ **Anti-pattern 5: Failing to normalize name variants or institutional acronyms**  
+  Building co-authorship or institutional networks directly from raw data. The same author may appear as `GARCIA, J.`, `GARCIA, J.L.`, and `GARCIA-ANDRADE, J.`, fragmenting their network centrality.  
+  **Solution:** Use synonym tables (*thesaurus*) in `thematicMap(synonyms = ...)` or normalize Hispanic name variants beforehand.
 
 ---
 
-## 7. Referencias Técnicas
+## 7. Technical References
 
-- [Fundamentos Teóricos del Diagrama de Callon (1991)](references/callon_thematic_quadrants_theory.md)
-- [Diccionario de Etiquetas de Campo Canónicas (`AU`, `DE`, `CR`, etc.)](references/bibliometrix_field_tags_guide.md)
-- [Script Autónomo de Ejecución R](scripts/bibliometrix_runner.R)
-- [Orquestador y Puente CLI Python](scripts/bibliometrix_cli.py)
-- [Sitio Oficial de Bibliometrix](https://www.bibliometrix.org/)
+- [Theoretical Foundations of Callon's Strategic Diagram (1991)](references/callon_thematic_quadrants_theory.md)
+- [Canonical Field Tags Dictionary (`AU`, `DE`, `CR`, etc.)](references/bibliometrix_field_tags_guide.md)
+- [Standalone R Execution Script](scripts/bibliometrix_runner.R)
+- [Python CLI Orchestrator and Bridge](scripts/bibliometrix_cli.py)
+- [Official Bibliometrix Website](https://www.bibliometrix.org/)
 - Aria, M. & Cuccurullo, C. (2017). "bibliometrix: An R-tool for comprehensive science mapping analysis." *Journal of Informetrics*, 11(4), 959–975. [DOI: 10.1016/j.joi.2017.08.007](https://doi.org/10.1016/j.joi.2017.08.007).

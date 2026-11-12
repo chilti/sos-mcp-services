@@ -1,33 +1,33 @@
-# Diccionario de Tablas de `analytics_cache.duckdb`
+# Table Dictionary for `analytics_cache.duckdb`
 
-El almacén analítico de Info TlachIA se gestiona en DuckDB (`analytics_cache.duckdb`, 5.9 GB) para consultas de latencia ultrabaja ($< 10\text{ms}$).
+The Info TlachIA analytical data warehouse is managed in DuckDB (`analytics_cache.duckdb`, 5.9 GB) for ultra-low-latency queries ($< 10\text{ms}$).
 
 ---
 
-## 1. Las 14 Tablas Consolidadas
+## 1. The 14 Consolidated Tables
 
-| Tabla | Registros | Nivel de Análisis | Columnas Clave |
+| Table | Records | Analysis Level | Key Columns |
 |---|---|---|---|
-| `investigador_total` | 90,000 | Investigador (Consolidado) | `academic_name`, `is_snii`, `num_documents`, `citations`, `fwci_avg`, `pct_top_10`, `h_index`, `apc_paid_usd` |
-| `investigador_annual` | 409,000 | Investigador $\times$ Año | Series temporales anuales de producción e impacto por autor |
-| `investigador_recent` | 43,000 | Investigador (Últimos 3 años) | Dinámica de impacto reciente y citas en ventana móvil |
-| `institucion_total` | 3,000 | Institución y Dependencia | Totales acumulados por universidad y facultad |
-| `institucion_annual` | 63,000 | Institución $\times$ Año | Series temporales institucionales |
-| `papers_profesor` | 1,250,000 | Documentos por Investigador | `academic_name`, `doi`, `title`, `year`, `citations`, `topics` |
-| `papers_institucion` | 4,220,000 | Documentos por Institución | Documentos indexados por universidad |
-| `topics_investigador` | 377,000 | Tópicos de Investigadores | Desglose temático de autores |
-| `topics_institucion` | 223,000 | Tópicos Institucionales | Especialización temática por facultad |
-| `keywords_investigador`| 3,730,000 | Palabras Clave de Autores | Palabras clave frecuentes por investigador |
-| `keywords_institucion` | 1,110,000 | Palabras Clave Institucionales | Palabras clave por dependencia |
-| `thematic_evolution_investigador` | 819,000 | Evolución de Tópicos (Autor) | Migración temporal de temas por autor |
-| `thematic_evolution_institucion` | 949,000 | Evolución de Tópicos (Inst) | Trayectoria temática institucional |
-| `umap_investigadores` | 18,700 | Coordenadas 2D/3D | Posicionamiento topológico de investigadores SNII |
+| `investigador_total` | 90,000 | Researcher (Consolidated) | `academic_name`, `is_snii`, `num_documents`, `citations`, `fwci_avg`, `pct_top_10`, `h_index`, `apc_paid_usd` |
+| `investigador_annual` | 409,000 | Researcher $\times$ Year | Annual time series of output and impact per author |
+| `investigador_recent` | 43,000 | Researcher (Last 3 years) | Recent impact dynamics and moving-window citations |
+| `institucion_total` | 3,000 | Institution and Department | Cumulative totals per university and faculty/department |
+| `institucion_annual` | 63,000 | Institution $\times$ Year | Institutional annual time series |
+| `papers_profesor` | 1,250,000 | Documents per Researcher | `academic_name`, `doi`, `title`, `year`, `citations`, `topics` |
+| `papers_institucion` | 4,220,000 | Documents per Institution | Documents indexed per university |
+| `topics_investigador` | 377,000 | Researcher Topics | Thematic breakdown of authors |
+| `topics_institucion` | 223,000 | Institutional Topics | Thematic specialization per faculty/department |
+| `keywords_investigador`| 3,730,000 | Author Keywords | Frequent keywords per researcher |
+| `keywords_institucion` | 1,110,000 | Institutional Keywords | Keywords per academic department |
+| `thematic_evolution_investigador` | 819,000 | Topic Evolution (Author) | Temporal migration of topics per author |
+| `thematic_evolution_institucion` | 949,000 | Topic Evolution (Inst) | Institutional thematic trajectory |
+| `umap_investigadores` | 18,700 | 2D/3D Coordinates | Topological positioning of SNII researchers |
 
 ---
 
-## 2. Columnas Canónicas de Filtrado
+## 2. Canonical Filtering Columns
 
 * `db_level`: `'NATIONAL'`, `'INSTITUTION'`, `'ENTITY'`, `'RESEARCHER'`.
-* `db_institution_name`: Nombre canónico (e.g. `'UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO (UNAM)'`).
-* `db_entity_name`: Nombre de la facultad o instituto (e.g. `'FACULTAD DE CIENCIAS'`).
-* `db_academic_name`: Nombre normalizado (`'APELLIDO PATERNO MATERNO, NOMBRES'`).
+* `db_institution_name`: Canonical institution name (e.g. `'UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO (UNAM)'`).
+* `db_entity_name`: Name of the faculty, school, or research institute (e.g. `'FACULTAD DE CIENCIAS'`).
+* `db_academic_name`: Normalized researcher name (`'APELLIDO PATERNO MATERNO, NOMBRES'`).

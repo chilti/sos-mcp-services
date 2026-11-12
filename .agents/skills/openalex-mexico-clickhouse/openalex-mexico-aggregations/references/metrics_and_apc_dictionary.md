@@ -1,15 +1,15 @@
-# Diccionario de Métricas y Modelo Económico APC en México
+# Metrics Dictionary and APC Economic Model in Mexico
 
-## 1. Vías Canónicas de Acceso Abierto
-- **Diamante (`diamond`):** Acceso libre sin costo para autores ni lectores. Modelo dominante en América Latina apoyado por universidades públicas y fondos institucionales.
-- **Dorada con APC (`gold`):** Revistas 100% de acceso abierto comercial con cobro de cargos por procesamiento de artículos (APC) a los autores.
-- **Híbrida (`hybrid`):** Revistas de suscripción tradicional donde autores pagan APC adicional para liberar artículos individuales (doble pago institucional: suscripción + APC).
-- **Verde (`green`):** Autoarchivo en repositorios institucionales o temáticos (ej. arXiv, SciELO Preprints, Repositorio Nacional).
-- **Bronce (`bronze`):** Acceso libre en la web de la editorial pero sin licencia abierta explícita (Creative Commons).
-- **Cerrada (`closed`):** Acceso restringido por muro de pago (paywall).
+## 1. Canonical Open Access Routes
+- **Diamond (`diamond`):** Free access at no cost to either authors or readers. Dominant model in Latin America supported by public universities and institutional funds.
+- **Gold with APC (`gold`):** 100% commercial Open Access journals charging Article Processing Charges (APCs) to authors.
+- **Hybrid (`hybrid`):** Traditional subscription journals where authors pay an additional APC to make individual articles open access (institutional double-dipping: subscription + APC).
+- **Green (`green`):** Self-archiving in institutional or thematic repositories (e.g., arXiv, SciELO Preprints, National Repository).
+- **Bronze (`bronze`):** Free to read on the publisher's website, but without an explicit open license (Creative Commons).
+- **Closed (`closed`):** Access restricted behind a paywall.
 
-## 2. Indicadores de Impacto Relativo
-- **FWCI (Field-Weighted Citation Impact):** Cociente entre las citas recibidas y el promedio esperado para trabajos del mismo año, disciplina y tipología documental.
-  - $\text{FWCI} = 1.0$: Impacto promedio mundial.
-  - $\text{FWCI} > 1.0$: Impacto superior al estándar global.
-- **Top 10% y Top 1%:** Indicadores de investigación de frontera según percentiles de citación por subcampo.
+## 2. Relative Impact Indicators
+- **FWCI (Field-Weighted Citation Impact):** Ratio between citations received and the expected global average for works of the same publication year, discipline, and document type.
+  - $\text{FWCI} = 1.0$: World average impact.
+  - $\text{FWCI} > 1.0$: Impact above the global benchmark.
+- **Top 10% and Top 1%:** Frontier research indicators based on citation percentiles by subfield.

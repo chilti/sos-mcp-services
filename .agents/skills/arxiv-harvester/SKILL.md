@@ -1,31 +1,33 @@
 ---
 name: arxiv-harvester
-description: Descarga y normalización de preprints científicos desde la API Atom XML de arXiv hacia tablas canónicas (Parquet, JSON, CSV).
+description: Download and normalize scientific preprints from the arXiv Atom XML API into canonical tables (Parquet, JSON, CSV). Respond and label outputs in the user's language.
 ---
 
 # arXiv Data Harvester
 
-Herramienta autónoma e independiente para la recolección de literatura científica y preprints desde el repositorio abierto de arXiv (`https://export.arxiv.org/api/query`), con respeto riguroso del intervalo de cortesía de 3 segundos y conversión al formato tabular canónico.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Autonomous, standalone tool for harvesting scientific literature and preprints from the arXiv open repository (`https://export.arxiv.org/api/query`), strictly enforcing the 3-second courtesy rate-limit interval and normalizing records into the canonical tabular schema.
 
 ---
 
-## Capacidades
+## Capabilities
 
-- **Búsqueda por Taxonomía:** Filtrado temático por categorías oficiales (`cs.AI`, `stat.ML`, `physics.soc-ph`, etc.).
-- **Descarga por Identificadores:** Recuperación directa de listas de IDs de arXiv.
-- **Acceso Abierto Verde:** Marcado estandarizado de preprints con metadatos de autoría y enlaces a versiones.
-- **Formato Canónico:** Archivos Parquet, JSON o CSV listos para análisis en redes y descriptores temáticos.
+- **Taxonomy-Based Search:** Thematic filtering by official arXiv subject categories (`cs.AI`, `stat.ML`, `physics.soc-ph`, etc.).
+- **Identifier-Based Retrieval:** Direct download of curated lists of arXiv IDs.
+- **Green Open Access Tagging:** Standardized tagging of preprints with authorship metadata and version links.
+- **Canonical Format:** Parquet, JSON, or CSV files ready for network analysis and thematic descriptor extraction.
 
 ---
 
-## Interfaz CLI
+## CLI Interface
 
-Entorno de ejecución:
+Execution environment:
 ```bash
-python scripts/arxiv_harvest_cli.py [subcomando] [opciones]
+python scripts/arxiv_harvest_cli.py [subcommand] [options]
 ```
 
-### 1. Búsqueda temática por categoría y palabras clave
+### 1. Thematic search by category and keywords
 ```bash
 python scripts/arxiv_harvest_cli.py search \
   --category "cs.AI" \
@@ -34,7 +36,7 @@ python scripts/arxiv_harvest_cli.py search \
   --output ./arxiv_llms.parquet
 ```
 
-### 2. Recuperación por lista de identificadores
+### 2. Retrieval by identifier list
 ```bash
 python scripts/arxiv_harvest_cli.py fetch-by-ids \
   --id-list "2301.07041,2303.08774,2401.12345" \
@@ -43,6 +45,6 @@ python scripts/arxiv_harvest_cli.py fetch-by-ids \
 
 ---
 
-## Referencias Técnicas
-- [Taxonomía de Categorías de arXiv](references/arxiv_categories_taxonomy.md)
-- [Sintaxis de Consultas y Reglas de la API](references/arxiv_query_syntax.md)
+## Technical References
+- [arXiv Categories Taxonomy](references/arxiv_categories_taxonomy.md)
+- [arXiv API Query Syntax and Rules](references/arxiv_query_syntax.md)

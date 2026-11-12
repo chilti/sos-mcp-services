@@ -1,32 +1,32 @@
-# Campos y Estructura de Semantic Scholar Graph API
+# Semantic Scholar Graph API Fields and Structure
 
-La API Graph de Semantic Scholar (`https://api.semanticscholar.org/graph/v1`) estructura la literatura científica mediante nodos interconectados de artículos, autores y citas.
+The Semantic Scholar Graph API (`https://api.semanticscholar.org/graph/v1`) structures scientific literature through interconnected nodes of papers, authors, and citations.
 
 ---
 
-## 1. Campos Clave de Artículos (`/paper`)
+## 1. Key Paper Fields (`/paper`)
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |---|---|---|
-| `paperId` | String | SHA-1 unívoco del artículo en Semantic Scholar |
-| `title` | String | Título del trabajo |
-| `abstract` | String | Resumen textual |
-| `year` | Integer | Año de publicación |
-| `venue` | String | Nombre corto o conferencia del medio |
-| `publicationVenue` | Objeto | Metadatos de la revista (ISSN, tipo, nombre completo) |
-| `citationCount` | Integer | Conteo total de citas recibidas |
-| `influentialCitationCount` | Integer | Citas consideradas influyentes según el modelo heurístico de S2 |
-| `fieldsOfStudy` | Array[str] | Áreas disciplinarias generales (Computer Science, Medicine, etc.) |
-| `s2FieldsOfStudy` | Array[obj] | Taxonomía jerárquica con categorías especializadas |
-| `openAccessPdf` | Objeto | Enlace directo al archivo PDF de acceso abierto |
-| `externalIds` | Objeto | Diccionario de identificadores externos (`DOI`, `ArXiv`, `PubMed`) |
-| `authors` | Array[obj] | Lista de autores con `authorId`, `name`, `affiliations` |
-| `citations` | Array[obj] | Artículos que citan a este trabajo (entrantes) |
-| `references` | Array[obj] | Artículos citados en la bibliografía (salientes) |
+| `paperId` | String | Unique SHA-1 paper identifier in Semantic Scholar |
+| `title` | String | Work title |
+| `abstract` | String | Text abstract |
+| `year` | Integer | Publication year |
+| `venue` | String | Short venue or conference name |
+| `publicationVenue` | Object | Journal metadata (ISSN, type, full name) |
+| `citationCount` | Integer | Total count of received citations |
+| `influentialCitationCount` | Integer | Citations deemed influential according to S2's heuristic model |
+| `fieldsOfStudy` | Array[str] | General disciplinary areas (Computer Science, Medicine, etc.) |
+| `s2FieldsOfStudy` | Array[obj] | Hierarchical taxonomy with specialized categories |
+| `openAccessPdf` | Object | Direct link to the Open Access PDF file |
+| `externalIds` | Object | Dictionary of external identifiers (`DOI`, `ArXiv`, `PubMed`) |
+| `authors` | Array[obj] | List of authors with `authorId`, `name`, `affiliations` |
+| `citations` | Array[obj] | Papers citing this work (incoming) |
+| `references` | Array[obj] | Papers cited in the bibliography (outgoing) |
 
 ---
 
-## 2. Límites de Tasa (Rate Limiting)
+## 2. Rate Limiting
 
-- **Modo anónimo:** 1 solicitud por segundo (el cliente aplica automáticamente una pausa de 1.0 s).
-- **Con clave `S2_API_KEY`:** Hasta 10 solicitudes por segundo (pausa de 0.2 s).
+- **Anonymous mode:** 1 request per second (the client automatically enforces a 1.0 s pause).
+- **With `S2_API_KEY`:** Up to 10 requests per second (0.2 s pause).

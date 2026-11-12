@@ -1,50 +1,50 @@
-# Guía de Aplicación de la Lista de Verificación GLOBAL (ISSI)
+# Application Guide to the GLOBAL (ISSI) Checklist
 
-Basado en: International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (Sugimoto, C. R., Larivière, V., Haustein, S., Vanderbilt, et al., 2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*.
-
----
-
-## 1. Fundamentos y Necesidad en Cienciometría
-
-A diferencia de las revisiones sistemáticas médicas (diseñadas bajo PRISMA para evaluar ensayos clínicos individuales y metaanálisis farmacológicos), los estudios cienciométricos y bibliométricos analizan **estructuras macroscópicas de la ciencia**, dinámicas de colaboración, linajes de citas y frentes de investigación.
-
-La guía **GLOBAL** surge del consenso de la comunidad académica internacional de cienciometría para superar la crisis de reproducibilidad en los estudios bibliométricos, estableciendo un estándar explícito para reportar cómo se delimita el corpus, cómo se limpian los datos y cómo se configuran los algoritmos de redes.
+Based on: International Society for Scientometrics and Informetrics (ISSI) / ScholCommLab (Sugimoto, C. R., Larivière, V., Haustein, S., Vanderbilt, et al., 2023–2024). *GLOBAL: Guidance List for repOrting Bibliometric AnaLyses*.
 
 ---
 
-## 2. Los 7 Dominios de la Lista de Verificación GLOBAL
+## 1. Foundations and Need in Scientometrics
 
-### Dominio 1: Justificación Teórica y Preguntas de Investigación
-- **Delimitación del Problema:** Justificación epistemológica del campo o temática bajo estudio.
-- **Alcance Cienciométrico:** Especificación clara de si el estudio es evaluativo (indicadores de rendimiento), relacional (mapeo científico de redes) o longitudinal (trayectorias temporales).
+Unlike medical systematic reviews (designed under PRISMA to evaluate individual clinical trials and pharmacological meta-analyses), scientometric and bibliometric studies analyze **macroscopic structures of science**, collaboration dynamics, citation lineages, and research fronts.
 
-### Dominio 2: Fuentes de Información y Snapshot Temporal
-- **Bases de Datos Seleccionadas:** Declarar explícitamente las plataformas consultadas (OpenAlex, Web of Science Core Collection, Scopus, PubMed, Dimensions).
-- **Snapshot y Fecha de Consulta:** Fecha exacta y huso horario de la extracción de datos. Dado que bases como OpenAlex, Scopus y WoS actualizan citas e indexaciones a diario, la fecha exacta es indispensable para la replicabilidad.
-- **Edición y Suscripción:** Índices exactos consultados (p. ej., SCIE, SSCI, AHCI, ESCI en WoS) para evitar discrepancias por coberturas institucionales distintas.
+The **GLOBAL** guideline emerged from the consensus of the international scientometrics academic community to overcome the reproducibility crisis in bibliometric studies, establishing an explicit standard for reporting how a corpus is delineated, how data are cleaned, and how network algorithms are parameterized.
 
-### Dominio 3: Delimitación del Corpus (Field Delineation)
-- **Ecuación de Búsqueda Completa:** Publicar la sintaxis literal y exacta utilizada en cada base, con etiquetas de campo (`TS=`, `TITLE-ABS-KEY()`, `[tiab]`).
-- **Enfoque de Delimitación:** Indicar si la delimitación fue léxica pura (palabras clave/operadores booleanos), basada en citaciones (acoplamiento bibliográfico, clusters de co-citación) o híbrida (núcleo léxico + expansión por red).
-- **Justificación de Términos:** Procedimiento para seleccionar palabras clave (tesauros MeSH/Emtree, Topics, o método iterativo *Pearl Growing*).
-- **Límites Documentales y Temporales:** Justificación explícita del rango de años (`PY`) y de los tipos de documentos incluidos (`DT=Article/Review`).
+---
 
-### Dominio 4: Limpieza de Datos y Desambiguación de Entidades
-- **Desduplicación:** Protocolo de detección de duplicados entre bases (normalización de DOI, concordancia de título/año).
-- **Desambiguación Autoral:** Algoritmos o identificadores persistentes empleados para resolver homónimos (ORCID, OpenAlex Author IDs, Scopus Author ID).
-- **Armonización Institucional:** Normalización de variantes organizacionales a través de vocabularios controlados (códigos ROR, subdependencias universitarias).
-- **Tesauro de Palabras Clave:** Fusión de sinónimos, lemas, acrónimos y eliminación de palabras vacías (*stopwords*) o términos metodológicos genéricos.
+## 2. The 7 Domains of the GLOBAL Checklist
 
-### Dominio 5: Indicadores y Métricas Seleccionadas
-- **Indicadores de Rendimiento:** Volumen de producción ($P$), citas totales ($C$), citas por documento ($C/P$), citas normalizadas por campo (FWCI / CNCI), decil de excelencia (Top 10%).
-- **Indicadores Relacionales:** Conteo completo vs. conteo fraccional (*fractional counting*, Perianes-Rodriguez et al., 2016) para coautoría y acoplamiento bibliográfico.
-- **Normalización de Similitud:** Especificación de la función de asociación empleada: *Association Strength* (Van Eck & Waltman), Coseno de Salton, Jaccard o Índice de Equivalencia.
+### Domain 1: Theoretical Rationale and Research Questions
+- **Problem Delineation:** Epistemological justification of the field or topic under study.
+- **Scientometric Scope:** Clear specification of whether the study is evaluative (performance indicators), relational (science mapping of networks), or longitudinal (temporal trajectories).
 
-### Dominio 6: Algoritmos, Software y Parámetros
-- **Herramientas de Software:** Nombres y versiones exactas de las herramientas empleadas (VOSviewer, Bibliometrix en R, KnoMap, SciMAT, Gephi, Python NetworkX).
-- **Umbrales Mínimos:** Frecuencia mínima de ocurrencia para nodos (palabras clave $\ge n$, citas mínimas $\ge c$).
-- **Algoritmo de Clustering y Resolución:** Algoritmo de partición comunitaria (Leiden, Louvain, Infomap) y parámetro de resolución modular ($\gamma$).
+### Domain 2: Information Sources and Temporal Snapshot
+- **Selected Databases:** Explicitly declare the queried platforms (OpenAlex, Web of Science Core Collection, Scopus, PubMed, Dimensions).
+- **Snapshot and Query Date:** Exact date and time zone of data extraction. Because databases such as OpenAlex, Scopus, and WoS update citations and indexing daily, the exact timestamp is indispensable for replicability.
+- **Edition and Subscription:** Exact indexes queried (e.g., SCIE, SSCI, AHCI, ESCI in WoS) to prevent discrepancies caused by differing institutional subscriptions.
 
-### Dominio 7: Ciencia Abierta y Disponibilidad de Datos y Código
-- **Disponibilidad de Datos:** Repositorio público (Zenodo, OSF, Figshare, GitHub) con el archivo canónico de metadatos (Parquet, CSV, RIS).
-- **Scripts de Reproducibilidad:** Código fuente documentado con semillas fijas (`random_state=42`) para que cualquier investigador pueda regenerar las redes y tablas.
+### Domain 3: Corpus Delineation (Field Delineation)
+- **Complete Search String:** Publish the literal, exact syntax used in each database, including field tags (`TS=`, `TITLE-ABS-KEY()`, `[tiab]`).
+- **Delineation Approach:** Indicate whether delineation was purely lexical (keywords/Boolean operators), citation-based (bibliographic coupling, co-citation clusters), or hybrid (lexical core + network expansion).
+- **Term Justification:** Procedure for selecting keywords (MeSH/Emtree thesauri, Topics, or iterative *Pearl Growing*).
+- **Document and Temporal Limits:** Explicit justification of the publication year range (`PY`) and included document types (`DT=Article/Review`).
+
+### Domain 4: Data Cleaning and Entity Disambiguation
+- **Deduplication:** Cross-database duplicate detection protocol (DOI normalization, title/year matching).
+- **Author Disambiguation:** Algorithms or persistent identifiers used to resolve homonyms (ORCID, OpenAlex Author IDs, Scopus Author ID).
+- **Institutional Harmonization:** Normalization of organizational variants via controlled vocabularies (ROR codes, university sub-units).
+- **Keyword Thesaurus:** Merging of synonyms, lemmas, and acronyms, and removal of stopwords or generic methodological terms.
+
+### Domain 5: Selected Indicators and Metrics
+- **Performance Indicators:** Publication volume ($P$), total citations ($C$), citations per paper ($C/P$), field-normalized citations (FWCI / CNCI), excellence decile (Top 10%).
+- **Relational Indicators:** Full counting vs. fractional counting (*fractional counting*, Perianes-Rodriguez et al., 2016) for co-authorship and bibliographic coupling.
+- **Similarity Normalization:** Specification of the association function used: *Association Strength* (Van Eck & Waltman), Salton's Cosine, Jaccard, or Equivalence Index.
+
+### Domain 6: Algorithms, Software, and Parameters
+- **Software Tools:** Exact names and versions of tools used (VOSviewer, Bibliometrix in R, KnoMap, SciMAT, Gephi, Python NetworkX).
+- **Minimum Thresholds:** Minimum occurrence frequency for nodes (keywords $\ge n$, minimum citations $\ge c$).
+- **Clustering Algorithm and Resolution:** Community partitioning algorithm (Leiden, Louvain, Infomap) and modular resolution parameter ($\gamma$).
+
+### Domain 7: Open Science and Data/Code Availability
+- **Data Availability:** Public repository (Zenodo, OSF, Figshare, GitHub) hosting the canonical metadata file (Parquet, CSV, RIS).
+- **Reproducibility Scripts:** Documented source code with fixed seeds (`random_state=42`) so any researcher can regenerate the networks and tables.

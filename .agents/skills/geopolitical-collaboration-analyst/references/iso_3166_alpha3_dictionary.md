@@ -1,75 +1,75 @@
-# Diccionario de Normalización y Taxonomía Geopolítica ISO-3166-1
+# ISO-3166-1 Normalization Dictionary and Geopolitical Taxonomy
 
-Estandarización formal de códigos de país y bloques analíticos regionales para cartografía cienciométrica y diplomacia científica internacional.
+Formal standardization of country codes and regional analytical blocs for scientometric mapping and international science diplomacy.
 
 ---
 
-## 1. Mapeo Canónico de Códigos y Regiones Geopolíticas
+## 1. Canonical Mapping of Codes and Geopolitical Regions
 
-| País / Territorio | ISO Alpha-3 | ISO Alpha-2 | Región Principal | Bloques Analíticos |
+| Country / Territory | ISO Alpha-3 | ISO Alpha-2 | Primary Region | Analytical Blocs |
 |:---|:---:|:---:|:---|:---|
-| **México** | `MEX` | `MX` | América del Norte | Iberoamérica, OCDE, Sur Global |
-| **España** | `ESP` | `ES` | Europa Occidental | Iberoamérica, Unión Europea, OCDE |
-| **Brasil** | `BRA` | `BR` | América del Sur | Iberoamérica, BRICS, Sur Global |
-| **Argentina** | `ARG` | `AR` | América del Sur | Iberoamérica, Sur Global |
-| **Chile** | `CHL` | `CL` | América del Sur | Iberoamérica, OCDE, Sur Global |
-| **Colombia** | `COL` | `CO` | América del Sur | Iberoamérica, OCDE, Sur Global |
-| **Perú** | `PER` | `PE` | América del Sur | Iberoamérica, Sur Global |
-| **Uruguay** | `URY` | `UY` | América del Sur | Iberoamérica, Sur Global |
-| **Cuba** | `CUB` | `CU` | Caribe | Iberoamérica, Sur Global |
-| **Ecuador** | `ECU` | `EC` | América del Sur | Iberoamérica, Sur Global |
-| **Costa Rica** | `CRI` | `CR` | América Central | Iberoamérica, OCDE, Sur Global |
-| **Panamá** | `PAN` | `PA` | América Central | Iberoamérica, Sur Global |
-| **Bolivia** | `BOL` | `BO` | América del Sur | Iberoamérica, Sur Global |
-| **Venezuela** | `VEN` | `VE` | América del Sur | Iberoamérica, Sur Global |
-| **Portugal** | `PRT` | `PT` | Europa Occidental | Iberoamérica, Unión Europea, OCDE |
-| **Estados Unidos** | `USA` | `US` | América del Norte | OCDE |
-| **Canadá** | `CAN` | `CA` | América del Norte | OCDE |
-| **Reino Unido** | `GBR` | `GB` | Europa | OCDE (Inglaterra, Escocia, Gales, I. del Norte) |
-| **Alemania** | `DEU` | `DE` | Europa Central | Unión Europea, OCDE |
-| **Francia** | `FRA` | `FR` | Europa Occidental | Unión Europea, OCDE |
-| **Italia** | `ITA` | `IT` | Europa Meridional | Unión Europea, OCDE |
-| **Países Bajos** | `NLD` | `NL` | Europa Occidental | Unión Europea, OCDE |
-| **Suiza** | `CHE` | `CH` | Europa Central | OCDE |
-| **China** | `CHN` | `CN` | Asia Oriental | BRICS (incluye Peoples R China, PR China) |
-| **Japón** | `JPN` | `JP` | Asia Oriental | OCDE |
-| **Corea del Sur** | `KOR` | `KR` | Asia Oriental | OCDE |
-| **India** | `IND` | `IN` | Asia Meridional | BRICS, Sur Global |
-| **Rusia** | `RUS` | `RU` | Eurasia | BRICS |
-| **Sudáfrica** | `ZAF` | `ZA` | África Austral | BRICS, Sur Global |
-| **Egipto** | `EGY` | `EG` | Norte de África / M. Oriente | BRICS, Sur Global |
-| **Australia** | `AUS` | `AU` | Oceanía | OCDE |
+| **Mexico** | `MEX` | `MX` | North America | Ibero-America, OECD, Global South |
+| **Spain** | `ESP` | `ES` | Western Europe | Ibero-America, European Union, OECD |
+| **Brazil** | `BRA` | `BR` | South America | Ibero-America, BRICS, Global South |
+| **Argentina** | `ARG` | `AR` | South America | Ibero-America, Global South |
+| **Chile** | `CHL` | `CL` | South America | Ibero-America, OECD, Global South |
+| **Colombia** | `COL` | `CO` | South America | Ibero-America, OECD, Global South |
+| **Peru** | `PER` | `PE` | South America | Ibero-America, Global South |
+| **Uruguay** | `URY` | `UY` | South America | Ibero-America, Global South |
+| **Cuba** | `CUB` | `CU` | Caribbean | Ibero-America, Global South |
+| **Ecuador** | `ECU` | `EC` | South America | Ibero-America, Global South |
+| **Costa Rica** | `CRI` | `CR` | Central America | Ibero-America, OECD, Global South |
+| **Panama** | `PAN` | `PA` | Central America | Ibero-America, Global South |
+| **Bolivia** | `BOL` | `BO` | South America | Ibero-America, Global South |
+| **Venezuela** | `VEN` | `VE` | South America | Ibero-America, Global South |
+| **Portugal** | `PRT` | `PT` | Western Europe | Ibero-America, European Union, OECD |
+| **United States** | `USA` | `US` | North America | OECD |
+| **Canada** | `CAN` | `CA` | North America | OECD |
+| **United Kingdom** | `GBR` | `GB` | Europe | OECD (England, Scotland, Wales, N. Ireland) |
+| **Germany** | `DEU` | `DE` | Central Europe | European Union, OECD |
+| **France** | `FRA` | `FR` | Western Europe | European Union, OECD |
+| **Italy** | `ITA` | `IT` | Southern Europe | European Union, OECD |
+| **Netherlands** | `NLD` | `NL` | Western Europe | European Union, OECD |
+| **Switzerland** | `CHE` | `CH` | Central Europe | OECD |
+| **China** | `CHN` | `CN` | East Asia | BRICS (includes Peoples R China, PR China) |
+| **Japan** | `JPN` | `JP` | East Asia | OECD |
+| **South Korea** | `KOR` | `KR` | East Asia | OECD |
+| **India** | `IND` | `IN` | South Asia | BRICS, Global South |
+| **Russia** | `RUS` | `RU` | Eurasia | BRICS |
+| **South Africa** | `ZAF` | `ZA` | Southern Africa | BRICS, Global South |
+| **Egypt** | `EGY` | `EG` | North Africa / Middle East | BRICS, Global South |
+| **Australia** | `AUS` | `AU` | Oceania | OECD |
 
 ---
 
-## 2. Taxonomía de Bloques Geopolíticos Formales
+## 2. Taxonomy of Formal Geopolitical Blocs
 
-El motor cuantitativo agrupa los países en cinco macro-bloques de política científica:
+The quantitative engine groups countries into five science-policy macro-blocs:
 
-1. **`Iberoamerica` (22 países):**
-   * Miembros plenos de la OEI y Cumbres Iberoamericanas (Latinoamérica de habla hispana y portuguesa + España, Portugal y Andorra).
-   * Indicador clave: cohesión lingüística y circulación en revistas indexadas regionales (SciELO, Redalyc, Latindex).
-2. **`GlobalSouth` (Sur Global):**
-   * Agrupación de economías en desarrollo de América Latina, África, el subcontinente indio y el Sudeste Asiático.
-   * Indicador clave: cooperación Sur-Sur no mediada por las metrópolis del Norte Global.
-3. **`OECD` (OCDE - 38 países):**
-   * Potencias científico-tecnológicas e industriales consolidadas (Norteamérica, Europa Occidental, Japón, Corea del Sur, Australia, etc.).
-4. **`BRICS` (10 países consolidados y ampliados):**
-   * Brasil, Rusia, India, China, Sudáfrica, Egipto, Etiopía, Irán, Emiratos Árabes Unidos y Arabia Saudita.
-5. **`EuropeanUnion` (27 estados miembros de la UE):**
-   * Ecosistema articulado bajo los programas marco Horizon Europe.
+1. **`Iberoamerica` (22 countries):**
+   * Full members of the OEI and Ibero-American Summits (Spanish- and Portuguese-speaking Latin America + Spain, Portugal, and Andorra).
+   * Key indicator: linguistic cohesion and circulation in regional indexed journals (SciELO, Redalyc, Latindex).
+2. **`GlobalSouth` (Global South):**
+   * Grouping of developing economies across Latin America, Africa, the Indian subcontinent, and Southeast Asia.
+   * Key indicator: South-South cooperation unmediated by Global North metropolises.
+3. **`OECD` (38 countries):**
+   * Consolidated scientific-technological and industrial powers (North America, Western Europe, Japan, South Korea, Australia, etc.).
+4. **`BRICS` (10 consolidated and expanded countries):**
+   * Brazil, Russia, India, China, South Africa, Egypt, Ethiopia, Iran, United Arab Emirates, and Saudi Arabia.
+5. **`EuropeanUnion` (27 EU member states):**
+   * Ecosystem articulated under the Horizon Europe framework programs.
 
 ---
 
-## 3. Reglas de Desambiguación y Heurísticas de Extracción
+## 3. Disambiguation Rules and Extraction Heuristics
 
-1. **Nombres Históricos y Compuestos:**
+1. **Historical and Compound Names:**
    * `Peoples R China`, `P.R. China`, `PR China` $\to$ `CHN`.
    * `England`, `Scotland`, `Wales`, `Northern Ireland` $\to$ `GBR`.
    * `Fed Rep Germany`, `Federal Republic of Germany` $\to$ `DEU`.
    * `South Korea`, `Republic of Korea` $\to$ `KOR`.
    * `Netherlands`, `The Netherlands`, `Holland` $\to$ `NLD`.
-2. **Afiliaciones con Código Postal:**
-   * Cadenas como `Suwon 16419, South Korea.` o `Honolulu, HI 96822 USA.` resuelven el código de país buscando los tokens terminales sin confundir el estado/ciudad con un código ISO.
-3. **Prohibición de Truncación Ciega:**
-   * Ningún texto se truncará a sus primeros 3 caracteres si no coincide con un código o sinónimo registrado. Si una cadena no corresponde a un país soberano o territorio reconocido, se descarta para evitar la creación de falsos positivos (e.g. provincias chinas o ciudades intermedias).
+2. **Affiliations with Postal Codes:**
+   * Strings such as `Suwon 16419, South Korea.` or `Honolulu, HI 96822 USA.` resolve the country code by scanning terminal tokens without confusing state/city abbreviations with an ISO code.
+3. **Prohibition of Blind Truncation:**
+   * No text is truncated to its first 3 characters if it does not match a registered code or synonym. If a string does not correspond to a recognized sovereign country or territory, it is discarded to prevent false positives (e.g., Chinese provinces or intermediate cities).

@@ -1,84 +1,88 @@
 ---
 name: sdg-impact-intelligence
-description: Mapeo, alineamiento, cuantificación y visualización interactiva de la producción científica en los 17 Objetivos de Desarrollo Sostenible (ODS / SDG) de la Agenda 2030 de la ONU. Opera Workspace-First consumiendo directamente ./corpus.parquet.
+description: Mapping, alignment, quantification, and interactive visualization of scientific output across the 17 United Nations Sustainable Development Goals (SDGs / Agenda 2030). Operates Workspace-First by directly consuming ./corpus.parquet. Respond and label outputs in the user's language.
 entrypoint: scripts/sdg_impact_cli.py
 inputs:
   type: object
   properties:
     workspace:
       type: string
-      description: Directorio raíz del workspace donde reside corpus.parquet y se generarán los reportes (default '.').
+      description: Root workspace directory where corpus.parquet resides and reports will be generated (default '.').
     input:
       type: string
-      description: Ruta explícita al archivo tabular de publicaciones (.parquet, .json, .csv).
+      description: Explicit path to the tabular publications file (.parquet, .json, .csv).
     sdg_col:
       type: string
-      description: Columna con metadatos de ODS (default auto-detecta 'sdgs', 'sdg_ids', 'ODS_ID').
+      description: Column containing SDG metadata (default auto-detects 'sdgs', 'sdg_ids', 'ODS_ID').
     title:
       type: string
-      description: Título del informe y dashboard HTML interactivo.
+      description: Title for the report and interactive HTML dashboard.
     output_html:
       type: string
-      description: Ruta del visualizador HTML interactivo (default './reportes/sdg_impact_dashboard.html').
+      description: Path to the interactive HTML visualizer (default './reportes/sdg_impact_dashboard.html').
     output_json:
       type: string
-      description: Ruta del resumen JSON estructurado (default './reportes/sdg_impact_summary.json').
+      description: Path to the structured JSON summary (default './reportes/sdg_impact_summary.json').
     output_md:
       type: string
-      description: Ruta del informe ejecutivo en Markdown (default './reportes/sdg_impact_report.md').
+      description: Path to the Markdown executive report (default './reportes/sdg_impact_report.md').
 ---
 
-# SDG Impact Intelligence: Mapeo y Visualizador de los 17 ODS de la ONU
+# SDG Impact Intelligence: Mapping and Visualizer for the 17 UN SDGs
 
-## 1. Propósito y Fundamentación Metodológica
-Esta skill formaliza la evaluación cienciométrica de impacto social y sostenibilidad de la investigación científica, cuantificando la contribución temática del corpus a los **17 Objetivos de Desarrollo Sostenible (ODS) de las Naciones Unidas (Agenda 2030)**:
-- **ODS 1 al 17:** Cobertura de las metas globales (Fin de la Pobreza, Salud y Bienestar, Educación de Calidad, Igualdad de Género, Industria e Innovación, Reducción de Desigualdades, Acción por el Clima, Paz y Justicia, etc.).
-- **Métricas Cuantitativas y Normalizadas:** Para cada objetivo calcula el volumen absoluto de publicaciones ($N$), porcentaje sobre el total del corpus (%), citas acumuladas, **FWCI promedio ponderado** (impacto normalizado por campo), proporción de excelencia en el **Top 10%** y tasa de **Acceso Abierto Diamante**.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+## 1. Purpose and Methodological Foundation
+This skill formalizes the scientometric evaluation of societal impact and sustainability in scientific research by quantifying the thematic contribution of a corpus to the **17 United Nations Sustainable Development Goals (SDGs / Agenda 2030)**:
+- **SDGs 1 through 17:** Coverage of global goals (No Poverty, Good Health and Well-being, Quality Education, Gender Equality, Industry and Innovation, Reduced Inequalities, Climate Action, Peace and Justice, etc.).
+- **Quantitative and Normalized Metrics:** For each goal, it computes absolute publication volume ($N$), percentage share of total corpus (%), cumulative citations, **weighted mean FWCI** (Field-Weighted Citation Impact), **Top 10%** excellence share, and **Diamond Open Access** rate.
 
 ---
 
-## 2. Principio Workspace-First ("De la Cosecha al ODS")
-La skill consume de manera autónoma los datos previamente descargados por las skills de cosecha (`openalex-harvester`, `openalex_search`, `arxiv-harvester`, `scopus-harvester`, `pubmed-harvester`) depositados en el workspace:
+## 2. Workspace-First Principle ("From Harvest to SDG")
+The skill autonomously consumes data previously downloaded by harvesting skills (`openalex-harvester`, `openalex_search`, `arxiv-harvester`, `scopus-harvester`, `pubmed-harvester`) stored in the workspace:
 
 ```
 <workspace>/
-├── corpus.parquet                <-- Archivo tabular de entrada principal
+├── corpus.parquet                <-- Primary input tabular file
 └── reportes/
-    ├── sdg_impact_summary.json   <-- Resumen estructurado JSON
-    ├── sdg_impact_report.md      <-- Reporte analítico con tablas y artículos clave
-    └── sdg_impact_dashboard.html <-- Visualizador interactivo oficial de los 17 ODS
+    ├── sdg_impact_summary.json   <-- Structured JSON summary
+    ├── sdg_impact_report.md      <-- Analytical report with tables and key papers
+    └── sdg_impact_dashboard.html <-- Official interactive visualizer of the 17 SDGs
 ```
 
 ---
 
-## 3. Visualizador Interactivo de los 17 ODS (Estética SinapsisAI / KnoMap)
-Integra el visualizador interactivo diseñado en el proyecto `sinapsisai` (`lib/viz_ods.py`):
-- **Cuadrícula Responsiva de 17 Tarjetas:** Despliega las imágenes oficiales de la ONU con sus códigos cromáticos canónicos.
-- **Identificación de Objetivos Activos vs. Inactivos:** Los ODS sin presencia en el corpus se muestran en escala de grises atenuada (`sdg-inactive`), activándose con color al pasar el cursor.
-- **Overlay de Métricas:** Porcentaje del corpus y conteo de documentos superpuesto con gradiente legible.
-- **Tooltips Informativos:** Nombre formal del ODS, conteo y porcentaje al hacer hover.
-- **Tabla Detallada con Semáforos FWCI:** Resumen numérico con insignias de impacto normalizado por objetivo.
+## 3. Interactive 17-SDG Visualizer (SinapsisAI / KnoMap Aesthetic)
+Integrates the interactive visualizer designed in the `sinapsisai` project (`lib/viz_ods.py`):
+- **Responsive 17-Card Grid:** Displays official UN icons with their canonical color codes.
+- **Active vs. Inactive Goal Identification:** SDGs without presence in the corpus are rendered in attenuated grayscale (`sdg-inactive`), activating in color on hover.
+- **Metrics Overlay:** Corpus percentage and document count overlaid with a legible gradient.
+- **Informative Tooltips:** Formal SDG name, count, and percentage on hover.
+- **Detailed Table with FWCI Badges:** Numerical summary with field-normalized impact badges per goal.
 
 ---
 
-## 4. Uso desde la Línea de Comandos (CLI)
+## 4. Command-Line Usage (CLI)
 
 ```bash
-# Ejecución estándar sobre el workspace
+# Standard execution over the workspace (English default)
 /home/ambientesPy/revistaslatam/bin/python scripts/sdg_impact_cli.py \
   --workspace ./ \
-  --title "Alineación ODS: Producción Científica en Inteligencia Artificial y Causalidad"
+  --title "SDG Alignment: Scientific Output in Artificial Intelligence and Causality" \
+  --lang en
 
-# Especificando archivo de entrada explícito
+# Specifying an explicit input file and Spanish labels
 /home/ambientesPy/revistaslatam/bin/python scripts/sdg_impact_cli.py \
-  --input ./data/mis_publicaciones.parquet \
-  --workspace ./
+  --input ./data/my_publications.parquet \
+  --workspace ./ \
+  --lang es
 ```
 
 ---
 
-## 5. Salidas Generadas en `./reportes/`
+## 5. Outputs Generated in `./reportes/`
 
-1. **`sdg_impact_dashboard.html`:** Tablero interactivo autónomo (sin dependencias externas pesadas) listo para abrirse en cualquier navegador.
-2. **`sdg_impact_summary.json`:** Diccionario estructurado con las estadísticas por ODS (1 a 17) para consumo por otras skills, agentes o LLMs.
-3. **`sdg_impact_report.md`:** Tabla en Markdown formateada para inclusión directa en manuscritos IMRyD, reportes institucionales o Policy Briefs.
+1. **`sdg_impact_dashboard.html`:** Standalone interactive dashboard (no heavy external dependencies) ready to open in any browser.
+2. **`sdg_impact_summary.json`:** Structured dictionary with statistics per SDG (1 to 17) for consumption by other skills, agents, or LLMs.
+3. **`sdg_impact_report.md`:** Markdown table formatted for direct inclusion in IMRaD manuscripts, institutional reports, or Policy Briefs.

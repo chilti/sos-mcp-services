@@ -44,6 +44,9 @@ Y registra `mcp_config.remote.json` en Antigravity para conectar vía SSE (`http
 ---
 
 ## 📚 Documentación
+- [Master User Manual for Google Antigravity & Gemini (English Guide, Basic Setup & Slash Commands)](docs/antigravity_gemini_manual.md)
+- [Master User Manual for Anthropic Claude (Claude Code, Desktop & Extended Thinking)](docs/claude_manual.md)
+- [Master User Manual for OpenAI ChatGPT (Web, Advanced Data Analysis, Canvas & o1/o3-mini)](docs/chatgpt_manual.md)
 - [Plan Integral de Implementación](docs/plan_implementacion_sos_mcp.md)
 
 ---

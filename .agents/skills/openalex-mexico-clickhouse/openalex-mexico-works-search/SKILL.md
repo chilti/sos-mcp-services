@@ -1,29 +1,31 @@
 ---
 name: openalex-mexico-works-search
-description: Recuperación y extracción de publicaciones científicas de México sobre la tabla materializada rag.works_academic_all (1.65M de trabajos), filtrando por institución ROR, autor, rango de años, vía de acceso abierto (Diamond, Gold, Hybrid) y percentiles de impacto Top 10% y Top 1%.
+description: "Retrieval and extraction of Mexican scientific publications over the materialized table rag.works_academic_all (1.65M works), filtering by institution ROR, author, year range, Open Access route (Diamond, Gold, Hybrid), and Top 10% and Top 1% impact percentiles. Respond and label outputs in the user's language."
 metadata:
   python: ">=3.10"
   script: "scripts/openalex_mexico_cli.py"
 ---
-# OpenAlex México Works Search
+# OpenAlex Mexico Works Search
 
-Recuperación granular de artículos, actas y capítulos de la producción científica vinculada a México almacenados en la tabla materializada `rag.works_academic_all`.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+Granular retrieval of articles, proceedings, and book chapters from scientific production linked to Mexico stored in the `rag.works_academic_all` materialized table.
 
 ## Overview
 
-Permite consultar los 1,652,927 trabajos de México con indicadores cienciométricos enriquecidos (FWCI, percentiles, Top 10%, APC pagado, vías de acceso abierto y ODS), aplicando filtros optimizados sin necesidad de formular cruces relacionales.
+Enables querying the 1,652,927 works from Mexico with enriched scientometric indicators (FWCI, percentiles, Top 10%, paid APC, Open Access routes, and SDGs), applying optimized filters without needing relational joins.
 
 ## Dependencies
 
-- **Entorno Python:** Python 3.10+ (`clickhouse-connect`)
-- **Script CLI:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
-- **Tabla ClickHouse:** `rag.works_academic_all`
+- **Python Environment:** Python 3.10+ (`clickhouse-connect`)
+- **CLI Script:** [`scripts/openalex_mexico_cli.py`](scripts/openalex_mexico_cli.py)
+- **ClickHouse Table:** `rag.works_academic_all`
 
 ## CLI Interface
 
-### 1. Búsqueda por Institución (ROR) y Rango Temporal
+### 1. Search by Institution (ROR) and Time Range
 
-Recupera la producción de una institución (ej. UNAM: `01tmp8f25`, Cinvestav: `04yeehy64`) en un periodo definido:
+Retrieves the production of an institution (e.g., UNAM: `01tmp8f25`, Cinvestav: `04yeehy64`) within a defined period:
 
 ```bash
 python scripts/openalex_mexico_cli.py search-works \
@@ -31,60 +33,66 @@ python scripts/openalex_mexico_cli.py search-works \
   --year-min 2023 \
   --year-max 2025 \
   --limit 200 \
-  --output /ruta/a/produccion_unam_reciente.json
+  --output ./data/produccion_unam_reciente.json
 ```
 
-### 2. Búsqueda de Publicaciones de Élite (Top 10% / Top 1%)
+### 2. Search for Elite Publications (Top 10% / Top 1%)
 
-Filtra artículos en el decil superior de impacto mundial:
+Filters articles in the top decile of global impact:
 
 ```bash
 python scripts/openalex_mexico_cli.py search-works \
   --is-top-10 true \
   --year-min 2020 \
   --limit 100 \
-  --output /ruta/a/articulos_top10_mexico.json
+  --output ./data/articulos_top10_mexico.json
 ```
 
-### 3. Filtrado por Acceso Abierto Diamante vs Doradas
+### 3. Filtering by Diamond vs. Gold Open Access
 
-Para análisis de soberanía editorial y vías no comerciales:
+For analyses of publishing sovereignty and non-commercial routes:
 
 ```bash
 python scripts/openalex_mexico_cli.py search-works \
   --oa-status "diamond" \
   --year-min 2024 \
   --limit 100 \
-  --output /ruta/a/articulos_diamante_2024.json
+  --output ./data/articulos_diamante_2024.json
 ```
 
-### 4. Búsqueda por Tópico o Término
+### 4. Search by Topic or Keyword
 
 ```bash
 python scripts/openalex_mexico_cli.py search-works \
   --query "quantum dots" \
   --topic "Nanotechnology" \
   --limit 50 \
-  --output /ruta/a/nanotecnologia_mexico.json
+  --output ./data/nanotecnologia_mexico.json
 ```
 
 ## Workflow Steps
 
-1. **Definir Filtros:** Seleccionar institución, año, tipo de acceso o nivel de impacto.
-2. **Ejecutar Búsqueda:** Correr `search-works` enviando la salida a JSON.
-3. **Flujos Posteriores:**
-   - Para cálculo de indicadores agregados: usar [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
-   - Para modelado en redes: alimentar [`bibliometric-network-analyst`](../../bibliometric-network-analyst/SKILL.md).
+1. **Define Filters:** Select institution, year range, Open Access route, or impact level.
+2. **Execute Search:** Run `search-works` outputting to a JSON, CSV, or Parquet file.
+3. **Downstream Workflows:**
+   - For aggregated indicator calculations: use [`openalex-mexico-aggregations`](../openalex-mexico-aggregations/SKILL.md).
+   - For network modeling: feed into [`bibliometric-network-analyst`](../../bibliometric-network-analyst/SKILL.md).
 
 ## References
 
-- [Diccionario de Campos de rag.works_academic_all](references/works_academic_all_schema.md)
+- [Field Dictionary of rag.works_academic_all](references/works_academic_all_schema.md)
 
-## Common Mistakes y Anti-Patrones (Evitar Errores Frecuentes)
+## Common Mistakes and Anti-Patterns (Avoid Frequent Errors)
 
-- ❌ **Anti-patrón 1: Búsqueda exhaustiva sin acotar por año o ROR**Lanzar búsquedas de texto abierto sobre 1.65M de registros sin delimitar ventana temporal.**Solución:** Especificar `--year-min` y `--year-max`, o filtrar por `--institution-ror`.
-- ❌ **Anti-patrón 2: Confusión en el formato del código ROR**Asumir que sólo se acepta el ID numérico corto o sólo la URI completa.**Solución:** El CLI acepta indistintamente formato corto (`01tmp8f25`) o URI (`https://ror.org/01tmp8f25`), resolviendo ambos de manera transparente.
-- ❌ **Anti-patrón 3: Descargas masivas sin paginación ni límite prudente**Intentar descargar 50,000 registros en un solo comando sin verificar el impacto en memoria local.**Solución:** Aumentar el `--limit` de forma escalonada (ej. 500 $\rightarrow$ 1,000 $\rightarrow$ 2,500).
-- ❌ **Anti-patrón 4: Violación de File-Output First**
-  No pasar el flag `--output`, provocando que el CLI intente volcar miles de artículos con abstracts y metadatos a la terminal.
-  **Solución:** Especificar siempre `--output ./data/publicaciones.json`.
+- ❌ **Anti-pattern 1: Exhaustive search without bounding by year or ROR**  
+  Running open-text searches over 1.65M records without delineating a time window.  
+  **Solution:** Specify `--year-min` and `--year-max`, or filter by `--institution-ror`.
+- ❌ **Anti-pattern 2: Confusion over ROR code format**  
+  Assuming only the short alphanumeric ID or only the full URI is accepted.  
+  **Solution:** The CLI accepts both the short format (`01tmp8f25`) and the full URI (`https://ror.org/01tmp8f25`) interchangeably, resolving both transparently.
+- ❌ **Anti-pattern 3: Massive downloads without pagination or a prudent limit**  
+  Attempting to download 50,000 records in a single command without verifying the impact on local memory.  
+  **Solution:** Increase `--limit` incrementally (e.g., 500 $\rightarrow$ 1,000 $\rightarrow$ 2,500).
+- ❌ **Anti-pattern 4: Violating File-Output First**  
+  Omitting the `--output` flag, causing the CLI to fail or dump thousands of articles with abstracts and metadata to the terminal.  
+  **Solution:** Always specify `--output ./data/publicaciones.json`.

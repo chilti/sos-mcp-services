@@ -1,28 +1,28 @@
-# Sintaxis de Búsqueda Avanzada de Scopus
+# Scopus Advanced Search Syntax
 
-La API de Scopus Search acepta operadores booleanos y códigos de campo especializados definidos por Elsevier.
+The Scopus Search API accepts Boolean operators and specialized field codes defined by Elsevier.
 
 ---
 
-## 1. Códigos de Campo Más Frecuentes
+## 1. Most Frequent Field Codes
 
-| Código | Descripción | Ejemplo |
+| Code | Description | Example |
 |---|---|---|
-| `TITLE-ABS-KEY()` | Busca términos en título, resumen y palabras clave | `TITLE-ABS-KEY("bibliometrics" OR "scientometrics")` |
-| `AUTH()` | Apellido o nombre del autor | `AUTH("Jimenez-Andrade")` |
-| `AU-ID()` | Identificador unívoco del autor en Scopus | `AU-ID(57200234567)` |
-| `AFFIL()` | Nombre de la institución o afiliación | `AFFIL("Universidad Nacional Autonoma de Mexico")` |
-| `AF-ID()` | Identificador unívoco de afiliación en Scopus | `AF-ID(60028190)` (UNAM) |
-| `PUBYEAR` | Año de publicación | `PUBYEAR = 2024` o `PUBYEAR > 2020` |
-| `EXACTSRCTITLE()` | Título exacto de la revista o fuente | `EXACTSRCTITLE("Journal of Informetrics")` |
-| `ISSN()` | ISSN de la revista | `ISSN(1751-1577)` |
-| `DOCTYPE()` | Tipo documental (`ar` = article, `re` = review, `cp` = conference) | `DOCTYPE(ar)` |
-| `SUBJAREA()` | Código de área temática ASJC | `SUBJAREA(COMP)` (Computer Science) |
+| `TITLE-ABS-KEY()` | Searches terms in title, abstract, and keywords | `TITLE-ABS-KEY("bibliometrics" OR "scientometrics")` |
+| `AUTH()` | Author surname or name | `AUTH("Jimenez-Andrade")` |
+| `AU-ID()` | Unique Scopus Author Identifier | `AU-ID(57200234567)` |
+| `AFFIL()` | Institution or affiliation name | `AFFIL("Universidad Nacional Autonoma de Mexico")` |
+| `AF-ID()` | Unique Scopus Affiliation Identifier | `AF-ID(60028190)` (UNAM) |
+| `PUBYEAR` | Publication year | `PUBYEAR = 2024` or `PUBYEAR > 2020` |
+| `EXACTSRCTITLE()` | Exact journal or source title | `EXACTSRCTITLE("Journal of Informetrics")` |
+| `ISSN()` | Journal ISSN | `ISSN(1751-1577)` |
+| `DOCTYPE()` | Document type (`ar` = article, `re` = review, `cp` = conference) | `DOCTYPE(ar)` |
+| `SUBJAREA()` | ASJC subject area code | `SUBJAREA(COMP)` (Computer Science) |
 
 ---
 
-## 2. Operadores Booleanos y de Proximidad
+## 2. Boolean and Proximity Operators
 
-- `AND`, `OR`, `AND NOT` (deben escribirse siempre en mayúsculas).
-- Comillas dobles `""` para frases exactas: `TITLE-ABS-KEY("artificial intelligence")`.
-- Paréntesis para agrupar expresiones: `(AUTH("Gomez") OR AUTH("Perez")) AND PUBYEAR > 2022`.
+- `AND`, `OR`, `AND NOT` (must always be written in uppercase).
+- Double quotes `""` for exact phrases: `TITLE-ABS-KEY("artificial intelligence")`.
+- Parentheses to group expressions: `(AUTH("Gomez") OR AUTH("Perez")) AND PUBYEAR > 2022`.

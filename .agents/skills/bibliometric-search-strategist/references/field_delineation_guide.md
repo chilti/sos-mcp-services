@@ -1,72 +1,72 @@
-# Guía Metodológica de Delimitación de Campos (Field Delineation) en Cienciometría
+# Methodological Guide to Field Delineation in Scientometrics
 
-Basado en:
+Based on:
 * Huang, C., Schiebel, E., & Porter, A. L. (2011). *A multi-stage approach to mapping emerging technologies: the case of DNA sequencing technology*. Scientometrics, 87(2), 241-260.
 * Glänzel, W., Schlemmer, B., & Du Plessis, B. (2009). *A hybrid approach for addressing the problem of "field delineation" in scientometric studies*. Scientometrics, 79(1), 3-17.
 * Zitt, M., & Bassecoulard, E. (2006). *Challenges for scientometric indicators: the data delimitation issue*. Scientometrics, 67(1), 145-160.
 
 ---
 
-## 1. El Problema de la Delimitación de Campos Científicos
+## 1. The Scientific Field Delineation Problem
 
-En cienciometría, delimitar el corpus de un campo de investigación (*Field Delineation*) es el paso más crítico de cualquier estudio bibliométrico. Una delimitación defectuosa produce:
-* **Falso Silencio (Bajo *Recall*):** Omitir trabajos clave que utilizan vocabulario alternativo o metafórico, distorsionando las redes y subestimando el impacto.
-* **Ruido Masivo (Baja *Precision*):** Incluir literatura irrelevante debido a términos polisémicos, falseando las métricas de colaboración y los clusters temáticos.
+In scientometrics, delineating the corpus of a research field (*Field Delineation*) is the most critical step of any bibliometric study. Flawed delineation produces:
+* **False Silence (Low *Recall*):** Omitting key works that use alternative or metaphorical vocabulary, distorting networks and underestimating impact.
+* **Massive Noise (Low *Precision*):** Including irrelevant literature due to polysemous terms, skewing collaboration metrics and thematic clusters.
 
 ---
 
-## 2. Los Tres Enfoques Canónicos de Delimitación
+## 2. The Three Canonical Delineation Approaches
 
 ```mermaid
 flowchart TD
-    subgraph Enfoque1 ["1. Enfoque Léxico Modular (Huang & Porter, 2011)"]
-        L1["Términos Núcleo (Core Search)"] --> L2["Expansión por Términos Afines"]
-        L2 --> L3["Filtrado de Ruido por Co-ocurrencia"]
+    subgraph Approach1 ["1. Modular Lexical Approach (Huang & Porter, 2011)"]
+        L1["Core Terms (Core Search)"] --> L2["Related-Term Expansion"]
+        L2 --> L3["Co-occurrence Noise Filtering"]
     end
 
-    subgraph Enfoque2 ["2. Enfoque Topológico de Citaciones (Klavans & Boyack)"]
-        C1["Artículos Semilla Canónicos"] --> C2["Acoplamiento Bibliográfico / Co-citación"]
-        C2 --> C3["Partición por Grafos Globales (Leiden)"]
+    subgraph Approach2 ["2. Topological Citation Approach (Klavans & Boyack)"]
+        C1["Canonical Seed Articles"] --> C2["Bibliographic Coupling / Co-citation"]
+        C2 --> C3["Global Graph Partitioning (Leiden)"]
     end
 
-    subgraph Enfoque3 ["3. Enfoque Híbrido Causal-Léxico (Glänzel et al., 2009)"]
-        H1["Semilla / Núcleo Léxico Booleano"] --> H2["Expansión por Red de Citaciones (1er orden)"]
-        H2 --> H3["Filtro de Densidad Núcleo (Cita a >= k semillas)"]
+    subgraph Approach3 ["3. Hybrid Causal-Lexical Approach (Glänzel et al., 2009)"]
+        H1["Seed / Boolean Lexical Core"] --> H2["Citation Network Expansion (1st order)"]
+        H2 --> H3["Core Density Filter (Cites >= k seeds)"]
     end
 ```
 
 ---
 
-## 3. Protocolo Multi-Etapa de Huang, Schiebel & Porter (2011)
+## 3. Huang, Schiebel & Porter (2011) Multi-Stage Protocol
 
-Diseñado especialmente para dominios emergentes o interdisciplinarios, este protocolo consta de 4 etapas estructuradas:
+Designed specifically for emerging or interdisciplinary domains, this protocol consists of 4 structured stages:
 
-### Etapa 1: Definición del Núcleo de Alta Precisión (Core Search)
-- Selección de términos estrictos, inequívocos e indiscutibles que definen la tecnología o teoría (p. ej., nombres propios de algoritmos, ecuaciones formalizadas o construcciones léxicas exclusivas).
-- Objetivo: Garantizar una precisión cercana al 100%, aunque el *recall* inicial sea moderado.
+### Stage 1: High-Precision Core Definition (Core Search)
+- Selection of strict, unambiguous, and undisputed terms that define the technology or theory (e.g., proprietary algorithm names, formalized equations, or exclusive lexical constructs).
+- Objective: Guarantee near-100% precision, even if initial *recall* is moderate.
 
-### Etapa 2: Expansión Sistemática (Modular Expansion)
-- A partir del corpus núcleo, se analizan las palabras clave de autor y los esquemas de clasificación (Topics de OpenAlex, MeSH Headings, Categorías WoS).
-- Se incorporan variantes tecnológicas, herramientas computacionales asociadas y terminología de subcampos conectados mediante bloques conceptuales (`OR`).
+### Stage 2: Systematic Expansion (Modular Expansion)
+- From the core corpus, analyze author keywords and classification schemes (OpenAlex Topics, MeSH Headings, WoS Categories).
+- Incorporate technological variants, associated computational tools, and terminology from connected subfields via conceptual building blocks (`OR`).
 
-### Etapa 3: Filtrado y Exclusión de Ruido (Noise Removal)
-- Se auditan las palabras polisémicas que provocan contaminación temática.
-- **Regla cienciométrica:** No usar el operador `NOT` de forma aislada sin evaluar si elimina literatura seminal. En su lugar, se utilizan:
-  1. Restricciones de categorías temáticas ajenas (`NOT WC="Surgery"` si el estudio es puramente informático).
-  2. Umbrales de co-ocurrencia: el término ambiguo solo se admite si co-ocurre con al menos un término del núcleo conceptual.
+### Stage 3: Noise Filtering and Exclusion (Noise Removal)
+- Audit polysemous words that cause thematic contamination.
+- **Scientometric rule:** Never use the `NOT` operator in isolation without evaluating whether it removes seminal literature. Instead, use:
+  1. Unrelated subject category restrictions (`NOT WC="Surgery"` if the study is purely in computer science).
+  2. Co-occurrence thresholds: an ambiguous term is admitted only if it co-occurs with at least one term from the conceptual core.
 
-### Etapa 4: Validación y Calibración
-- Verificación del porcentaje de recuperación de las obras seminales (*golden standard*).
-- Inspección manual del decil superior de publicaciones más citadas para confirmar que pertenecen al dominio.
+### Stage 4: Validation and Calibration
+- Verify the retrieval rate of seminal works (*golden standard*).
+- Manually inspect the top decile of most-cited publications to confirm they belong to the target domain.
 
 ---
 
-## 4. El Enfoque Híbrido Causal-Léxico de Glänzel et al. (2009)
+## 4. Glänzel et al. (2009) Hybrid Causal-Lexical Approach
 
-Para resolver el problema del desbordamiento en el rastreo de citas (*citation snowballing*):
+To solve the runaway expansion problem in citation tracking (*citation snowballing*):
 
-$$\text{Criterio de Inclusión Híbrido}: \quad d \in \text{Corpus} \iff d \in \text{Core}_{\text{léxico}} \quad \lor \quad |\text{Citations}(d, \text{Core}_{\text{léxico}})| \ge k$$
+$$\text{Hybrid Inclusion Criterion}: \quad d \in \text{Corpus} \iff d \in \text{Core}_{\text{lexical}} \quad \lor \quad |\text{Citations}(d, \text{Core}_{\text{lexical}})| \ge k$$
 
-Donde $k$ es el **umbral de densidad de citación núcleo** (típicamente $k=2$ o $k=3$):
-* Si un documento externo fue descubierto por citar o ser citado por una semilla, **solo se retiene si se conecta simultáneamente con al menos $k$ documentos del núcleo inicial**.
-* Esto actúa como una barrera topológica que impide que la búsqueda se fugue hacia disciplinas tangenciales.
+Where $k$ is the **core citation density threshold** (typically $k=2$ or $k=3$):
+* If an external document was discovered by citing or being cited by a seed, **it is retained only if it connects simultaneously to at least $k$ documents in the initial core**.
+* This acts as a topological barrier preventing the search from leaking into tangential disciplines.

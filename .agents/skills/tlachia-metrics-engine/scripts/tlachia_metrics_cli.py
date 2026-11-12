@@ -2,12 +2,12 @@
 """
 TlachIA Metrics Engine CLI
 --------------------------
-Motor cienciométrico autónomo e independiente para el cálculo de más de 35 indicadores
-de volumen, citación (H, G, M, i10), excelencia (FWCI, Percentil, Top 10%, Top 1%),
-las 6 vías de Acceso Abierto, economía de la publicación (APC USD real/lista y ahorro Diamante),
-colaboración internacional, estructura coautoral, coeficiente de Gini temático y análisis
-temporal (anual con suavizado CMA y longitudinal por periodos) a nivel global o por entidad
-(investigador/autor, institución, país, revista/fuente, subcampo o tópico) sin truncar columnas.
+Standalone scientometric engine for computing 35+ indicators covering
+volume, citations (H, G, M, i10), excellence (FWCI, Percentile, Top 10%, Top 1%),
+the 6 Open Access pathways, publication economics (actual/list APC USD and Diamond savings),
+international collaboration, co-authorship structure, thematic Gini coefficient, and temporal
+analysis (annual with CMA smoothing and period-based longitudinal) at the global or entity level
+(researcher/author, institution, country, journal/source, subfield, or topic) without truncating columns.
 """
 
 import sys
@@ -20,11 +20,11 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 GLOBAL_SOUTH_COUNTRIES = {
-    # América Latina y Caribe
+    # Latin America and Caribbean
     "MX", "BR", "AR", "CL", "CO", "PE", "UY", "VE", "EC", "BO", "PY", "CU", "DO", "CR", "PA", "GT", "HN", "SV", "NI", "JM", "TT",
-    # África
+    # Africa
     "ZA", "EG", "NG", "KE", "GH", "ET", "TZ", "UG", "DZ", "MA", "TN", "SN", "CM", "CI", "ZW",
-    # Asia y Medio Oriente
+    # Asia and Middle East
     "IN", "ID", "PK", "BD", "PH", "VN", "TH", "MY", "IR", "IQ", "JO", "LB", "LK", "NP", "KZ", "UZ", "CN",
 }
 
@@ -35,7 +35,7 @@ METADATA_NON_INDICATOR_COLS = {
 
 
 def _normalize_loaded_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Normaliza alias de columnas para garantizar interoperabilidad con todos los cosechadores y ClickHouse."""
+    """Normalizes column aliases to ensure interoperability across all harvesters and ClickHouse."""
     if df.empty:
         return df
     df = df.copy()
@@ -84,10 +84,10 @@ def _normalize_loaded_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_canonical_corpus(filepath: str) -> pd.DataFrame:
-    """Carga un archivo bibliográfico tabular (.parquet, .csv, .json) en DataFrame normalizado."""
+    """Loads a tabular bibliographic file (.parquet, .csv, .json) into a normalized DataFrame."""
     p = Path(filepath)
     if not p.exists():
-        raise FileNotFoundError(f"No se encontró el archivo: {filepath}")
+        raise FileNotFoundError(f"File not found: {filepath}")
     ext = p.suffix.lower()
     if ext == ".parquet":
         df = pd.read_parquet(p)
@@ -115,7 +115,7 @@ def load_canonical_corpus(filepath: str) -> pd.DataFrame:
 
 
 def calculate_h_index(citations_series: pd.Series) -> int:
-    """Calcula el índice H de Hirsch a partir de un arreglo de citas."""
+    """Computes Hirsch's H-index from a series of citations."""
     if citations_series is None or len(citations_series) == 0:
         return 0
     cits = np.sort(pd.to_numeric(citations_series, errors="coerce").fillna(0).values)[::-1]
@@ -129,7 +129,7 @@ def calculate_h_index(citations_series: pd.Series) -> int:
 
 
 def calculate_g_index(citations_series: pd.Series) -> int:
-    """Calcula el índice G de Egghe a partir de un arreglo de citas."""
+    """Computes Egghe's G-index from a series of citations."""
     if citations_series is None or len(citations_series) == 0:
         return 0
     cits = np.sort(pd.to_numeric(citations_series, errors="coerce").fillna(0).values)[::-1]
@@ -145,7 +145,7 @@ def calculate_g_index(citations_series: pd.Series) -> int:
 
 
 def calculate_i10_index(citations_series: pd.Series) -> int:
-    """Calcula la cantidad de documentos con al menos 10 citas."""
+    """Computes the number of documents with at least 10 citations."""
     if citations_series is None or len(citations_series) == 0:
         return 0
     cits = pd.to_numeric(citations_series, errors="coerce").fillna(0)
@@ -153,7 +153,7 @@ def calculate_i10_index(citations_series: pd.Series) -> int:
 
 
 def compute_gini_coefficient(values: np.ndarray) -> float:
-    """Calcula el coeficiente de concentración de Gini (0 = perfecta igualdad, 1 = máxima concentración)."""
+    """Computes the Gini concentration coefficient (0 = perfect equality, 1 = maximum concentration)."""
     vals = np.asarray(values, dtype=float)
     vals = vals[vals >= 0]
     if len(vals) == 0 or np.sum(vals) == 0:
@@ -174,8 +174,8 @@ def _split_semicolon_items(val: Any) -> List[str]:
 
 def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int] = None) -> Dict[str, Any]:
     """
-    Calcula la suite completa de más de 35 indicadores cienciométricos de TlachIA
-    sobre un DataFrame (sea el corpus global o el subconjunto de una entidad/periodo).
+    Computes the full suite of 35+ TlachIA scientometric indicators
+    over a DataFrame (either the global corpus or an entity/period subset).
     """
     n_docs = len(df)
     denom_corpus = total_corpus_docs if (total_corpus_docs and total_corpus_docs > 0) else max(n_docs, 1)
@@ -196,7 +196,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
             "collaboration_index": 0.0, "active_years": 0, "first_year": None, "last_year": None,
         }
 
-    # 1. Volumen, Ventana Temporal y Citas
+    # 1. Volume, Temporal Window, and Citations
     cits_col = "citations" if "citations" in df.columns else ("cited_by_count" if "cited_by_count" in df.columns else None)
     cits = pd.to_numeric(df[cits_col], errors="coerce").fillna(0) if cits_col else pd.Series([0] * n_docs)
 
@@ -219,7 +219,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
             active_years = max(1, last_year - first_year + 1)
     m_idx = float(h_idx / active_years)
 
-    # 2. Impacto Normalizado (FWCI) y Percentiles / Top 10% / Top 1%
+    # 2. Normalized Impact (FWCI) and Percentiles / Top 10% / Top 1%
     fwci_avg = 0.0
     fwci_median = 0.0
     if "fwci" in df.columns and df["fwci"].notna().any():
@@ -247,7 +247,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
     pct_top_10 = float((top_10_docs / n_docs) * 100.0)
     pct_top_1 = float((top_1_docs / n_docs) * 100.0)
 
-    # 3. Acceso Abierto y Ciencia Abierta (6 Vías)
+    # 3. Open Access and Open Science (6 Pathways)
     oa_status_s = df["oa_status"].fillna("closed").astype(str).str.lower() if "oa_status" in df.columns else pd.Series(["closed"] * n_docs)
     if "is_oa" in df.columns:
         is_oa_s = df["is_oa"].isin([1, True, "1", "true", "True"]) | oa_status_s.isin(["gold", "diamond", "green", "hybrid", "bronze"])
@@ -263,7 +263,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
     pct_oa_bronze = float(((oa_status_s == "bronze").sum() / n_docs) * 100.0)
     pct_oa_closed = float(((~is_oa_s).sum() / n_docs) * 100.0)
 
-    # 4. Economía de la Publicación (APC USD y Ahorro Diamante)
+    # 4. Publication Economics (APC USD and Diamond Savings)
     apc_list_usd = float(pd.to_numeric(df["apc_list_usd"], errors="coerce").fillna(0).sum()) if "apc_list_usd" in df.columns else 0.0
     if "apc_paid_usd" in df.columns:
         apc_s = pd.to_numeric(df["apc_paid_usd"], errors="coerce").fillna(0)
@@ -276,7 +276,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
     diamond_count = int((oa_status_s == "diamond").sum())
     est_diamond_savings_usd = float(diamond_count * 1800.0)
 
-    # 5. Colaboración Internacional, Sur Global y Coautoría
+    # 5. International Collaboration, Global South, and Co-authorship
     n_intl = 0
     n_domestic = 0
     n_global_south = 0
@@ -365,7 +365,7 @@ def compute_summary_indicators(df: pd.DataFrame, total_corpus_docs: Optional[int
 
 
 def _extract_entity_index_map(df: pd.DataFrame, level: str) -> Tuple[Dict[str, List[int]], Dict[str, List[str]]]:
-    """Mapea cada entidad a los índices de fila de df donde participa y sus países asociados."""
+    """Maps each entity to the row indices of df where it participates and its associated countries."""
     norm_level = level.lower().strip()
     if norm_level == "author":
         norm_level = "researcher"
@@ -392,7 +392,7 @@ def _extract_entity_index_map(df: pd.DataFrame, level: str) -> Tuple[Dict[str, L
             val = str(row.get(norm_level, "") or "").strip()
             items = [val] if val and val.upper() != "NAN" else []
         else:
-            raise ValueError(f"Nivel de entidad no soportado: {level}")
+            raise ValueError(f"Unsupported entity level: {level}")
 
         for ent in set(items):
             if not ent:
@@ -415,16 +415,15 @@ def aggregate_by_entity(
     indicators: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
-    Agrega la batería completa de 35+ indicadores cienciométricos por entidad
+    Aggregates the full suite of 35+ scientometric indicators by entity
     (researcher/author, institution, country, source, subfield, topic, field)
-    sin truncar ninguna dimensión analítica.
+    without truncating any analytical dimension.
     """
     norm_level = "researcher" if level.lower().strip() == "author" else level.lower().strip()
     df_reset = df.reset_index(drop=True)
     total_docs = len(df_reset)
     entity_indices, entity_countries = _extract_entity_index_map(df_reset, norm_level)
 
-    # Filtrar por min_docs y ordenar por volumen antes de calcular indicadores detallados
     qualified = [(ent, idxs) for ent, idxs in entity_indices.items() if len(idxs) >= max(1, min_docs)]
     qualified.sort(key=lambda x: len(x[1]), reverse=True)
     if top_n is not None and top_n > 0:
@@ -463,7 +462,7 @@ def build_periods(
     last_years: Optional[int] = None,
     single_period: Optional[str] = None,
 ) -> List[Tuple[str, int, int]]:
-    """Construye la lista de periodos (etiqueta, año_inicio, año_fin)."""
+    """Builds the list of periods (label, start_year, end_year)."""
     periods = []
     years_s = pd.to_numeric(df.get("year"), errors="coerce").dropna()
     if len(years_s) == 0:
@@ -525,8 +524,8 @@ def build_periods(
 
 def _apply_cma_smoothing(df_series: pd.DataFrame, cma_window: int, group_col: Optional[str] = None) -> pd.DataFrame:
     """
-    Aplica Media Móvil Centrada (Centered Moving Average, CMA) de ventana cma_window
-    sobre las columnas de indicadores numéricos para alimentar som-trajectory-mapping.
+    Applies Centered Moving Average (CMA) smoothing of window cma_window
+    over numeric indicator columns to feed som-trajectory-mapping.
     """
     if df_series.empty or not cma_window or cma_window <= 1:
         return df_series
@@ -561,14 +560,14 @@ def calculate_annual_series(
     indicators: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
-    Calcula la serie temporal año por año con los 35+ indicadores TlachIA.
-    - Si level es None: serie anual agregada de todo el corpus.
-    - Si level se especifica (institution, researcher/author, country, source, subfield, topic):
-      serie anual longitudinal por entidad, con suavizado opcional CMA (--cma-window 3 o 5)
-      lista para som-trajectory-mapping.
+    Computes the year-by-year time series with the 35+ TlachIA indicators.
+    - If level is None: aggregate annual series across the entire corpus.
+    - If level is specified (institution, researcher/author, country, source, subfield, topic):
+      longitudinal annual series per entity, with optional CMA smoothing (--cma-window 3 or 5)
+      ready for som-trajectory-mapping.
     """
     if "year" not in df.columns:
-        raise ValueError("El corpus no contiene la columna 'year'.")
+        raise ValueError("Corpus does not contain the 'year' column.")
 
     df_clean = df.dropna(subset=["year"]).copy()
     df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
@@ -605,7 +604,7 @@ def calculate_annual_series(
             res_df = _apply_cma_smoothing(res_df, cma_window, group_col=None)
         return res_df
 
-    # Serie anual por entidad (para som-trajectory-mapping)
+    # Entity-level annual series (for som-trajectory-mapping)
     overall_entities = aggregate_by_entity(df_clean, level=level, min_docs=min_docs, top_n=top_n)
     if overall_entities.empty:
         return pd.DataFrame()
@@ -642,12 +641,12 @@ def calculate_period_series(
     indicators: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
-    Calcula los 35+ indicadores cienciométricos para una secuencia de periodos.
-    - Si level es None: serie temporal agregada a nivel de corpus con tasas de crecimiento.
-    - Si level se especifica: matriz longitudinal de entidades con todos los indicadores (para SOM / PathSOM).
+    Computes the 35+ scientometric indicators across a sequence of periods.
+    - If level is None: aggregate corpus-level period series with growth rates.
+    - If level is specified: longitudinal entity matrix across periods with all indicators (for SOM / PathSOM).
     """
     if "year" not in df.columns:
-        raise ValueError("El corpus no contiene la columna 'year'.")
+        raise ValueError("Corpus does not contain the 'year' column.")
 
     df_clean = df.dropna(subset=["year"]).copy()
     df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
@@ -699,73 +698,133 @@ def calculate_period_series(
         return pd.DataFrame()
 
 
-def format_summary_markdown(metrics: Dict[str, Any], corpus_path: str, subtitle: str = "") -> str:
-    """Genera un reporte legible en Markdown de los indicadores."""
-    lines = [
-        f"# Reporte Cienciométrico TlachIA: {Path(corpus_path).name}",
-        f"*{subtitle}*" if subtitle else "",
-        "",
-        "## 1. Volumen, Citación e Índices de Hirsch/Egghe",
-        f"- **Documentos Totales:** {metrics.get('num_documents', 0):,}",
-        f"- **Citas Recibidas:** {metrics.get('times_cited', 0):,}",
-        f"- **Citas Promedio por Documento:** {metrics.get('cites_per_doc', 0.0)}",
-        f"- **Porcentaje de Documentos Citados:** {metrics.get('pct_docs_cited', 0.0)}%",
-        f"- **Índice H del Corpus:** {metrics.get('h_index', 0)}",
-        f"- **Índice G de Egghe:** {metrics.get('g_index', 0)}",
-        f"- **Índice M (H / años activos):** {metrics.get('m_index', 0.0)}",
-        f"- **Índice i10:** {metrics.get('i10_index', 0)}",
-        "",
-        "## 2. Impacto Normalizado y Excelencia",
-        f"- **FWCI Promedio:** {metrics.get('fwci_avg', 0.0)}",
-        f"- **FWCI Mediana:** {metrics.get('fwci_median', 0.0)}",
-        f"- **Percentil Promedio:** {metrics.get('avg_percentile', 0.0)}",
-        f"- **Porcentaje en Top 10% Más Citado:** {metrics.get('pct_top_10', 0.0)}% ({metrics.get('top_10_pct_docs', 0)} docs)",
-        f"- **Porcentaje en Top 1% Élite:** {metrics.get('pct_top_1', 0.0)}% ({metrics.get('top_1_pct_docs', 0)} docs)",
-        "",
-        "## 3. Ciencia Abierta y Acceso (6 Vías)",
-        f"- **Acceso Abierto Total:** {metrics.get('pct_oa_total', 0.0)}%",
-        f"  - Diamond (Sin APC institucional): {metrics.get('pct_oa_diamond', 0.0)}%",
-        f"  - Gold Comercial: {metrics.get('pct_oa_gold', 0.0)}%",
-        f"  - Hybrid: {metrics.get('pct_oa_hybrid', 0.0)}%",
-        f"  - Green (Auto-archivo / Repositorios): {metrics.get('pct_oa_green', 0.0)}%",
-        f"  - Bronze: {metrics.get('pct_oa_bronze', 0.0)}%",
-        f"  - Closed (Suscripción): {metrics.get('pct_oa_closed', 0.0)}%",
-        "",
-        "## 4. Economía de la Publicación",
-        f"- **Gasto Observado en APC:** ${metrics.get('estimated_apc_paid_usd', 0.0):,.2f} USD",
-        f"- **Gasto de Lista en APC:** ${metrics.get('apc_list_usd', 0.0):,.2f} USD",
-        f"- **Gasto Medio en APC por Documento:** ${metrics.get('avg_apc_per_doc_usd', 0.0):,.2f} USD",
-        f"- **Ahorro Estimado por Publicación Diamante:** ${metrics.get('estimated_diamond_savings_usd', 0.0):,.2f} USD",
-        "",
-        "## 5. Colaboración, Coautoría e Internacionalización",
-        f"- **Colaboración Internacional:** {metrics.get('pct_international', 0.0)}%",
-        f"- **Colaboración Doméstica:** {metrics.get('pct_domestic', 0.0)}%",
-        f"- **Participación del Sur Global:** {metrics.get('pct_global_south', 0.0)}%",
-        f"- **Autoría Única:** {metrics.get('pct_single_authored', 0.0)}%",
-        f"- **Promedio de Autores por Documento:** {metrics.get('avg_authors_per_doc', 0.0)}",
-        f"- **Índice de Colaboración (coautores en obras múltiples):** {metrics.get('collaboration_index', 0.0)}",
-    ]
+def format_summary_markdown(metrics: Dict[str, Any], corpus_path: str, subtitle: str = "", lang: str = "en") -> str:
+    """Generates a readable Markdown report of the indicators."""
+    if lang == "es":
+        lines = [
+            f"# Reporte Cienciométrico TlachIA: {Path(corpus_path).name}",
+            f"*{subtitle}*" if subtitle else "",
+            "",
+            "## 1. Volumen, Citación e Índices de Hirsch/Egghe",
+            f"- **Documentos Totales:** {metrics.get('num_documents', 0):,}",
+            f"- **Citas Recibidas:** {metrics.get('times_cited', 0):,}",
+            f"- **Citas Promedio por Documento:** {metrics.get('cites_per_doc', 0.0)}",
+            f"- **Porcentaje de Documentos Citados:** {metrics.get('pct_docs_cited', 0.0)}%",
+            f"- **Índice H del Corpus:** {metrics.get('h_index', 0)}",
+            f"- **Índice G de Egghe:** {metrics.get('g_index', 0)}",
+            f"- **Índice M (H / años activos):** {metrics.get('m_index', 0.0)}",
+            f"- **Índice i10:** {metrics.get('i10_index', 0)}",
+            "",
+            "## 2. Impacto Normalizado y Excelencia",
+            f"- **FWCI Promedio:** {metrics.get('fwci_avg', 0.0)}",
+            f"- **FWCI Mediana:** {metrics.get('fwci_median', 0.0)}",
+            f"- **Percentil Promedio:** {metrics.get('avg_percentile', 0.0)}",
+            f"- **Porcentaje en Top 10% Más Citado:** {metrics.get('pct_top_10', 0.0)}% ({metrics.get('top_10_pct_docs', 0)} docs)",
+            f"- **Porcentaje en Top 1% Élite:** {metrics.get('pct_top_1', 0.0)}% ({metrics.get('top_1_pct_docs', 0)} docs)",
+            "",
+            "## 3. Ciencia Abierta y Acceso (6 Vías)",
+            f"- **Acceso Abierto Total:** {metrics.get('pct_oa_total', 0.0)}%",
+            f"  - Diamond (Sin APC institucional): {metrics.get('pct_oa_diamond', 0.0)}%",
+            f"  - Gold Comercial: {metrics.get('pct_oa_gold', 0.0)}%",
+            f"  - Hybrid: {metrics.get('pct_oa_hybrid', 0.0)}%",
+            f"  - Green (Auto-archivo / Repositorios): {metrics.get('pct_oa_green', 0.0)}%",
+            f"  - Bronze: {metrics.get('pct_oa_bronze', 0.0)}%",
+            f"  - Closed (Suscripción): {metrics.get('pct_oa_closed', 0.0)}%",
+            "",
+            "## 4. Economía de la Publicación",
+            f"- **Gasto Observado en APC:** ${metrics.get('estimated_apc_paid_usd', 0.0):,.2f} USD",
+            f"- **Gasto de Lista en APC:** ${metrics.get('apc_list_usd', 0.0):,.2f} USD",
+            f"- **Gasto Medio en APC por Documento:** ${metrics.get('avg_apc_per_doc_usd', 0.0):,.2f} USD",
+            f"- **Ahorro Estimado por Publicación Diamante:** ${metrics.get('estimated_diamond_savings_usd', 0.0):,.2f} USD",
+            "",
+            "## 5. Colaboración, Coautoría e Internacionalización",
+            f"- **Colaboración Internacional:** {metrics.get('pct_international', 0.0)}%",
+            f"- **Colaboración Doméstica:** {metrics.get('pct_domestic', 0.0)}%",
+            f"- **Participación del Sur Global:** {metrics.get('pct_global_south', 0.0)}%",
+            f"- **Autoría Única:** {metrics.get('pct_single_authored', 0.0)}%",
+            f"- **Promedio de Autores por Documento:** {metrics.get('avg_authors_per_doc', 0.0)}",
+            f"- **Índice de Colaboración (coautores en obras múltiples):** {metrics.get('collaboration_index', 0.0)}",
+        ]
+    else:
+        lines = [
+            f"# TlachIA Scientometric Report: {Path(corpus_path).name}",
+            f"*{subtitle}*" if subtitle else "",
+            "",
+            "## 1. Volume, Citations, and Hirsch/Egghe Indices",
+            f"- **Total Documents:** {metrics.get('num_documents', 0):,}",
+            f"- **Citations Received:** {metrics.get('times_cited', 0):,}",
+            f"- **Mean Citations per Document:** {metrics.get('cites_per_doc', 0.0)}",
+            f"- **Percentage of Cited Documents:** {metrics.get('pct_docs_cited', 0.0)}%",
+            f"- **Corpus H-Index:** {metrics.get('h_index', 0)}",
+            f"- **Egghe's G-Index:** {metrics.get('g_index', 0)}",
+            f"- **M-Index (H / active years):** {metrics.get('m_index', 0.0)}",
+            f"- **i10-Index:** {metrics.get('i10_index', 0)}",
+            "",
+            "## 2. Normalized Impact and Excellence",
+            f"- **Mean FWCI:** {metrics.get('fwci_avg', 0.0)}",
+            f"- **Median FWCI:** {metrics.get('fwci_median', 0.0)}",
+            f"- **Mean Percentile:** {metrics.get('avg_percentile', 0.0)}",
+            f"- **Percentage in Top 10% Most Cited:** {metrics.get('pct_top_10', 0.0)}% ({metrics.get('top_10_pct_docs', 0)} docs)",
+            f"- **Percentage in Top 1% Elite:** {metrics.get('pct_top_1', 0.0)}% ({metrics.get('top_1_pct_docs', 0)} docs)",
+            "",
+            "## 3. Open Science and Access (6 Pathways)",
+            f"- **Total Open Access:** {metrics.get('pct_oa_total', 0.0)}%",
+            f"  - Diamond (No institutional APC): {metrics.get('pct_oa_diamond', 0.0)}%",
+            f"  - Commercial Gold: {metrics.get('pct_oa_gold', 0.0)}%",
+            f"  - Hybrid: {metrics.get('pct_oa_hybrid', 0.0)}%",
+            f"  - Green (Self-archiving / Repositories): {metrics.get('pct_oa_green', 0.0)}%",
+            f"  - Bronze: {metrics.get('pct_oa_bronze', 0.0)}%",
+            f"  - Closed (Subscription): {metrics.get('pct_oa_closed', 0.0)}%",
+            "",
+            "## 4. Publication Economics",
+            f"- **Observed APC Expenditure:** ${metrics.get('estimated_apc_paid_usd', 0.0):,.2f} USD",
+            f"- **List APC Expenditure:** ${metrics.get('apc_list_usd', 0.0):,.2f} USD",
+            f"- **Mean APC Expenditure per Document:** ${metrics.get('avg_apc_per_doc_usd', 0.0):,.2f} USD",
+            f"- **Estimated Diamond Publishing Savings:** ${metrics.get('estimated_diamond_savings_usd', 0.0):,.2f} USD",
+            "",
+            "## 5. Collaboration, Co-authorship, and Internationalization",
+            f"- **International Collaboration:** {metrics.get('pct_international', 0.0)}%",
+            f"- **Domestic Collaboration:** {metrics.get('pct_domestic', 0.0)}%",
+            f"- **Global South Participation:** {metrics.get('pct_global_south', 0.0)}%",
+            f"- **Single Authorship:** {metrics.get('pct_single_authored', 0.0)}%",
+            f"- **Mean Authors per Document:** {metrics.get('avg_authors_per_doc', 0.0)}",
+            f"- **Collaboration Index (co-authors in multi-authored works):** {metrics.get('collaboration_index', 0.0)}",
+        ]
     return "\n".join([l for l in lines if l is not None])
 
 
-def format_time_series_markdown(df_ts: pd.DataFrame, title: str, time_col: str = "period") -> str:
-    """Genera una tabla comparativa Markdown limpia para series anuales o de periodos."""
+def format_time_series_markdown(df_ts: pd.DataFrame, title: str, time_col: str = "period", lang: str = "en") -> str:
+    """Generates a clean comparative Markdown table for annual or period series."""
     lines = [f"# {title}", ""]
     cols_to_show = [time_col, "entity", "num_documents", "times_cited", "cites_per_doc", "h_index", "fwci_avg", "pct_top_10", "pct_oa_total", "pct_international"]
     avail_cols = [c for c in cols_to_show if c in df_ts.columns]
 
-    headers = {
-        time_col: "Periodo" if time_col == "period" else "Año",
-        "entity": "Entidad",
-        "num_documents": "Docs",
-        "times_cited": "Citas",
-        "cites_per_doc": "Citas/Doc",
-        "h_index": "H-Index",
-        "fwci_avg": "FWCI",
-        "pct_top_10": "% Top 10%",
-        "pct_oa_total": "% OA",
-        "pct_international": "% Intl",
-    }
+    if lang == "es":
+        headers = {
+            time_col: "Periodo" if time_col == "period" else "Año",
+            "entity": "Entidad",
+            "num_documents": "Docs",
+            "times_cited": "Citas",
+            "cites_per_doc": "Citas/Doc",
+            "h_index": "H-Index",
+            "fwci_avg": "FWCI",
+            "pct_top_10": "% Top 10%",
+            "pct_oa_total": "% OA",
+            "pct_international": "% Intl",
+        }
+    else:
+        headers = {
+            time_col: "Period" if time_col == "period" else "Year",
+            "entity": "Entity",
+            "num_documents": "Docs",
+            "times_cited": "Citations",
+            "cites_per_doc": "Cites/Doc",
+            "h_index": "H-Index",
+            "fwci_avg": "FWCI",
+            "pct_top_10": "% Top 10%",
+            "pct_oa_total": "% OA",
+            "pct_international": "% Intl",
+        }
 
     header_row = "| " + " | ".join([headers.get(c, c) for c in avail_cols]) + " |"
     separator_row = "| " + " | ".join(["---"] * len(avail_cols)) + " |"
@@ -789,8 +848,8 @@ def format_time_series_markdown(df_ts: pd.DataFrame, title: str, time_col: str =
     return "\n".join(lines)
 
 
-def save_dataframe_output(df: pd.DataFrame, output_path: str) -> None:
-    """Guarda un DataFrame según la extensión especificada."""
+def save_dataframe_output(df: pd.DataFrame, output_path: str, lang: str = "en") -> None:
+    """Saves a DataFrame according to the specified file extension."""
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     ext = out.suffix.lower()
@@ -802,7 +861,8 @@ def save_dataframe_output(df: pd.DataFrame, output_path: str) -> None:
         df.to_json(out, orient="records", force_ascii=False, indent=2)
     elif ext == ".md":
         time_col = "year" if "year" in df.columns else ("period" if "period" in df.columns else df.columns[0])
-        md_text = format_time_series_markdown(df, "Serie Cienciométrica TlachIA", time_col=time_col)
+        title = "Serie Cienciométrica TlachIA" if lang == "es" else "TlachIA Scientometric Series"
+        md_text = format_time_series_markdown(df, title, time_col=time_col, lang=lang)
         with open(out, "w", encoding="utf-8") as f:
             f.write(md_text)
     else:
@@ -811,70 +871,87 @@ def save_dataframe_output(df: pd.DataFrame, output_path: str) -> None:
 
 def _add_corpus_arg(parser: argparse.ArgumentParser) -> None:
     grp = parser.add_mutually_exclusive_group(required=True)
-    grp.add_argument("--corpus", "--input", "-i", dest="corpus", type=str, help="Ruta al archivo tabular (.parquet, .json, .csv)")
+    grp.add_argument("--corpus", "--input", "-i", dest="corpus", type=str, help="Path to tabular file (.parquet, .json, .csv)")
+
+
+def _add_lang_arg(p: argparse.ArgumentParser, is_root: bool = False) -> None:
+    p.add_argument(
+        "--lang",
+        choices=["en", "es"],
+        default="en" if is_root else argparse.SUPPRESS,
+        help="Language for report headings and labels (default: en)",
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="TlachIA Metrics Engine CLI: Cálculo de 35+ indicadores cienciométricos, económicos y de ciencia abierta sin truncar dimensiones."
+        description="TlachIA Metrics Engine CLI: Computes 35+ scientometric, economic, and open science indicators without truncating dimensions."
     )
+    _add_lang_arg(parser, is_root=True)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     level_choices = ["researcher", "author", "institution", "country", "source", "subfield", "topic", "field"]
 
     # 1. calculate-summary / summary
     for cmd_name in ("calculate-summary", "summary"):
-        p_sum = subparsers.add_parser(cmd_name, help="Calcula los 35+ indicadores globales del corpus.")
+        p_sum = subparsers.add_parser(cmd_name, help="Computes 35+ global corpus indicators.")
+        _add_lang_arg(p_sum)
         _add_corpus_arg(p_sum)
-        p_sum.add_argument("--year", type=int, help="Filtrar por un año exacto")
-        p_sum.add_argument("--year-from", type=int, help="Año de inicio")
-        p_sum.add_argument("--year-to", type=int, help="Año de fin")
-        p_sum.add_argument("--period", type=str, help="Filtrar por periodo (ej. '2019-2024')")
-        p_sum.add_argument("--last-years", type=int, help="Filtrar por los últimos N años del corpus")
-        p_sum.add_argument("--output", "-o", type=str, help="Ruta para guardar el reporte (.json o .md)")
+        p_sum.add_argument("--year", type=int, help="Filter by exact year")
+        p_sum.add_argument("--year-from", type=int, help="Start year")
+        p_sum.add_argument("--year-to", type=int, help="End year")
+        p_sum.add_argument("--period", type=str, help="Filter by period (e.g., '2019-2024')")
+        p_sum.add_argument("--last-years", type=int, help="Filter by the last N years of the corpus")
+        p_sum.add_argument("--output", "-o", type=str, help="Output report path (.json or .md)")
 
     # 2. annual-series
-    p_ann = subparsers.add_parser("annual-series", help="Genera la serie temporal anual (del corpus o por entidad con suavizado CMA).")
+    p_ann = subparsers.add_parser("annual-series", help="Generates annual time series (corpus-wide or per entity with CMA smoothing).")
+    _add_lang_arg(p_ann)
     _add_corpus_arg(p_ann)
-    p_ann.add_argument("--year-from", type=int, help="Año inicial opcional")
-    p_ann.add_argument("--year-to", type=int, help="Año final opcional")
-    p_ann.add_argument("--level", type=str, choices=level_choices, help="Opcional: desagregar serie anual por entidad (para som-trajectory-mapping)")
-    p_ann.add_argument("--min-docs", type=int, default=1, help="Mínimo de documentos acumulados por entidad (default: 1)")
-    p_ann.add_argument("--top", type=int, default=None, help="Limitar a las Top N entidades por volumen")
-    p_ann.add_argument("--cma-window", type=int, default=None, help="Ventana de Media Móvil Centrada (ej. 3 o 5) para suavizar trayectorias SOM")
-    p_ann.add_argument("--indicators", type=str, default=None, help="Lista opcional de indicadores separados por coma (por defecto conserva TODOS)")
-    p_ann.add_argument("--output", "-o", type=str, help="Ruta de guardado (.parquet, .csv, .json, .md)")
+    p_ann.add_argument("--year-from", type=int, help="Optional start year")
+    p_ann.add_argument("--year-to", type=int, help="Optional end year")
+    p_ann.add_argument("--level", type=str, choices=level_choices, help="Optional: disaggregate annual series by entity (for som-trajectory-mapping)")
+    p_ann.add_argument("--min-docs", type=int, default=1, help="Minimum cumulative documents per entity (default: 1)")
+    p_ann.add_argument("--top", type=int, default=None, help="Limit to Top N entities by volume")
+    p_ann.add_argument("--cma-window", type=int, default=None, help="Centered Moving Average window (e.g., 3 or 5) to smooth SOM trajectories")
+    p_ann.add_argument("--indicators", type=str, default=None, help="Optional comma-separated list of indicators (retains ALL by default)")
+    p_ann.add_argument("--output", "-o", type=str, help="Output file path (.parquet, .csv, .json, .md)")
 
     # 3. period-series
-    p_per = subparsers.add_parser("period-series", help="Calcula indicadores por periodos consecutivos o ventanas deslizantes.")
+    p_per = subparsers.add_parser("period-series", help="Computes indicators across consecutive periods or sliding windows.")
+    _add_lang_arg(p_per)
     _add_corpus_arg(p_per)
-    p_per.add_argument("--window", type=int, help="Tamaño de ventana en años (ej. 5 o 10)")
-    p_per.add_argument("--step", type=int, help="Paso de desplazamiento en años (default: igual a --window)")
-    p_per.add_argument("--periods", type=str, help="Lista explícita de periodos separados por coma (ej. '2020-2022,2023-2026')")
-    p_per.add_argument("--single-period", type=str, help="Un solo periodo específico (ej. '2020-2024')")
-    p_per.add_argument("--last-years", type=int, help="Evaluar únicamente el último bloque de N años")
-    p_per.add_argument("--level", type=str, choices=level_choices, help="Generar matriz longitudinal por entidad a través de periodos (para SOM / PathSOM)")
-    p_per.add_argument("--min-docs", type=int, default=1, help="Mínimo de documentos acumulados por entidad")
-    p_per.add_argument("--top", type=int, default=None, help="Limitar a las Top N entidades por volumen")
-    p_per.add_argument("--indicators", type=str, default=None, help="Lista opcional de indicadores separados por coma (por defecto conserva TODOS)")
-    p_per.add_argument("--output", "-o", type=str, help="Ruta de guardado (.parquet, .csv, .json, .md)")
+    p_per.add_argument("--window", type=int, help="Window size in years (e.g., 5 or 10)")
+    p_per.add_argument("--step", type=int, help="Sliding step in years (default: equal to --window)")
+    p_per.add_argument("--periods", type=str, help="Explicit comma-separated periods (e.g., '2020-2022,2023-2026')")
+    p_per.add_argument("--single-period", type=str, help="Single specific period (e.g., '2020-2024')")
+    p_per.add_argument("--last-years", type=int, help="Evaluate only the latest block of N years")
+    p_per.add_argument("--level", type=str, choices=level_choices, help="Generate longitudinal matrix per entity across periods (for SOM / PathSOM)")
+    p_per.add_argument("--min-docs", type=int, default=1, help="Minimum cumulative documents per entity")
+    p_per.add_argument("--top", type=int, default=None, help="Limit to Top N entities by volume")
+    p_per.add_argument("--indicators", type=str, default=None, help="Optional comma-separated list of indicators (retains ALL by default)")
+    p_per.add_argument("--output", "-o", type=str, help="Output file path (.parquet, .csv, .json, .md)")
 
     # 4. aggregate-by / by-entity
     for cmd_name in ("aggregate-by", "by-entity"):
-        p_agg = subparsers.add_parser(cmd_name, help="Genera matriz [N x D] completa con los 35+ indicadores por entidad (para SOM).")
+        p_agg = subparsers.add_parser(cmd_name, help="Generates full [N x D] matrix with 35+ indicators per entity (for SOM).")
+        _add_lang_arg(p_agg)
         _add_corpus_arg(p_agg)
-        p_agg.add_argument("--level", type=str, choices=level_choices, required=True, help="Nivel de agregación")
-        p_agg.add_argument("--min-docs", type=int, default=1, help="Mínimo de documentos por entidad (default: 1)")
-        p_agg.add_argument("--top", type=int, default=None, help="Limitar a las Top N entidades por volumen")
-        p_agg.add_argument("--indicators", type=str, default=None, help="Lista opcional de indicadores separados por coma (por defecto conserva TODOS)")
-        p_agg.add_argument("--output", "-o", type=str, required=True, help="Ruta del archivo de salida (.parquet, .csv, .json)")
+        p_agg.add_argument("--level", type=str, choices=level_choices, required=True, help="Aggregation level")
+        p_agg.add_argument("--min-docs", type=int, default=1, help="Minimum documents per entity (default: 1)")
+        p_agg.add_argument("--top", type=int, default=None, help="Limit to Top N entities by volume")
+        p_agg.add_argument("--indicators", type=str, default=None, help="Optional comma-separated list of indicators (retains ALL by default)")
+        p_agg.add_argument("--output", "-o", type=str, required=True, help="Output file path (.parquet, .csv, .json)")
 
     # 5. gini-diversity
-    p_gini = subparsers.add_parser("gini-diversity", help="Calcula el coeficiente de concentración de Gini temático.")
+    p_gini = subparsers.add_parser("gini-diversity", help="Computes the thematic Gini concentration coefficient.")
+    _add_lang_arg(p_gini)
     _add_corpus_arg(p_gini)
-    p_gini.add_argument("--column", type=str, default="keywords_plus", help="Columna para analizar frecuencias (default: keywords_plus)")
+    p_gini.add_argument("--column", type=str, default="keywords_plus", help="Column to analyze frequencies (default: keywords_plus)")
 
     args = parser.parse_args()
+    lang = getattr(args, "lang", "en") or "en"
+    is_es = (lang == "es")
     df = load_canonical_corpus(args.corpus)
 
     ind_list = [x.strip() for x in args.indicators.split(",") if x.strip()] if getattr(args, "indicators", None) else None
@@ -891,27 +968,31 @@ def main():
 
                 if args.year:
                     filtered_df = filtered_df[filtered_df["year"] == args.year]
-                    subtitle_parts.append(f"Año: {args.year}")
+                    subtitle_parts.append(f"Año: {args.year}" if is_es else f"Year: {args.year}")
                 elif args.period:
                     p_parts = [int(x.strip()) for x in args.period.split("-") if x.strip()]
                     if len(p_parts) == 2:
                         filtered_df = filtered_df[(filtered_df["year"] >= p_parts[0]) & (filtered_df["year"] <= p_parts[1])]
-                        subtitle_parts.append(f"Periodo: {p_parts[0]}-{p_parts[1]}")
+                        subtitle_parts.append(f"Periodo: {p_parts[0]}-{p_parts[1]}" if is_es else f"Period: {p_parts[0]}-{p_parts[1]}")
                 elif args.last_years:
                     s_yr = max(min_yr, max_yr - args.last_years + 1)
                     filtered_df = filtered_df[(filtered_df["year"] >= s_yr) & (filtered_df["year"] <= max_yr)]
-                    subtitle_parts.append(f"Últimos {args.last_years} años ({s_yr}-{max_yr})")
+                    subtitle_parts.append(
+                        f"Últimos {args.last_years} años ({s_yr}-{max_yr})"
+                        if is_es
+                        else f"Last {args.last_years} years ({s_yr}-{max_yr})"
+                    )
                 else:
                     if args.year_from:
                         filtered_df = filtered_df[filtered_df["year"] >= args.year_from]
-                        subtitle_parts.append(f"Desde {args.year_from}")
+                        subtitle_parts.append(f"Desde {args.year_from}" if is_es else f"From {args.year_from}")
                     if args.year_to:
                         filtered_df = filtered_df[filtered_df["year"] <= args.year_to]
-                        subtitle_parts.append(f"Hasta {args.year_to}")
+                        subtitle_parts.append(f"Hasta {args.year_to}" if is_es else f"To {args.year_to}")
 
         metrics = compute_summary_indicators(filtered_df)
         sub_str = " | ".join(subtitle_parts)
-        md_report = format_summary_markdown(metrics, args.corpus, subtitle=sub_str)
+        md_report = format_summary_markdown(metrics, args.corpus, subtitle=sub_str, lang=lang)
 
         if args.output:
             out = Path(args.output)
@@ -922,7 +1003,7 @@ def main():
             else:
                 with open(out, "w", encoding="utf-8") as f:
                     f.write(md_report)
-            print(f"[Éxito] Reporte guardado en {args.output}")
+            print(f"[Success] Report saved to {args.output}")
         else:
             print(md_report)
 
@@ -938,10 +1019,11 @@ def main():
             indicators=ind_list,
         )
         if args.output:
-            save_dataframe_output(annual_df, args.output)
-            print(f"[Éxito] Serie anual ({len(annual_df)} filas, {len(annual_df.columns)} columnas) guardada en {args.output}")
+            save_dataframe_output(annual_df, args.output, lang=lang)
+            print(f"[Success] Annual series ({len(annual_df)} rows, {len(annual_df.columns)} columns) saved to {args.output}")
         else:
-            md_table = format_time_series_markdown(annual_df, f"Serie Temporal Anual: {Path(args.corpus).name}", time_col="year")
+            t_lbl = f"Serie Temporal Anual: {Path(args.corpus).name}" if is_es else f"Annual Time Series: {Path(args.corpus).name}"
+            md_table = format_time_series_markdown(annual_df, t_lbl, time_col="year", lang=lang)
             print(md_table)
 
     elif args.command == "period-series":
@@ -954,10 +1036,10 @@ def main():
             single_period=args.single_period,
         )
         if not periods:
-            sys.stderr.write("[Aviso] No se pudieron determinar periodos temporales en el corpus.\n")
+            sys.stderr.write("[Warning] Could not determine temporal periods in the corpus.\n")
             sys.exit(0)
 
-        print(f"[TlachIA Metrics] Analizando {len(periods)} periodos: {[p[0] for p in periods]}")
+        print(f"[TlachIA Metrics] Analyzing {len(periods)} periods: {[p[0] for p in periods]}")
         period_df = calculate_period_series(
             df,
             periods=periods,
@@ -967,13 +1049,14 @@ def main():
             indicators=ind_list,
         )
         if args.output:
-            save_dataframe_output(period_df, args.output)
-            print(f"[Éxito] Análisis de periodos guardado ({len(period_df)} filas, {len(period_df.columns)} columnas) en {args.output}")
+            save_dataframe_output(period_df, args.output, lang=lang)
+            print(f"[Success] Period analysis saved ({len(period_df)} rows, {len(period_df.columns)} columns) to {args.output}")
         else:
             if args.level:
                 print(period_df.head(20).to_string(index=False))
             else:
-                md_table = format_time_series_markdown(period_df, f"Análisis por Periodos: {Path(args.corpus).name}", time_col="period")
+                t_lbl = f"Análisis por Periodos: {Path(args.corpus).name}" if is_es else f"Period Analysis: {Path(args.corpus).name}"
+                md_table = format_time_series_markdown(period_df, t_lbl, time_col="period", lang=lang)
                 print(md_table)
 
     elif args.command in ("aggregate-by", "by-entity"):
@@ -984,13 +1067,13 @@ def main():
             top_n=args.top,
             indicators=ind_list,
         )
-        save_dataframe_output(agg_df, args.output)
-        print(f"[Éxito] Matriz a nivel '{args.level}' guardada ({len(agg_df)} entidades x {len(agg_df.columns)} columnas) en {args.output}")
+        save_dataframe_output(agg_df, args.output, lang=lang)
+        print(f"[Success] '{args.level}' matrix saved ({len(agg_df)} entities x {len(agg_df.columns)} columns) to {args.output}")
 
     elif args.command == "gini-diversity":
         col = args.column
         if col not in df.columns:
-            sys.stderr.write(f"[Error] La columna '{col}' no existe en el corpus.\n")
+            sys.stderr.write(f"[Error] Column '{col}' does not exist in the corpus.\n")
             sys.exit(1)
 
         term_counts: Dict[str, int] = {}
@@ -999,14 +1082,19 @@ def main():
                 term_counts[t] = term_counts.get(t, 0) + 1
 
         if not term_counts:
-            print("[Aviso] No se encontraron términos para calcular Gini.")
+            print("[Warning] No terms found to compute Gini.")
             sys.exit(0)
 
         freqs = np.array(list(term_counts.values()))
         gini = compute_gini_coefficient(freqs)
-        print(f"Coeficiente de Concentración de Gini ({col}): {gini:.4f}")
-        print(f"Número total de términos analizados: {len(freqs)}")
-        print(f"Término más frecuente: '{max(term_counts, key=term_counts.get)}' ({max(freqs)} ocurrencias)")
+        if is_es:
+            print(f"Coeficiente de Concentración de Gini ({col}): {gini:.4f}")
+            print(f"Número total de términos analizados: {len(freqs)}")
+            print(f"Término más frecuente: '{max(term_counts, key=term_counts.get)}' ({max(freqs)} ocurrencias)")
+        else:
+            print(f"Gini Concentration Coefficient ({col}): {gini:.4f}")
+            print(f"Total terms analyzed: {len(freqs)}")
+            print(f"Most frequent term: '{max(term_counts, key=term_counts.get)}' ({max(freqs)} occurrences)")
 
 
 if __name__ == "__main__":

@@ -1,48 +1,50 @@
 ---
 name: bibliometric-network-analyst
-description: Construcción y análisis de redes bibliométricas (coautoría, co-ocurrencia, co-citación, acoplamiento bibliográfico y citación directa), filtrado temporal por periodos, generación de artefactos visuales interactivos (KnoMap Force Graph y VOSviewer Engine), normalización con Association Strength, partición modular con Leiden/Louvain, cálculo de centralidades y conexión con SOM estático y longitudinal.
+description: Construction and analysis of bibliometric networks (co-authorship, co-occurrence, co-citation, bibliographic coupling, and direct citation), temporal period filtering, generation of interactive visual artifacts (KnoMap Force Graph and VOSviewer Engine), Association Strength normalization, modular partitioning with Leiden/Louvain, centrality calculation, and integration with static and longitudinal SOMs. Respond and label outputs in the user's language.
 dependencies:
   - python: ">=3.10"
   - script: "scripts/biblio_network_cli.py"
 ---
 # Bibliometric Network Analyst (KnoMap Biblio Networks)
 
-Esta skill implementa la funcionalidad analítica y de visualización de la pestaña **Biblio Networks** de KnoMap y del ecosistema SOS-MCP. Construye, normaliza, particiona y visualiza topologías de redes científicas para identificar comunidades temáticas, colegios invisibles, líderes de coautoría, frentes activos y evolución temporal.
+> **Language Rule:** Respond and label outputs in the user's language (default to English for script plots/labels, or pass `--lang es` when the user interacts in Spanish).
+
+This skill implements the analytical and visualization functionality of the **Biblio Networks** tab in KnoMap and the SOS-MCP ecosystem. It constructs, normalizes, partitions, and visualizes scientific network topologies to identify thematic communities, invisible colleges, co-authorship leaders, active research fronts, and temporal evolution.
 
 ---
 
-## 1. Overview y Modos de Visualización en KnoMap
+## 1. Overview and Visualization Modes in KnoMap
 
-Las redes bibliométricas modelan las interacciones sociales, conceptuales e intelectuales de la ciencia mediante grafos dirigidos o no dirigidos. Esta habilidad prioriza el análisis estructural riguroso de redes y proporciona dos visualizaciones canónicas complementarias como **artefactos HTML interactivos autónomos**:
+Bibliometric networks model the social, conceptual, and intellectual interactions of science through directed or undirected graphs. This skill prioritizes rigorous structural network analysis and provides two complementary canonical visualizations as **standalone interactive HTML artifacts**:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
-│                     MODOS DE VISUALIZACIÓN EN KNOMAP BIBLIO NETWORKS                   │
+│                     VISUALIZATION MODES IN KNOMAP BIBLIO NETWORKS                     │
 ├──────────────────────────┬─────────────────────────────┬──────────────────────────────┤
-│ Modo de Visualización    │ Motor Tecnológico           │ Capacidades Analíticas Clave  │
+│ Visualization Mode       │ Technological Engine        │ Key Analytical Capabilities  │
 ├──────────────────────────┼─────────────────────────────┼──────────────────────────────┤
-│ 1. KnoMap Force Graph    │ D3.js v7 Force Simulation   │ - Nodos por frecuencia/grado │
-│    (Diagrama Propio)     │ Renderizado SVG interactivo │ - Colores por cluster Leiden │
-│                          │ Dark Mode LabSOM            │ - Resaltado ego-red 1-salto  │
-│                          │                             │ - Filtro LCC (Componente Max)│
-│                          │                             │ - Inspector nodal en vivo    │
+│ 1. KnoMap Force Graph    │ D3.js v7 Force Simulation   │ - Nodes by frequency/degree  │
+│    (Native Diagram)      │ Interactive SVG Rendering   │ - Colors by Leiden cluster   │
+│                          │ LabSOM Dark Mode            │ - 1-hop ego-network highlight│
+│                          │                             │ - LCC filter (Giant Comp.)   │
+│                          │                             │ - Live node inspector        │
 ├──────────────────────────┼─────────────────────────────┼──────────────────────────────┤
 │ 2. VOSviewer Engine      │ Canvas 2D / WebGL           │ - Network View (Clusters)    │
-│    (VOSviewer Canónico)  │ Van Eck & Waltman Layout    │ - Overlay View (Scores/Años) │
-│                          │ Compatible app.vosviewer.com│ - Density View (Densidad)    │
-│                          │ Exportador `vosviewer.json` │ - Densidad kernel gaussiana  │
+│    (Canonical VOSviewer) │ Van Eck & Waltman Layout    │ - Overlay View (Scores/Years)│
+│                          │ Compatible app.vosviewer.com│ - Density View (Heatmap)     │
+│                          │ `vosviewer.json` Exporter   │ - Gaussian kernel density    │
 └──────────────────────────┴─────────────────────────────┴──────────────────────────────┘
 ```
 
 ---
 
-## 2. Tipologías y Construcción de Redes (`build-network`)
+## 2. Network Typologies and Construction (`build-network`)
 
-Construye la red a partir de un corpus en formatos tabulares o nativos (`.parquet`, `.csv`, `.json` o exportaciones en texto plano de Web of Science `.txt`):
+Constructs the network from a corpus in tabular or native formats (`.parquet`, `.csv`, `.json`, or Web of Science plain text `.txt` exports):
 
 ```bash
 python scripts/biblio_network_cli.py build-network \
-  --input /ruta/al/corpus.parquet \
+  --input /path/to/corpus.parquet \
   --network-type cooccurrence \
   --unit keywords \
   --counting full \
@@ -50,103 +52,103 @@ python scripts/biblio_network_cli.py build-network \
   --min-freq 2 \
   --min-cooccur 1.0 \
   --auto-analyze \
-  --html-knomap ./red_knomap.html \
-  --html-vosviewer ./red_vosviewer.html \
+  --html-knomap ./network_knomap.html \
+  --html-vosviewer ./network_vosviewer.html \
   --vosviewer-json ./vosviewer.json \
-  --som-matrix ./matriz_coocurrencia_som.csv \
-  --output ./red_completa.json
+  --som-matrix ./som_cooccurrence_matrix.csv \
+  --output ./full_network.json
 ```
 
-### Tipologías de Red Soportadas (`--network-type` y `--unit`):
-1. **Coocurrencia de Palabras Clave (`cooccurrence`, `keywords`):** Coaparición de términos de autor (`DE`), Keywords Plus (`ID`) o conceptos temáticos en los mismos documentos (frentes conceptuales).
-2. **Coautoría (`coauthorship`):** Colaboración social entre investigadores (`authors`), afiliaciones institucionales (`institutions`) o bloques de países (`countries`).
-3. **Acoplamiento Bibliográfico (`coupling`):** Grado en que dos documentos, autores o fuentes citan las mismas referencias bibliográficas comunes (frentes de investigación activos).
-4. **Citación Directa (`direct-citation`):** Enlaces directos de citas entre unidades de análisis.
+### Supported Network Typologies (`--network-type` and `--unit`):
+1. **Keyword Co-occurrence (`cooccurrence`, `keywords`):** Co-appearance of author keywords (`DE`), Keywords Plus (`ID`), or thematic concepts in the same documents (conceptual fronts).
+2. **Co-authorship (`coauthorship`):** Social collaboration among researchers (`authors`), institutional affiliations (`institutions`), or country blocs (`countries`).
+3. **Bibliographic Coupling (`coupling`):** Degree to which two documents, authors, or sources cite the same common bibliographic references (active research fronts).
+4. **Direct Citation (`direct-citation`):** Direct citation links between units of analysis.
 
-### Filtrado Temporal Opcional:
-- `--period YYYY-YYYY` (ej. `--period 2020-2024` o `--period 2024`): acota el grafo al rango cronológico indicado.
-- `--last-years N` (ej. `--last-years 5`): filtra automáticamente los últimos $N$ años respecto al año máximo del corpus.
-- `--year-from YYYY` y `--year-to YYYY`: filtros de límite inferior y superior.
-- `--max-terms N`: limita la red a los $N$ términos más destacados por frecuencia global.
+### Optional Temporal Filtering:
+- `--period YYYY-YYYY` (e.g., `--period 2020-2024` or `--period 2024`): restricts the graph to the specified chronological range.
+- `--last-years N` (e.g., `--last-years 5`): automatically filters the last $N$ years relative to the maximum year in the corpus.
+- `--year-from YYYY` and `--year-to YYYY`: lower and upper bound filters.
+- `--max-terms N`: limits the network to the top $N$ terms by global frequency.
 
 ---
 
-## 3. Normalización Cienciométrica y Detección de Comunidades
+## 3. Scientometric Normalization and Community Detection
 
-### 3.1 Métodos de Normalización (`--normalization`):
-* **Fuerza de Asociación (*Association Strength* de Van Eck & Waltman, 2009):** Medida estándar de VOSviewer y KnoMap:
+### 3.1 Normalization Methods (`--normalization`):
+* **Association Strength (Van Eck & Waltman, 2009):** Standard similarity measure in VOSviewer and KnoMap:
   $$AS_{ij} = \frac{C_{ij}}{2 \cdot m \cdot s_i \cdot s_j}$$
-  donde $C_{ij}$ es la coocurrencia observada, $s_i, s_j$ son las ocurrencias totales y $m$ es el total de enlaces. Normaliza por la expectativa de coocurrencia aleatoria.
-* **Coseno de Salton:** Similitud geométrica normalizada por la media geométrica de las frecuencias: $S_{ij} = C_{ij} / \sqrt{C_i \cdot C_j}$.
-* **Índice de Jaccard:** Razón entre intersección y unión: $J_{ij} = C_{ij} / (C_i + C_j - C_{ij})$.
-* **Conteo:** Completo (`full`) o fraccional (`fractional`).
+  where $C_{ij}$ is the observed co-occurrence, $s_i, s_j$ are total occurrences, and $m$ is the total number of links. It normalizes by expected random co-occurrence.
+* **Salton's Cosine:** Geometric similarity normalized by the geometric mean of frequencies: $S_{ij} = C_{ij} / \sqrt{C_i \cdot C_j}$.
+* **Jaccard Index:** Ratio between intersection and union: $J_{ij} = C_{ij} / (C_i + C_j - C_{ij})$.
+* **Counting:** Full (`full`) or fractional (`fractional`).
 
-### 3.2 Partición Modular (Detección de Comunidades):
-* **Algoritmo Leiden (`--algorithm leiden` - Recomendado):** Garantiza comunidades conexas y optimiza la modularidad de forma robusta, eliminando comunidades fragmentadas.
-* **Algoritmo Louvain (`--algorithm louvain`):** Algoritmo heurístico clásico de modularidad.
+### 3.2 Modular Partitioning (Community Detection):
+* **Leiden Algorithm (`--algorithm leiden` - Recommended):** Guarantees connected communities and robustly optimizes modularity, eliminating fragmented communities.
+* **Louvain Algorithm (`--algorithm louvain`):** Classical heuristic modularity algorithm.
 
-### 3.3 Métricas de Centralidad Nodal:
-Calculadas automáticamente con `--auto-analyze` o mediante el subcomando `calculate-centralities`:
-- **Grado Ponderado / Fuerza de Enlaces (*Total Link Strength*):** Intensidad agregada de las conexiones del nodo.
-- **Intermediación (*Betweenness Centrality*):** Identifica nodos puente que conectan comunidades conceptuales o colegios invisibles distintos.
-- **PageRank:** Mide la autoridad y centralidad estructural del nodo dentro del flujo de la red.
+### 3.3 Node Centrality Metrics:
+Calculated automatically with `--auto-analyze` or via the `calculate-centralities` subcommand:
+- **Weighted Degree / Total Link Strength:** Aggregate intensity of a node's connections.
+- **Betweenness Centrality:** Identifies bridge nodes connecting distinct conceptual communities or invisible colleges.
+- **PageRank:** Measures the structural authority and centrality of a node within the network flow.
 
 ---
 
-## 4. Visualización Interactiva y Generación de Artefactos
+## 4. Interactive Visualization and Artifact Generation
 
-Esta habilidad genera directamente los dos visualizadores interactivos de la pestaña **Biblio Networks** de KnoMap en archivos HTML autónomos listos para abrir en el navegador o presentar al usuario:
+This skill directly generates the two interactive viewers from KnoMap's **Biblio Networks** tab as standalone HTML files ready to open in a browser or present to the user:
 
-### 4.1 Artefacto 1: Visualizador KnoMap Force Graph (`render-knomap` o `--html-knomap`)
+### 4.1 Artifact 1: KnoMap Force Graph Viewer (`render-knomap` or `--html-knomap`)
 
-Genera un archivo HTML interactivo con motor D3.js Force Simulation en la estética visual Dark Mode de KnoMap:
+Generates an interactive HTML file powered by a D3.js Force Simulation engine in the KnoMap Dark Mode visual aesthetic:
 
 ```bash
 python scripts/biblio_network_cli.py render-knomap \
-  --input ./red_completa.json \
-  --output ./artefacto_red_knomap.html \
-  --title "Red de Coocurrencia Temática" \
-  --subtitle "Ecosistema KnoMap Force-Directed Graph"
+  --input ./full_network.json \
+  --output ./artifact_knomap_network.html \
+  --title "Thematic Co-occurrence Network" \
+  --subtitle "KnoMap Force-Directed Graph Ecosystem"
 ```
 
-**Características Interactivas:**
-- **Simulación de Fuerzas Dinámica:** Disposición orgánica con zoom y paneo continuo mediante D3.
-- **Resaltado de Ego-Red de 1-Salto:** Al colocar el cursor sobre un nodo, se iluminan sus vecinos conectados y sus aristas con su fuerza de asociación, atenuando el resto de la red.
-- **Tarjeta Inspectora de Nodo:** Despliega en vivo: nombre, cluster comunitario, ocurrencias, grado ponderado (Total Link Strength), PageRank e intermediación.
-- **Filtro de Componente Conexo Máximo (LCC):** Casilla para aislar únicamente el componente principal y ocultar islas inconexas.
-- **Búsqueda en Tiempo Real:** Campo de texto para localizar y resaltar nodos rápidamente.
-- **Exportación de Gráficos:** Botón para descargar el grafo en formato vectorial SVG.
+**Interactive Features:**
+- **Dynamic Force Simulation:** Organic layout with continuous D3 zoom and pan.
+- **1-Hop Ego-Network Highlighting:** Hovering over a node illuminates its connected neighbors and edges with their association strength while dimming the rest of the network.
+- **Live Node Inspector Card:** Displays in real time: node label, community cluster, occurrences, weighted degree (Total Link Strength), PageRank, and betweenness centrality.
+- **Largest Connected Component (LCC) Filter:** Checkbox to isolate only the giant connected component and hide disconnected islands.
+- **Real-Time Search:** Text input to quickly locate and highlight nodes.
+- **Graphics Export:** Button to download the graph in vector SVG format.
 
 ---
 
-### 4.2 Artefacto 2: VOSviewer Engine (`render-vosviewer` o `--html-vosviewer`)
+### 4.2 Artifact 2: VOSviewer Engine (`render-vosviewer` or `--html-vosviewer`)
 
-Genera un visualizador HTML con las tres vistas canónicas de VOSviewer y exporta el archivo `vosviewer.json` oficial:
+Generates an HTML viewer featuring the three canonical VOSviewer views and exports the official `vosviewer.json` file:
 
 ```bash
 python scripts/biblio_network_cli.py render-vosviewer \
-  --input ./red_completa.json \
-  --output ./artefacto_vosviewer_map.html \
+  --input ./full_network.json \
+  --output ./artifact_vosviewer_map.html \
   --output-json ./vosviewer.json \
-  --title "Cartografía Científica VOSviewer"
+  --title "VOSviewer Science Mapping"
 ```
 
-**Modos de Visualización Disponibles en la Interfaz:**
-1. **● Network Visualization:** Nodos con círculos proporcionales a las ocurrencias, coloreados por comunidad modular, enlazados por líneas con intensidad proporcional al peso.
-2. **◐ Overlay Visualization:** Gradiente continuo de color (Viridis / Plasma / Coolwarm) sobre una métrica numérica continua (PageRank, antigüedad media o citas), con barra de escala cromática.
-3. **◎ Density Visualization:** **Superficie de calor continuo calculada mediante un kernel gaussiano 2D** según la formulación original de Van Eck & Waltman (paleta térmica Azul $\to$ Cian $\to$ Verde $\to$ Amarillo $\to$ Rojo), que revela las áreas de mayor concentración conceptual.
-4. **Interoperabilidad:** Botón integrado para descargar `vosviewer.json` y enlace directo para abrir el mapa en la aplicación oficial [app.vosviewer.com](https://app.vosviewer.com) o importarlo en la pestaña Biblio Networks de KnoMap.
+**Visualization Modes Available in the Interface:**
+1. **● Network Visualization:** Nodes rendered as circles proportional to occurrences, colored by modular community, and linked by curved lines with intensity proportional to edge weight.
+2. **◐ Overlay Visualization:** Continuous color gradient (Viridis / Plasma / Coolwarm) mapped onto a continuous numerical metric (PageRank, average publication year, or citations), complete with a colorbar legend.
+3. **◎ Density Visualization:** **Continuous heat surface computed via a 2D Gaussian kernel** following Van Eck & Waltman's original formulation (thermal palette Blue $\to$ Cyan $\to$ Green $\to$ Yellow $\to$ Red), revealing areas of highest conceptual concentration.
+4. **Interoperability:** Built-in button to download `vosviewer.json` and direct link to open the map in the official [app.vosviewer.com](https://app.vosviewer.com) web application or import it into KnoMap's Biblio Networks tab.
 
 ---
 
-## 5. Redes Secuenciales Longitudinales (`sequential-networks`)
+## 5. Longitudinal Sequential Networks (`sequential-networks`)
 
-Descompone el corpus en periodos consecutivos o ventanas deslizantes, construye la red de cada periodo con comunidades Leiden y centralidades, y genera el manifiesto unificado de evolución:
+Splits the corpus into consecutive periods or sliding windows, builds the network for each period with Leiden communities and centralities, and generates a unified evolution manifest:
 
 ```bash
 python scripts/biblio_network_cli.py sequential-networks \
-  --input /ruta/al/corpus.parquet \
-  --output-dir ./redes_longitudinales \
+  --input /path/to/corpus.parquet \
+  --output-dir ./longitudinal_networks \
   --network-type cooccurrence \
   --unit keywords \
   --window 5 \
@@ -155,76 +157,76 @@ python scripts/biblio_network_cli.py sequential-networks \
   --normalization association-strength
 ```
 
-### Opciones Clave:
-- `--window N`: Tamaño de ventana en años (ej. `5` para quinquenios, `10` para décadas).
-- `--step S`: Paso de desplazamiento (disjuntas si $S = W$; o deslizantes si $S < W$).
-- `--periods "P1,P2,..."`: Lista explícita de periodos personalizados (ej. `"2000-2009,2010-2019,2020-2024"`).
-- `--max-terms M`: Número de conceptos retenidos en el **vocabulario canónico compartido** (garantiza matrices $M \times M$ alineadas en todos los periodos).
+### Key Options:
+- `--window N`: Window size in years (e.g., `5` for five-year periods, `10` for decades).
+- `--step S`: Step size (disjoint windows if $S = W$; sliding windows if $S < W$).
+- `--periods "P1,P2,..."`: Explicit list of custom periods (e.g., `"2000-2009,2010-2019,2020-2024"`).
+- `--max-terms M`: Number of concepts retained in the **shared canonical vocabulary** (ensuring aligned $M \times M$ matrices across all periods).
 
 ---
 
-## 6. Conexión Avanzada con el Ecosistema SOM (Análisis Neurocomputacional)
+## 6. Advanced Connection with the SOM Ecosystem (Neurocomputational Analysis)
 
-Aunque el análisis de redes bibliométricas es completamente autónomo y no requiere de redes neuronales, el ecosistema KnoMap integra una **conexión directa entre la topología de grafos y los Mapas Autoorganizados de Kohonen (SOM)** basada en investigaciones tempranas (ViBlioSOM; Sotolongo, Carrillo-Calvet et al., 1999–2002) y en la metodología contemporánea de perfiles multidimensionales (*Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet, 2024*; *Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025*).
+Although bibliometric network analysis is completely standalone and does not require neural networks, the KnoMap ecosystem integrates a **direct bridge between graph topology and Kohonen Self-Organizing Maps (SOM)** grounded in early foundational work (ViBlioSOM; Sotolongo, Carrillo-Calvet et al., 1999–2002) and contemporary multidimensional profile methodology (*Jiménez-Andrade, Martí-Lahera & Carrillo-Calvet, 2024*; *Carrillo-Calvet, Jiménez-Andrade & Arencibia-Jorge, 2025*).
 
-### 6.1 SOM sobre Red Estática o por Periodo (Mapeo de Matrices de Adyacencia)
+### 6.1 SOM on Static or Period Networks (Adjacency Matrix Mapping)
 
-En el análisis de redes tradicional, cada término o autor se visualiza como un nodo discreto en un espacio de fuerzas. Sin embargo, su **perfil de relación** con el resto de la disciplina puede modelarse como un vector numérico continuo en $\mathbb{R}^N$.
+In traditional network analysis, each term or author is visualized as a discrete node in a force-directed space. However, its **relational profile** with the rest of the discipline can be modeled as a continuous numerical vector in $\mathbb{R}^N$.
 
-Mediante el subcomando `export-som-matrix` (que reproduce el botón `handleSendToSOM` de la pestaña Biblio Networks de KnoMap):
+Using the `export-som-matrix` subcommand (which reproduces the `handleSendToSOM` button in KnoMap's Biblio Networks tab):
 
 ```bash
 python scripts/biblio_network_cli.py export-som-matrix \
-  --input ./red_completa.json \
-  --output-csv ./matriz_coocurrencia_som.csv \
-  --output-json ./matriz_coocurrencia_som.json
+  --input ./full_network.json \
+  --output-csv ./som_cooccurrence_matrix.csv \
+  --output-json ./som_cooccurrence_matrix.json
 ```
 
-Se obtiene una matriz simétrica de adyacencia/coocurrencia de dimensión $N \times N$:
-* Cada **fila** representa el perfil relacional de un término $i$.
-* La **diagonal** contiene la frecuencia de ocurrencias del término ($C_i$).
-* Los elementos **fuera de la diagonal** contienen la Fuerza de Asociación normalizada con todos los demás términos ($AS_{ij}$).
+This yields a symmetric $N \times N$ adjacency/co-occurrence matrix:
+* Each **row** represents the relational profile of a term $i$.
+* The **diagonal** contains the occurrence frequency of the term ($C_i$).
+* The **off-diagonal** elements contain the normalized Association Strength with all other terms ($AS_{ij}$).
 
-#### Integración con [`som-methodological-expert`](../som-methodological-expert/SKILL.md):
-Al alimentar esta matriz $N \times N$ al motor SOM:
-1. **Preservación Topológica:** Los términos con perfiles de coocurrencia similares se mapean en la misma neurona o en neuronas contiguas de la retícula hexagonal.
-2. **Inspección de la U-Matrix:** La matriz de distancias unificadas (U-Matrix) revela valles de alta densidad conceptual y crestas de separación entre subcampos.
-3. **Contraste de Particiones (Leiden vs. Vesanto):** Permite contrastar de forma cruzada las comunidades detectadas mediante modularidad de grafos (Leiden/Louvain) con los meta-clusters continuos calculados sobre el SOM con el algoritmo de Vesanto y criterio Silhouette.
+#### Integration with [`som-methodological-expert`](../som-methodological-expert/SKILL.md):
+When feeding this $N \times N$ matrix into the SOM engine:
+1. **Topological Preservation:** Terms with similar co-occurrence profiles map onto the same neuron or adjacent neurons on the hexagonal grid.
+2. **U-Matrix Inspection:** The Unified Distance Matrix (U-Matrix) reveals valleys of high conceptual density and separating ridges between subfields.
+3. **Partition Cross-Comparison (Leiden vs. Vesanto):** Enables cross-comparing communities detected via graph modularity (Leiden/Louvain) against continuous meta-clusters computed over the SOM using Vesanto's algorithm and the Silhouette criterion.
 
 ---
 
-### 6.2 SOM Longitudinal (Warm-Start Chaining)
+### 6.2 Longitudinal SOM (Warm-Start Chaining)
 
-El archivo `sequence_manifest.json` emitido por el subcomando `sequential-networks` es **100% compatible sin conversión intermedia** con el motor de encadenamiento temporal de [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md):
+The `sequence_manifest.json` file emitted by the `sequential-networks` subcommand is **100% compatible without intermediate conversion** with the temporal chaining engine of [`neural-longitudinal-mapping`](../neural-longitudinal-mapping/SKILL.md):
 
 ```bash
-# 1. Entrenar secuencia longitudinal encadenada (Warm-Start: W_t = W_{t-1}^*)
+# 1. Train chained longitudinal sequence (Warm-Start: W_t = W_{t-1}^*)
 python scripts/neural_longitudinal_cli.py train \
-  --input ./redes_longitudinales/sequence_manifest.json \
+  --input ./longitudinal_networks/sequence_manifest.json \
   --rows 8 --cols 12 \
   --output ./longitudinal_results.json
 
-# 2. Computar dinámicas Macro, Meso y Micro
+# 2. Compute Macro, Meso, and Micro dynamics
 python scripts/neural_longitudinal_cli.py analyze \
   --input ./longitudinal_results.json \
   --output ./dynamics_analysis.json
 
-# 3. Generar reporte Markdown con evolución de comunidades
+# 3. Generate Markdown report with community evolution
 python scripts/neural_longitudinal_cli.py report \
   --analysis ./dynamics_analysis.json \
   --output ./report_longitudinal.md
 ```
 
-Esta conexión permite rastrear:
-* **Nivel Macro:** Tasa de deriva sináptica global ($\Delta W$).
-* **Nivel Meso:** Fusión y escisión de frentes de investigación entre décadas.
-* **Nivel Micro:** Desplazamiento de conceptos nodales dentro del espacio latente.
+This connection enables tracking:
+* **Macro Level:** Global synaptic drift rate ($\Delta W$).
+* **Meso Level:** Merging and splitting of research fronts across decades.
+* **Micro Level:** Trajectories of core concepts across the latent space.
 
 ---
 
-## 7. Troubleshooting y Buenas Prácticas
+## 7. Troubleshooting and Best Practices
 
-- **Visualización en Navegador:** Los archivos `.html` generados son completamente estáticos y no requieren servidor backend; pueden abrirse con doble clic o servirse desde cualquier CDN.
-- **Redes Ralas / Desconectadas:** En corpus pequeños con muchos términos esporádicos, use `--min-freq 2` o active la casilla "Solo Componente Conexo (LCC)" en la interfaz KnoMap para aislar el núcleo temático coherente.
-- **Garantía Conexa de Comunidades:** Emplear siempre `--algorithm leiden` en lugar de Louvain para evitar clusters internamente inconexos.
-- **Exportación Canónica a VOSviewer:** El archivo `vosviewer.json` generado puede arrastrarse directamente en la interfaz oficial de [app.vosviewer.com](https://app.vosviewer.com).
+- **Browser Visualization:** Generated `.html` files are completely static and require no backend server; they can be opened by double-clicking or served from any CDN.
+- **Sparse / Disconnected Networks:** In small corpora with many sporadic terms, use `--min-freq 2` or check the "Giant Component Only (LCC)" box in the KnoMap interface to isolate the coherent thematic core.
+- **Connected Community Guarantee:** Always use `--algorithm leiden` instead of Louvain to prevent internally disconnected clusters.
+- **Canonical Export to VOSviewer:** The generated `vosviewer.json` file can be dragged and dropped directly into the official interface at [app.vosviewer.com](https://app.vosviewer.com).
