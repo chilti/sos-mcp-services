@@ -3,7 +3,7 @@
 ## Master User Manual for Google Antigravity & Gemini
 
 > **Computational Scientometrics, Informetric Modeling, Massive Bibliographic Big Data, and Topological Neural Cartography**
-> Facultad de Ciencias & Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)
+> Laboratorio de Dinámica no Lineal, Departamento de Matemáticas, Facultad de Ciencias & Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)
 
 ---
 
@@ -317,7 +317,7 @@ Append new records to `./corpus_monitoring.parquet`, flag papers with FWCI > 2.0
 
 ## Section 3: Scientific Master Templates & the 2-Stage Protocol
 
-The repository provides **4 Master Templates** (`template-*`) modeled after the human research workflows of the **LabSOM / C3-UNAM** research group (*Sixty Years of Research on Polaritons*, 2025; *Specialization Indicators in Scientometrics*, 2026; *Neural Longitudinal Mapping*, 2024–2025).
+The repository provides **4 Master Templates** (`template-*`) modeled after the human research workflows of the **Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM** research group (*Sixty Years of Research on Polaritons*, 2025; *Specialization Indicators in Scientometrics*, 2026; *Neural Longitudinal Mapping*, 2024–2025).
 
 ### 3.1. The 2-Stage Protocol (Exploration vs. Curation)
 

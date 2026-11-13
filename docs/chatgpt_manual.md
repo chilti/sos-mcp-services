@@ -3,7 +3,7 @@
 ## Master User Manual for OpenAI ChatGPT (Web, Advanced Data Analysis, Canvas & Custom GPTs)
 
 > **Computational Scientometrics, Informetric Modeling, Bibliographic Big Data, and Topological Neural Cartography**
-> Centro de Ciencias de la Complejidad (C3) & Facultad de Ciencias, Universidad Nacional Autónoma de México (UNAM)
+> Laboratorio de Dinámica no Lineal, Departamento de Matemáticas, Facultad de Ciencias & Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)
 
 ---
 
@@ -11,8 +11,8 @@
 
 1. [Introduction: How ChatGPT Handles Slash Command Workflows](#introduction-how-chatgpt-handles-slash-command-workflows)
 2. [Section 1: Installation &amp; Setup (ChatGPT Work, Codex &amp; Custom GPTs)](#section-1-installation--setup-chatgpt-work-codex--custom-gpts)
-   - [1.1. Copy-Paste Kickoff Prompt for ChatGPT Work, Team &amp; Web (Project / Custom Instructions)](#11-copy-paste-kickoff-prompt-for-chatgpt-work-team--web-project--custom-instructions)
-   - [1.2. Copy-Paste Setup Prompt for OpenAI Codex &amp; CLI Agents](#12-copy-paste-setup-prompt-for-openai-codex--cli-agents)
+   - [1.1. Copy-Paste Setup Prompt for OpenAI Codex &amp; CLI Agents](#11-copy-paste-setup-prompt-for-openai-codex--cli-agents)
+   - [1.2. Copy-Paste Kickoff Prompt for ChatGPT Work, Team &amp; Web (Project / Custom Instructions)](#12-copy-paste-kickoff-prompt-for-chatgpt-work-team--web-project--custom-instructions)
    - [1.3. Manual Local CLI Setup &amp; Uploading Parquet Datasets](#13-manual-local-cli-setup--uploading-parquet-datasets)
    - [1.4. (Optional) Packaging as an Institutional Custom GPT](#14-optional-packaging-as-an-institutional-custom-gpt)
 3. [Section 2: Operating Modes &amp; Equivalents to Slash Commands in ChatGPT](#section-2-operating-modes--equivalents-to-slash-commands-in-chatgpt)
@@ -52,14 +52,49 @@ Unlike command-line developer agents, standard ChatGPT Web does not feature slas
 
 To ensure universal portability, the ecosystem is built with a **Zero-Barrier Architecture**: **you do NOT need a local database server, ClickHouse cluster, or private OpenAlex snapshot to perform state-of-the-art scientometrics.**
 
+> **Which prompt should I use first?**
+> - **If you use OpenAI Codex CLI or a terminal coding agent:** Start with **Section 1.1** to clone the repository, install Python dependencies, and index the **38 Agent Skills**, and then optionally paste **Section 1.2** to enforce the scientometric research rules (or let Codex read them from `AGENTS.md`).
+> - **If you use ChatGPT Work, Team, Enterprise, or Plus in the browser (without terminal access):** Skip Section 1.1, paste **Section 1.2** into your ChatGPT **Project Instructions** (or as your first chat message), and upload your `.parquet` / `.csv` files directly.
+
 ---
 
-### 1.1. Copy-Paste Kickoff Prompt for ChatGPT Work, Team & Web (Project / Custom Instructions)
+### 1.1. Copy-Paste Setup Prompt for OpenAI Codex & CLI Agents
 
-If you use **ChatGPT Work, Team, Enterprise, or Plus** in the browser (with Advanced Data Analysis and Canvas), paste the following Master Kickoff Prompt as your first message—or save it permanently inside your ChatGPT **Project Instructions** or **Custom Instructions**:
+If you use **OpenAI Codex CLI** or an autonomous OpenAI coding agent directly in your terminal workspace, paste the following prompt first to automatically clone the repository, index all **38 Agent Skills**, and verify the Python runtime:
 
 ```markdown
-You are now acting as the **SOS (Science of Science) Scientometric Copilot**, developed by the Centro de Ciencias de la Complejidad (C3) and Facultad de Ciencias, UNAM (LabSOM research group).
+Hello Codex. I want to set up and activate the SOS (Science of Science) Agent Skills in BASIC / STANDALONE mode (zero database infrastructure required). Please perform the following steps:
+
+1. Repository & Skills Discovery:
+   - Check if this workspace already contains `sos-mcp-services`. If not, clone it using:
+     `git clone https://github.com/chilti/sos-mcp-services.git`
+   - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
+   - Index all 38 skills and create or update `AGENTS.md` (or `CODEX.md`) in this directory so you can invoke their CLI tools and workflows anytime.
+
+2. Python Runtime & Scientific Libraries:
+   - Use an active Python virtual environment with Python >= 3.10 (or create one: `python3 -m venv .venv && source .venv/bin/activate`).
+   - Ensure standard scientific dependencies are installed: `pip install -r sos-mcp-services/requirements.txt` (or verify `pandas`, `pyarrow`, `duckdb`, `numpy`, `scipy`, `scikit-learn`, `networkx`, `matplotlib`, `plotly`).
+   - Note: Do NOT require or configure any ClickHouse database connection, Docker containers, or private OpenAlex database snapshot servers.
+
+3. Verification:
+   - Run a quick syntax and CLI check on:
+     * `python sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py --help`
+     * `python sos-mcp-services/.agents/skills/classical-bibliometrics-laws/scripts/bibliometric_laws_cli.py --help`
+     * `python sos-mcp-services/.agents/skills/openalex-harvester/scripts/openalex_harvest_cli.py --help`
+     * `python sos-mcp-services/.agents/skills/deep-literature-researcher/scripts/citation_snowball.py --help`
+     * `python sos-mcp-services/.agents/skills/open-access-pdf-downloader/scripts/download_oa_pdfs.py --help`
+   - Confirm that all tools are ready to harvest via public REST APIs (OpenAlex, arXiv, PubMed, Semantic Scholar) and process local Parquet/CSV datasets.
+   - Report when the environment is ready for scientometric research.
+```
+
+---
+
+### 1.2. Copy-Paste Kickoff Prompt for ChatGPT Work, Team & Web (Project / Custom Instructions)
+
+If you use **ChatGPT Work, Team, Enterprise, or Plus** in the browser (with Advanced Data Analysis and Canvas), or after running Section 1.1 in Codex, paste the following Master Kickoff Prompt as your first message—or save it permanently inside your ChatGPT **Project Instructions** or **Custom Instructions**:
+
+```markdown
+You are now acting as the **SOS (Science of Science) Scientometric Copilot**, developed by the Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) and the Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM).
 
 Your methodological specialization covers:
 1. Computational Scientometrics, informetric modeling, and classical bibliometric laws (Lotka, Bradford, Price, Egghe).
@@ -85,37 +120,6 @@ Mode Directives You Support:
 - `[CANVAS MODE]`: Open the manuscript or report draft directly in ChatGPT Canvas for side-by-side iterative editing.
 
 Acknowledge your role and confirm that you are ready to receive my research questions, seed DOIs, or uploaded Parquet/CSV files.
-```
-
----
-
-### 1.2. Copy-Paste Setup Prompt for OpenAI Codex & CLI Agents
-
-If you use **OpenAI Codex CLI** or an autonomous OpenAI coding agent directly in your terminal workspace, paste the following prompt to automatically clone the repository, index all **38 Agent Skills**, and verify the Python runtime:
-
-```markdown
-Hello Codex. I want to set up and activate the SOS (Science of Science) Agent Skills in BASIC / STANDALONE mode (zero database infrastructure required). Please perform the following steps:
-
-1. Repository & Skills Discovery:
-   - Check if this workspace already contains `sos-mcp-services`. If not, clone it using:
-     `git clone https://github.com/chilti/sos-mcp-services.git`
-   - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
-   - Index all 38 skills and create or update `AGENTS.md` (or `CODEX.md`) in this directory so you can invoke their CLI tools and workflows anytime.
-
-2. Python Runtime & Scientific Libraries:
-   - Use an active Python virtual environment with Python >= 3.10 (or create one: `python3 -m venv .venv && source .venv/bin/activate`).
-   - Ensure standard scientific dependencies are installed: `pip install -r sos-mcp-services/requirements.txt` (or verify `pandas`, `pyarrow`, `duckdb`, `numpy`, `scipy`, `scikit-learn`, `networkx`, `matplotlib`, `plotly`).
-   - Note: Do NOT require or configure any ClickHouse database connection, Docker containers, or private OpenAlex database snapshot servers.
-
-3. Verification:
-   - Run a quick syntax and CLI check on:
-     * `python sos-mcp-services/.agents/skills/tlachia-metrics-engine/scripts/tlachia_metrics_cli.py --help`
-     * `python sos-mcp-services/.agents/skills/classical-bibliometrics-laws/scripts/bibliometric_laws_cli.py --help`
-     * `python sos-mcp-services/.agents/skills/openalex-harvester/scripts/openalex_harvest_cli.py --help`
-     * `python sos-mcp-services/.agents/skills/deep-literature-researcher/scripts/citation_snowball.py --help`
-     * `python sos-mcp-services/.agents/skills/open-access-pdf-downloader/scripts/download_oa_pdfs.py --help`
-   - Confirm that all tools are ready to harvest via public REST APIs (OpenAlex, arXiv, PubMed, Semantic Scholar) and process local Parquet/CSV datasets.
-   - Report when the environment is ready for scientometric research.
 ```
 
 ---
@@ -242,7 +246,7 @@ Execution requirements:
 
 ## Section 3: Scientific Master Templates & the 2-Stage Protocol
 
-The repository includes **4 Master Templates** (`template-*`) modeled after the human research workflows of the LabSOM / C3-UNAM scientometric research group.
+The repository includes **4 Master Templates** (`template-*`) modeled after the human research workflows of the Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM scientometric research group.
 
 ### 3.1. The 2-Stage Protocol (Exploration vs. Curation) in ChatGPT
 

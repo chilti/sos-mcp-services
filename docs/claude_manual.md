@@ -2,7 +2,7 @@
 ## Master User Manual for Anthropic Claude (Claude Code, Claude Desktop & Claude Projects)
 
 > **Computational Scientometrics, Informetric Modeling, Bibliographic Big Data, and Topological Neural Cartography**
-> Centro de Ciencias de la Complejidad (C3) & Facultad de Ciencias, Universidad Nacional Autónoma de México (UNAM)
+> Laboratorio de Dinámica no Lineal, Departamento de Matemáticas, Facultad de Ciencias & Centro de Ciencias de la Complejidad (C3), Universidad Nacional Autónoma de México (UNAM)
 
 ---
 
@@ -208,7 +208,7 @@ Render the interactive dashboard as an HTML artifact so I can view the Plotly do
 
 ## Section 3: Scientific Master Templates & the 2-Stage Protocol
 
-The repository includes **4 Master Templates** (`template-*`) adapted from the LabSOM / C3-UNAM scientometric research group.
+The repository includes **4 Master Templates** (`template-*`) adapted from the Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM scientometric research group.
 
 ### 3.1. The 2-Stage Protocol (Exploration vs. Curation) in Claude
 
