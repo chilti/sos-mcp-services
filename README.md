@@ -64,9 +64,11 @@ Register the SSE endpoints (`http://<SERVER_IP>:8010/sse` through `8015/sse`) us
 ---
 
 ## 📚 Documentation & User Manuals
-- **[Master User Manual for Google Antigravity & Gemini](docs/antigravity_gemini_manual.md)** (Setup, basic vs. advanced GPU mode, slash commands `/plan`, `/boost`, `/goal`, and master templates)
-- **[Master User Manual for Anthropic Claude](docs/claude_manual.md)** (Claude Code CLI, Claude Desktop, Extended Thinking, and mode directives)
-- **[Master User Manual for OpenAI ChatGPT](docs/chatgpt_manual.md)** (Code Interpreter, Canvas, reasoning models `o1`/`o3-mini`, and Custom GPTs)
+- **[Practical Skills Invocation Guide & Examples (39 Skills + 5 Templates)](docs/guia_uso_skills_ejemplos.md)** (How to trigger every skill, slash command pairings including `/goal` & `/teamwork`, plus Basic and Exhaustive copy-paste prompts)
+- **[Master User Manual for Google Antigravity & Gemini](docs/antigravity_gemini_manual.md)** (Setup, basic vs. advanced GPU mode, slash commands `/plan`, `/boost`, `/goal`, `/teamwork`, Full Evidence-First, and 5 master templates)
+- **[Master User Manual for Anthropic Claude](docs/claude_manual.md)** (Claude Code CLI, Claude Desktop, Extended Thinking, parallel subagents, Full Evidence-First, and 5 master templates)
+- **[Master User Manual for OpenAI ChatGPT](docs/chatgpt_manual.md)** (Code Interpreter, Canvas, reasoning models `o1`/`o3-mini`, Codex staged swarm, Custom GPTs, and 5 master templates)
+- **[SOM & TlachIA Metrics Methodology Guide](docs/metodologia_som_y_tlachia_metrics.md)**
 - **[Comprehensive Implementation Plan](docs/plan_implementacion_sos_mcp.md)**
 
 ---

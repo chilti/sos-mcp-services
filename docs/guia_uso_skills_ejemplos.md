@@ -20,7 +20,7 @@ En Antigravity, los *slash commands* no ejecutan scripts por sí solos, sino que
 | `/grill-me` | Antes de iniciar un estudio o definir preguntas de investigación | Entrevista interactiva previa para cerrar alcance, periodo, idioma (`--lang es`/`--lang en`), entidades foco y criterios de inclusión. |
 | `/browser` | Después de generar tableros HTML interactivos | Lanza el subagente de navegador para abrir e inspeccionar visualmente artefactos Plotly, VOSviewer o KnoMap Force Graph. |
 | `/schedule` | Vigilancia periódica de literatura o preprints | Programa cosechas recurrentes (p. ej., cada lunes) con `openalex-harvester` o `arxiv-harvester`. |
-| `/teamwork` | Estudios masivos paralelizables | Coordina múltiples agentes en paralelo (p. ej., análisis bibliométrico + descarga y lectura de textos completos). |
+| `/teamwork` | Estudios masivos (`template-estudio-cienciometrico-exhaustivo`) o Etapa I paralela en `template-articulo-cientifico-imryd` | Coordina un enjambre (`swarm`) de agentes en paralelo con propiedad de archivos disjunta (`./evidence_vault/` o `./lab_exploration/`), tanto en 4 Olas completas como acotado a 3–4 familias de un artículo. |
 | `/compact` | Sesiones largas tras múltiples corridas | Libera ventana de contexto resumiendo resultados ya persistidos en `./corpus.parquet` y `./matrices/`. |
 
 ### Principios operativos del ecosistema
@@ -539,16 +539,16 @@ En Antigravity, los *slash commands* no ejecutan scripts por sí solos, sino que
   ```
 
 ### 9.2 `template-articulo-cientifico-imryd`
-* **Definición:** [`SKILL.md`](../.agents/skills/template-articulo-cientifico-imryd/SKILL.md) · **Protocolo:** Exploración empírica completa en laboratorio (Etapa I) + curaduría científica y redacción IMRaD/IMRyD Q1/Q2 (Etapa II) · **Slash command recomendado:** `/goal` (tras `/plan` o `/grill-me`).
+* **Definición:** [`SKILL.md`](../.agents/skills/template-articulo-cientifico-imryd/SKILL.md) · **Protocolo:** Exploración empírica acotada por $RQ$ en laboratorio (Etapa I, secuencial o `/teamwork` en 3–4 ramas) + curaduría científica hacia 3–5 bloques y redacción IMRaD/IMRyD Q1/Q2 (Etapa II–III) · **Slash command recomendado:** `/goal` (secuencial) o `/teamwork` (para paralelizar las familias candidatas de la Etapa I).
 * **Uso básico:**
   ```markdown
-  /goal Usa la plantilla `template-articulo-cientifico-imryd` sobre mi corpus `./corpus.parquet` para ejecutar la exploración cienciométrica completa y redactar un manuscrito IMRyD en español listo para revista Q1/Q2, exportado en `.md`, `.docx` y `.pdf`.
+  /goal Usa la plantilla `template-articulo-cientifico-imryd` sobre mi corpus `./corpus.parquet` para ejecutar la exploración cienciométrica acotada a mis preguntas de investigación y redactar un manuscrito IMRyD en español listo para revista Q1/Q2, exportado en `.md`, `.docx` y `.pdf`.
   ```
 * **Uso exhaustivo:**
   ```markdown
-  /goal Ejecuta el protocolo completo de 2 etapas de `template-articulo-cientifico-imryd` para el tema `"<Tema científico>"` (2015–2026):
-  1. **Etapa I (Laboratorio):** Delimita según GLOBAL (ISSI) con *Pearl Growing*, cosecha vía `openalex-harvester` en `./corpus.parquet`, calcula matrices completas de 46 columnas en `./matrices/`, prueba leyes de Price/Lotka/Bradford, redes en competencia + aluviales AMI, revisión a texto completo con `deep-literature-researcher`, geopolítica/especialización ($AI$, $\text{F-measure}$) y la tríada **Big SOM ($10\cdot N$ SVD)**. Documenta decisiones de inclusión/descarte en `exploration_log.md`.
-  2. **Etapa II (Curaduría y Manuscrito):** Redacta el artículo completo en estilo *Polaritons / JoI* con portada editorial (título bilingüe, resumen estructurado, palabras clave, CRediT), tablas numeradas sin `N/D`, figuras PNG a 300 DPI embebidas, verificación 1:1 de cada referencia contra OpenAlex y compilación final a `./reportes/manuscrito.docx` y `./reportes/manuscrito.pdf`.
+  /teamwork Ejecuta la plantilla `template-articulo-cientifico-imryd` en modo enjambre acotado (sin convertirlo en auditoría de las 39 skills) para el tema `"<Tema científico>"` (2015–2026) con salidas en español (`--lang es`):
+  1. **Barrera inicial y Etapa I (Laboratorio paralelo en `./lab_exploration/`):** Delimita según GLOBAL (ISSI), cosecha vía `openalex-harvester` en `./corpus.parquet`, calcula matrices completas de 46 columnas en `./matrices/` para 2–3 escalas ligadas a mis $RQ$ (con `min_docs >= 3-5`) y lanza hasta 4 *workers* en paralelo sobre las familias pertinentes (leyes clásicas, redes en competencia + aluviales AMI, revisión de textos clave + PDFs OA con `deep-literature-researcher` y tríada **Big SOM `--norm divmax --grid-type big --max-k 15`** auditando `QE`/`TE` y máximos locales $K>2$). Consolida la evidencia en `./reportes/exploration_scorecard.csv` y `exploration_log.md`.
+  2. **Etapa II–III (Curaduría, Verificación y Manuscrito):** Poda hacia 3–5 bloques con mayor señal, redacta el artículo en estilo *Polaritons / JoI* integrando en Discusión el trabajo futuro de autores vs. caminos no explorados, tablas sin `N/D`, figuras PNG a 300 DPI embebidas, verificación 1:1 de cada referencia contra OpenAlex y compilación final a `./reportes/manuscrito.docx` y `./reportes/manuscrito.pdf`.
   ```
 
 ### 9.3 `template-informe-tecnico-institucional`

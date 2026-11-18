@@ -21,20 +21,22 @@
      - [Workflow C: `/goal` + Topological Trajectory Mapping (SOM)](#workflow-c-goal--topological-trajectory-mapping-som)
      - [Workflow D: `/browser` + Interactive Visualization Artifacts](#workflow-d-browser--interactive-visualization-artifacts)
      - [Workflow E: `/schedule` + Continuous Literature Surveillance](#workflow-e-schedule--continuous-literature-surveillance)
-3. [Section 3: Scientific Master Templates &amp; the 2-Stage Protocol](#section-3-scientific-master-templates--the-2-stage-protocol)
-   - [3.1. The 2-Stage Protocol (Exploration vs. Curation)](#31-the-2-stage-protocol-exploration-vs-curation)
+     - [Workflow F: `/teamwork` + Parallel Swarm Orchestration (`swarm`)](#workflow-f-teamwork--parallel-swarm-orchestration-swarm)
+3. [Section 3: Scientific Master Templates &amp; the Curated Laboratory Protocol](#section-3-scientific-master-templates--the-curated-laboratory-protocol)
+   - [3.1. The Curated Laboratory Protocol (Exploration, Full Evidence-First &amp; Curation)](#31-the-curated-laboratory-protocol-exploration-full-evidence-first--curation)
    - [3.2. Detailed Guide per Template](#32-detailed-guide-per-template)
      - [Template 1: Original Research Article (IMRaD / IMRyD Format - Q1 Journal)](#template-1-original-research-article-imrad--imryd-format---q1-journal)
      - [Template 2: Institutional Evaluation Technical Report &amp; Peer Benchmarking](#template-2-institutional-evaluation-technical-report--peer-benchmarking)
      - [Template 3: Governance Policy Brief (S&amp;T Policy for Senior Decision-Makers)](#template-3-governance-policy-brief-st-policy-for-senior-decision-makers)
      - [Template 4: Scientific Intelligence Report &amp; Research Fronts Radar](#template-4-scientific-intelligence-report--research-fronts-radar)
+     - [Template 5: Exhaustive Multi-Scale Scientometric Study (39 Skills · 4-Wave Swarm)](#template-5-exhaustive-multi-scale-scientometric-study-39-skills--4-wave-swarm)
 4. [Appendix: Core Principles &amp; Inviolable Rules](#appendix-core-principles--inviolable-rules)
 
 ---
 
 ## Section 1: Installation & Setup (Basic vs. Advanced)
 
-This project provides **38 specialized Agent Skills** and modular analytical engines designed for Antigravity (Google's agentic AI assistant) and Gemini.
+This project provides **39 specialized Agent Skills** and modular analytical engines designed for Antigravity (Google's agentic AI assistant) and Gemini.
 
 To ensure universal portability, the ecosystem is built with a **Zero-Barrier Architecture**: **you do NOT need a local database server, ClickHouse cluster, or private OpenAlex snapshot to perform state-of-the-art scientometrics.**
 
@@ -59,7 +61,7 @@ Hello Antigravity. I want to install and activate the SOS (Science of Science) A
    - Check if this workspace already contains the repository `sos-mcp-services`. If not, clone it using:
      `git clone https://github.com/chilti/sos-mcp-services.git`
    - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
-   - Index all 38 skills and make them accessible in my active Antigravity environment (link or copy them into my workspace `.agents/skills/` or global Antigravity skills directory `~/.gemini/antigravity/skills/`).
+   - Index all 39 skills and make them accessible in my active Antigravity environment (link or copy them into my workspace `.agents/skills/` or global Antigravity skills directory `~/.gemini/antigravity/skills/`).
 
 2. Python Runtime & Scientific Libraries:
    - Use an active Python virtual environment with Python >= 3.10 (or create a local one: `python3 -m venv .venv && source .venv/bin/activate`).
@@ -82,7 +84,7 @@ Hello Antigravity. I want to install and activate the SOS (Science of Science) A
 
 When you paste the basic prompt, Antigravity performs a lightweight setup:
 
-1. **Loads the 38 Skill Definitions:** Automatically scans each `SKILL.md` in `.agents/skills/` and makes them available for natural language triggering and slash command execution.
+1. **Loads the 39 Skill Definitions:** Automatically scans each `SKILL.md` in `.agents/skills/` and makes them available for natural language triggering and slash command execution.
 2. **Binds the Execution Environment:** Configures CLI calls to run with Python >= 3.10, ensuring all data wrangling (`pandas`, `pyarrow`), clustering (`scikit-learn`), and plotting (`plotly`, `matplotlib`) execute without system permission issues.
 3. **Applies Universal Language Invariant:** Sets default plot/report labels to English (`--lang en`), while supporting Spanish (`--lang es`) whenever the user interacts in Spanish.
 4. **Keeps Everything Local:** All harvested papers, indicator matrices, and reports are saved to your active workspace directory (`./corpus.parquet`, `./matrices/`, `./reportes/`) under the **Workspace-First** principle.
@@ -194,7 +196,7 @@ Now, every client Antigravity agent can invoke tools like `mcp_sos_openalex_*`, 
 
 ## Section 2: Standalone Usage of Agent Skills with Slash Commands
 
-The repository includes **38 modular Agent Skills**. Each skill is a self-contained expert with its own execution CLI, mathematical documentation (`references/*.md`), and bilingual output engine (`--lang en` / `--lang es`).
+The repository includes **39 modular Agent Skills** (including 5 Master Study Templates). Each skill is a self-contained expert with its own execution CLI, mathematical documentation (`references/*.md`), **Full Evidence-First** audit trails (`*_run_manifest.json`, `*_cluster_eval.csv`, `*_partition_eval.csv`), and bilingual output engine (`--lang en` / `--lang es`).
 
 ### 2.1. Catalog of Scientific Skill Families
 
@@ -247,7 +249,7 @@ graph TD
 
 ### 2.2. Workflows Combining Skills with Slash Commands
 
-Antigravity supports slash commands (`/plan`, `/boost`, `/goal`, `/browser`, `/schedule`, `/compact`, `/grill-me`) that elevate skill execution into autonomous, rigorous scientific workflows.
+Antigravity supports slash commands (`/plan`, `/boost`, `/goal`, `/teamwork`, `/browser`, `/schedule`, `/compact`, `/grill-me`) that elevate skill execution into autonomous, rigorous scientific workflows.
 
 #### Workflow A: `/plan` + Delineation & Harvesting into Parquet
 
@@ -313,37 +315,52 @@ Execution requirements:
 Append new records to `./corpus_monitoring.parquet`, flag papers with FWCI > 2.0 or top 10% percentile, and send me a concise executive alert in chat.
 ```
 
+#### Workflow F: `/teamwork` + Parallel Swarm Orchestration (`swarm`)
+
+* **Goal:** Coordinate multiple worker agents in parallel after harvesting `./corpus.parquet`—either in **bounded mode** (3–4 RQ-targeted families under `template-articulo-cientifico-imryd`) or **full 4-Wave mode** (`template-estudio-cienciometrico-exhaustivo`)—using `workspace: "inherit"` and **strictly disjoint output directories** (`./lab_exploration/` or `./evidence_vault/`).
+* **Prompt Example:**
+
+```markdown
+/teamwork Run Wave 1–3 exploration in parallel over `./corpus.parquet` and `./matrices/` with disjoint subdirectories:
+1. `worker-laws` (`./lab_exploration/01_laws/`): run `classical-bibliometrics-laws` (`growth-phase`, `lotka`, `bradford`, `price-index`).
+2. `worker-fronts` (`./lab_exploration/02_networks_fronts/`): run competing `coupling` vs. `cocitation` partitions (`topics-research-fronts-intelligence` + `bibliometric-network-analyst`), persisting `*_partition_eval.csv` and `ami_window_summary.csv`.
+3. `worker-lit` (`./lab_exploration/03_deep_lit/`): run `deep-literature-researcher` (+ `open-access-pdf-downloader` where needed) on core front papers, separating Author-Signaled Future Work from Analytically Assessed Unexplored Paths.
+4. `worker-som` (`./lab_exploration/04_som/`): run Big SOM (`--norm divmax --grid-type big --max-k 15`) with `som-methodological-expert` and audit `QE`, `TE`, and `*_cluster_eval.csv` (checking `--cluster-strategy local_max_gt2 --min-clusters 3` if K=2 is trivial).
+Post only concise summaries and `*_run_manifest.json` paths on the board, then curate into `./reportes/`.
+```
+
 ---
 
-## Section 3: Scientific Master Templates & the 2-Stage Protocol
+## Section 3: Scientific Master Templates & the Curated Laboratory Protocol
 
-The repository provides **4 Master Templates** (`template-*`) modeled after the human research workflows of the **Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM** research group (*Sixty Years of Research on Polaritons*, 2025; *Specialization Indicators in Scientometrics*, 2026; *Neural Longitudinal Mapping*, 2024–2025).
+The repository provides **5 Master Templates** (`template-*`) modeled after the human research workflows of the **Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM** research group (*Sixty Years of Research on Polaritons*, 2025; *Specialization Indicators in Scientometrics*, 2026; *Neural Longitudinal Mapping*, 2024–2025).
 
-### 3.1. The 2-Stage Protocol (Exploration vs. Curation)
+### 3.1. The Curated Laboratory Protocol (Exploration, Full Evidence-First & Curation)
 
-Scientific discovery is an empirical, iterative process. Therefore, every template strictly enforces two separate stages:
+Scientific discovery is an empirical, iterative process. Every template enforces explicit separation between exploration, full-evidence persistence, and editorial curation (and uses **OpenAlex-first** portable APIs by default, with optional ClickHouse acceleration when configured):
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ STAGE I: LABORATORY PHASE (Workspace-First Empirical Exploration)      │
-│  - Harvest `./corpus.parquet` via ZERO-JOIN ClickHouse engines.        │
-│  - Compute full 46-column matrix (42 indicators + 4 meta) in Parquet.  │
-│  - Run competing analytical techniques:                                │
-│      * Classical laws (Lotka, Bradford, Price doubling time).          │
-│      * Networks (Bibliographic coupling vs. Co-citation vs. Topics).   │
-│      * 3 SOM Variants (Static, Trajectories, Longitudinal Warm-Start). │
-│      * Substantive inspection of core papers per cluster.              │
+│ STAGE I: LABORATORY PHASE (Sequential /goal or Parallel /teamwork)     │
+│  - Harvest `./corpus.parquet` via OpenAlex API (or opt-in ClickHouse). │
+│  - Compute full 46-column matrices (42 indicators + 4 meta) in Parquet │
+│    across focal scales filtered by critical-mass (`min_docs`).         │
+│  - Run competing analytical techniques with Full Evidence-First logs:  │
+│      * Classical laws (Lotka, Bradford, Price, AIC/RMSE).              │
+│      * Networks & Fronts (`*_partition_eval.csv`, Q, AMI lineajes).    │
+│      * Big SOM (`--norm divmax --max-k 15`, QE/TE, `*_cluster_eval`).  │
+│      * Core paper reading + OA PDF extraction (N/A-strict synthesis).  │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ STAGE II: SCIENTIFIC CURATION & PRUNING PROTOCOL                       │
-│  - Narrative Thread Selection: 3 to 5 core analytical blocks.          │
-│  - Methodological Competition: Discard noisy networks / weak fits.     │
-│  - Zero Empty Columns: Never print tables with N/D or N/A columns.     │
-│  - Strict Academic Tone: Absolute ban on superlatives / hype words.    │
-│  - Anti-Scaffolding Leakage: Zero internal prompts/scripts in prose.   │
-│  - Produce publication-ready manuscript in the user's language.        │
+│ STAGE II–III: SCIENTIFIC CURATION, AUDIT & COMPILATION                 │
+│  - Build scorecard (`exploration_scorecard.csv` / `diagnostic_scorecard│
+│    .csv`) documenting both winning signals AND discarded/trivial runs. │
+│  - Select 3–5 narrative blocks (IMRyD) or multi-scale synthesis.       │
+│  - Dual Discussion Agenda: Author-Signaled Future Work vs. Unexplored. │
+│  - Zero Empty Columns (`N/D`), Sober Tone, Zero-Scaffolding Leakage.   │
+│  - 1:1 OpenAlex DOI verification & final `.md`, `.docx`, `.pdf` build. │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -354,28 +371,29 @@ Scientific discovery is an empirical, iterative process. Therefore, every templa
 #### Template 1: Original Research Article (IMRaD / IMRyD Format - Q1 Journal)
 
 * **Skill Name:** `template-articulo-cientifico-imryd`
+* **Scope:** Hypothesis-driven Q1/Q2 journal article centered on a focused thesis and **3 to 5 curated analytical blocks** across **2–3 RQ-linked entity scales** (unlike `template-estudio-cienciometrico-exhaustivo`, it never runs all 39 skills blindly).
 * **Target Venues:** *Journal of Informetrics*, *Scientometrics*, *Quantitative Science Studies*, *Research Evaluation*.
 * **Recommended Slash Command Flow:**
-  1. `/grill-me` $\to$ Align research questions ($RQ_1 \dots RQ_k$), domain boundaries, and target journal.
-  2. `/boost` $\to$ Execute Stage I exploration and Stage II curation.
-  3. `/compact` $\to$ Clean conversation memory before drafting the full manuscript text.
+  1. `/grill-me` $\to$ Align research questions ($RQ_1 \dots RQ_k$), 2–3 focal scales, and target journal.
+  2. `/teamwork` *(optional bounded swarm across 3–4 RQ families)* or `/boost` / `/goal` $\to$ Execute Stage I exploration with Full Evidence-First logs (`exploration_scorecard.csv`) and Stage II curation.
+  3. `/compact` $\to$ Clean conversation memory before Stage III drafting, 1:1 OpenAlex audit, and `.docx`/`.pdf` compilation.
 * **Full Prompt Example:**
 
 ```markdown
 /grill-me I want to draft an original scientific research manuscript using `template-articulo-cientifico-imryd` on the global evolution of "Quantum Computing Architectures (Superconducting vs. Trapped Ions vs. Photonic)" from 2000 to 2025. 
 
 Interview me regarding:
-1. Research questions and core hypotheses.
-2. Data sources (harvesting via `openalex-harvester` into `./corpus.parquet` vs. ingesting an existing Parquet/CSV dataset).
-3. The analytical families to test in the laboratory phase (classical growth kinetics, Leiden bibliographic coupling, core paper reading, and Kohonen SOM).
-4. The target journal (e.g., Scientometrics or Journal of Informetrics).
+1. Research questions and core hypotheses ($RQ_1 \dots RQ_k$).
+2. Data sources (harvesting via `openalex-harvester` into `./corpus.parquet` vs. ingesting an existing Parquet/CSV dataset) and the 2–3 focal granularities (e.g., countries + research fronts).
+3. Which analytical families to test in competition in Stage I (classical kinetics, competing coupling/co-citation networks, core paper review with OA PDFs, and Big SOM `--norm divmax`).
+4. Target journal and preferred execution mode (`/goal` sequential vs. bounded `/teamwork` parallel laboratory).
 ```
 
-*(Once aligned, proceed with:)*
+*(Once aligned, proceed with either `/boost` or bounded `/teamwork`:)*
 
 ```markdown
-/boost Proceed with Stage I (Laboratory Exploration) and Stage II (Curation & Drafting) of `template-articulo-cientifico-imryd`. 
-Save intermediate matrices in `./matrices/`, log curation decisions in `./reportes/exploration_log.md`, and write the complete manuscript in `./manuscript_quantum_computing.md` with full IMRaD sections and zero empty table columns.
+/teamwork Proceed with Stage I (Targeted Laboratory Exploration in `./lab_exploration/`), Stage II (Curation), and Stage III (Verification & Compilation) of `template-articulo-cientifico-imryd`.
+Compute 46-column matrices in `./matrices/` across our selected 2–3 scales (`min_docs >= 5`), test competing techniques in parallel with Full Evidence-First artifacts (`*_cluster_eval.csv`, `*_partition_eval.csv`, `QE`/`TE`, `--cluster-strategy local_max_gt2` check if K=2 is trivial), summarize candidates in `./reportes/exploration_scorecard.csv` + `exploration_log.md`, separate Author-Signaled Future Work from Analytically Assessed Unexplored Paths in Discussion, verify all citations 1:1 against OpenAlex, and compile `./reportes/manuscript_quantum_computing.{md,docx,pdf}`.
 ```
 
 ---
@@ -458,6 +476,30 @@ Required laboratory and curation steps:
 
 ---
 
+#### Template 5: Exhaustive Multi-Scale Scientometric Study (39 Skills · 4-Wave Swarm)
+
+* **Skill Name:** `template-estudio-cienciometrico-exhaustivo`
+* **Target Use Cases:** Doctoral state-of-the-art baselines, comprehensive field monographs, and full institutional/national audits where the analyst should not pre-judge which granularity (`country`, `institution`, `source`, `author`, `topic`, `front`) carries the strongest signal.
+* **Recommended Slash Command Flow:**
+  1. `/plan` or `/grill-me` $\to$ Establish domain query, time window, and infrastructure scope (ClickHouse/SNII/RevistasLATAM/Bibliometrix availability).
+  2. `/teamwork` *(4-Wave native `swarm` over `./evidence_vault/`)* or `/goal` *(sequential execution)*.
+* **Full Prompt Example:**
+
+```markdown
+/teamwork Execute a full-spectrum multi-scale study using `template-estudio-cienciometrico-exhaustivo` on "<Research Domain or Institution>" (2015–2026):
+
+1. Wave 0–1 (Gate & Harvest): Audit every skill in the 39-skill catalog into `./evidence_vault/00_gate/skills_execution_matrix.csv` (`QUEUED` vs `SKIPPED_OUT_OF_SCOPE` vs `SKIPPED_MISSING_DEP`) and harvest `./corpus.parquet` via `bibliometric-search-strategist` + `openalex-harvester`.
+2. Wave 2 (4 Parallel Workers in disjoint `./evidence_vault/` dirs):
+   - `worker-metrics-laws`: `tlachia-metrics-engine` across all active scales + `classical-bibliometrics-laws` (growth, Lotka, Bradford, Price).
+   - `worker-networks-fronts`: `bibliometric-network-analyst` + `topics-research-fronts-intelligence` (`coupling` vs `cocitation` vs `topics`, `*_partition_eval.csv`, AMI alluvial lineages).
+   - `worker-context-policy`: `geopolitical-science-mapping` (Salton affinity, sovereignty, 6 OA routes/APC USD, SDGs) + conditional editorial/SNII modules.
+   - `worker-deep-lit`: `deep-literature-researcher` + `open-access-pdf-downloader` (`literature_review_draft.md` with N/A-strict synthesis + Author Future Work vs. Unexplored Paths).
+3. Wave 3 (Multi-Scale SOM & Manifold): `semantic-manifold-expert` + Big SOM triad (`--norm divmax --grid-type big --max-k 15`, `QE`/`TE`, local-max $K>2$ check) across `country`, `institution`, `source`, `topic`, and `author_core`.
+4. Wave 4 (Verifier & Monograph): Build `./evidence_vault/diagnostic_scorecard.csv`, run 1:1 OpenAlex reference verification, and compile `./reportes/estudio_exhaustivo_maestro.{md,docx,pdf}` keeping full reproducibility in `./evidence_vault/`.
+```
+
+---
+
 ## Appendix: Core Principles & Inviolable Rules
 
 Every skill and script in this repository operates under five foundational principles:
@@ -469,6 +511,7 @@ Every skill and script in this repository operates under five foundational princ
    - Reports, HTML dashboards, and PNG cards are saved to `./reportes/`.
    - LLMs never compute statistics in their context window from raw text; they consume verified columnar files.
 2. **Data Integrity & Standardized Columnar Schemas:**
+
    - Raw bibliometric literature is always represented as a canonical document table in **Parquet format** (`./corpus.parquet`) with verified fields (`publication_year`, `cited_by_count`, `is_oa`, `oa_status`, `fwci`, `percentile`, `author_names`, `institution_names`, `topics`).
    - All multi-indicator matrices are stored as Parquet files (`./matrices/*.parquet`) to guarantee columnar speed, zero data truncation, and perfect type safety across runs.
    - If utilizing the optional Advanced Mode with ClickHouse, queries must strictly respect the ZERO-JOIN policy using native array functions.
@@ -483,3 +526,7 @@ Every skill and script in this repository operates under five foundational princ
    - Scripts default to English labels and figures (`--lang en`).
    - When users interact in Spanish, the agent passes `--lang es` to all CLIs and writes all narrative prose, section titles, and tables in Spanish.
    - Downstream data schemas, column names, and API keys remain 100% standardized and unchanged across languages.
+6. **Full Evidence-First & OpenAlex-First Principle:**
+
+   - Analytical CLIs never discard intermediate curves or baseline diagnostics: SOM scripts persist complete `K = 2..15` curves (`*_cluster_eval.csv/.png`), `QE`/`TE`, SVD audit, `*_cluster_profiles.csv`, and `*_run_manifest.json` (`--norm divmax` default); network/front CLIs persist `*_partition_eval.csv/.png`, modularity `Q`, and `ami_window_summary.csv`.
+   - All templates default autonomously to OpenAlex REST APIs (`openalex-harvester`) and 1:1 OpenAlex DOI verification before compiling `.md`, `.docx`, and `.pdf` deliverables, activating local ClickHouse only when explicitly configured (`CLICKHOUSE_HOST`).

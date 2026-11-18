@@ -22,13 +22,15 @@
      - [Workflow B: Reasoning Models (`o1` / `o3-mini`) + Research Fronts &amp; Deep Literature](#workflow-b-reasoning-models-o1--o3-mini--research-fronts--deep-literature)
      - [Workflow C: `[AUTONOMOUS PIPELINE]` + Neural Trajectory Mapping (SOM)](#workflow-c-autonomous-pipeline--neural-trajectory-mapping-som)
      - [Workflow D: `[CANVAS MODE]` + Interactive Document Drafting](#workflow-d-canvas-mode--interactive-document-drafting)
-4. [Section 3: Scientific Master Templates &amp; the 2-Stage Protocol](#section-3-scientific-master-templates--the-2-stage-protocol)
-   - [3.1. The 2-Stage Protocol (Exploration vs. Curation) in ChatGPT](#31-the-2-stage-protocol-exploration-vs-curation-in-chatgpt)
+     - [Workflow E: `[STAGED SWARM]` + OpenAI Codex Parallel Tasks / Wave Execution](#workflow-e-staged-swarm--openai-codex-parallel-tasks--wave-execution)
+4. [Section 3: Scientific Master Templates &amp; the Curated Laboratory Protocol](#section-3-scientific-master-templates--the-curated-laboratory-protocol)
+   - [3.1. The Curated Laboratory Protocol (Exploration, Full Evidence-First &amp; Curation) in ChatGPT](#31-the-curated-laboratory-protocol-exploration-full-evidence-first--curation-in-chatgpt)
    - [3.2. Detailed Guide per Template for ChatGPT](#32-detailed-guide-per-template-for-chatgpt)
      - [Template 1: Original Research Article (IMRaD / IMRyD Format - Q1 Journal)](#template-1-original-research-article-imrad--imryd-format---q1-journal)
      - [Template 2: Institutional Evaluation Technical Report &amp; Peer Benchmarking](#template-2-institutional-evaluation-technical-report--peer-benchmarking)
      - [Template 3: Governance Policy Brief (S&amp;T Policy for Senior Decision-Makers)](#template-3-governance-policy-brief-st-policy-for-senior-decision-makers)
      - [Template 4: Scientific Intelligence Report &amp; Research Fronts Radar](#template-4-scientific-intelligence-report--research-fronts-radar)
+     - [Template 5: Exhaustive Multi-Scale Scientometric Study (39 Skills · 4-Wave Swarm)](#template-5-exhaustive-multi-scale-scientometric-study-39-skills--4-wave-swarm)
 5. [Appendix: Core Principles &amp; Standardized Parquet Schemas](#appendix-core-principles--standardized-parquet-schemas)
 
 ---
@@ -53,14 +55,14 @@ Unlike command-line developer agents, standard ChatGPT Web does not feature slas
 To ensure universal portability, the ecosystem is built with a **Zero-Barrier Architecture**: **you do NOT need a local database server, ClickHouse cluster, or private OpenAlex snapshot to perform state-of-the-art scientometrics.**
 
 > **Which prompt should I use first?**
-> - **If you use OpenAI Codex CLI or a terminal coding agent:** Start with **Section 1.1** to clone the repository, install Python dependencies, and index the **38 Agent Skills**, and then optionally paste **Section 1.2** to enforce the scientometric research rules (or let Codex read them from `AGENTS.md`).
+> - **If you use OpenAI Codex CLI or a terminal coding agent:** Start with **Section 1.1** to clone the repository, install Python dependencies, and index the **39 Agent Skills**, and then optionally paste **Section 1.2** to enforce the scientometric research rules (or let Codex read them from `AGENTS.md`).
 > - **If you use ChatGPT Work, Team, Enterprise, or Plus in the browser (without terminal access):** Skip Section 1.1, paste **Section 1.2** into your ChatGPT **Project Instructions** (or as your first chat message), and upload your `.parquet` / `.csv` files directly.
 
 ---
 
 ### 1.1. Copy-Paste Setup Prompt for OpenAI Codex & CLI Agents
 
-If you use **OpenAI Codex CLI** or an autonomous OpenAI coding agent directly in your terminal workspace, paste the following prompt first to automatically clone the repository, index all **38 Agent Skills**, and verify the Python runtime:
+If you use **OpenAI Codex CLI** or an autonomous OpenAI coding agent directly in your terminal workspace, paste the following prompt first to automatically clone the repository, index all **39 Agent Skills**, and verify the Python runtime:
 
 ```markdown
 Hello Codex. I want to set up and activate the SOS (Science of Science) Agent Skills in BASIC / STANDALONE mode (zero database infrastructure required). Please perform the following steps:
@@ -69,7 +71,7 @@ Hello Codex. I want to set up and activate the SOS (Science of Science) Agent Sk
    - Check if this workspace already contains `sos-mcp-services`. If not, clone it using:
      `git clone https://github.com/chilti/sos-mcp-services.git`
    - Locate the `.agents/skills/` directory inside `sos-mcp-services`.
-   - Index all 38 skills and create or update `AGENTS.md` (or `CODEX.md`) in this directory so you can invoke their CLI tools and workflows anytime.
+   - Index all 39 skills and create or update `AGENTS.md` (or `CODEX.md`) in this directory so you can invoke their CLI tools and workflows anytime.
 
 2. Python Runtime & Scientific Libraries:
    - Use an active Python virtual environment with Python >= 3.10 (or create one: `python3 -m venv .venv && source .venv/bin/activate`).
@@ -104,9 +106,9 @@ Your methodological specialization covers:
 5. Topological neural cartography and multidimensional performance trajectories using Kohonen Self-Organizing Maps (SOM).
 
 Core Operating Principles You Must Strictly Enforce:
-- **The 2-Stage Protocol:**
-  * Stage I (Laboratory): Use Python (Code Interpreter) to explore datasets, compute metrics, test statistical fits, and uncover latent patterns.
-  * Stage II (Curation & Synthesis): Discard uninformative fits, prune noisy variables, structure the narrative into 3–5 core analytical blocks, and draft prose in Canvas.
+- **The Curated Laboratory Protocol:**
+  * Stage I (Laboratory): Use Python (Code Interpreter or Codex CLIs) to explore competing models across targeted scales, persisting **Full Evidence-First** diagnostics (`--norm divmax`, full clustering evaluation curves $K=2 \dots 15$ to avoid trivial $K=2$ blind spots, `QE`/`TE`, network modularity curves, and `*_run_manifest.json`).
+  * Stage II–III (Curation & Synthesis): Build `exploration_scorecard.csv` / `diagnostic_scorecard.csv`, prune weak branches into 3–5 core analytical blocks, separate **Author-Signaled Future Work** from **Analytically Assessed Unexplored Paths** in Discussion, verify citations against OpenAlex, and draft prose in Canvas / `.docx` / `.pdf`.
 - **Zero Empty Columns Rule:** Never output tables with columns filled with `N/A`, `N/D`, or placeholders. Only report verified, computed metrics.
 - **Sober Academic Tone:** Strictly prohibit marketing hype, buzzwords, and superlatives ("groundbreaking", "revolutionary", "fascinating"). Maintain a measured, evidence-grounded scientific register.
 - **Grounded Evidence Extraction:** Never fabricate sample sizes ($N$) or metrics. If an abstract or full text lacks a datum, explicitly state `N/A (Not declared in text)`.
@@ -117,6 +119,7 @@ Mode Directives You Support:
 - `[DEEP REASONING]`: Engage deep deliberative reasoning (`o1` / `o3-mini`) to evaluate methodological trade-offs and curate scientific evidence without hallucinations.
 - `[INTERVIEW MODE]`: Interview me with 3–5 concise multiple-choice questions to align research scope and criteria before running analyses.
 - `[AUTONOMOUS PIPELINE]`: Execute the end-to-end Python pipeline in one run (inspect -> compute indicators -> cluster -> plot -> summarize).
+- `[STAGED SWARM]`: In Codex or multi-step Code Interpreter runs, partition analytical families into disjoint folders (`./lab_exploration/` or `./evidence_vault/`) and consolidate into a scorecard before final drafting.
 - `[CANVAS MODE]`: Open the manuscript or report draft directly in ChatGPT Canvas for side-by-side iterative editing.
 
 Acknowledge your role and confirm that you are ready to receive my research questions, seed DOIs, or uploaded Parquet/CSV files.
@@ -187,6 +190,7 @@ If you want your research group or university to have a permanent **"SOS Sciento
 | **`/grill-me`** | **Alignment Interview Directive**          | Prefix prompt with `[INTERVIEW MODE]`                                 | Instructs ChatGPT to act as a rigorous peer reviewer, asking 3–5 multiple-choice questions to settle research questions, filters, and benchmarking pairs.            |
 | **`/goal`**     | **Autonomous Python Pipeline**             | Prefix prompt with `[AUTONOMOUS PIPELINE]`                            | Instructs ChatGPT's Code Interpreter to execute all pipeline stages (inspect $\to$ indicators $\to$ clusters $\to$ tables $\to$ plots) in one continuous run. |
 | **`/compact`**  | **Memory Checkpoint Directive**            | Prefix prompt with `[CHECKPOINT & RECAP]`                             | Instructs ChatGPT to summarize confirmed statistical findings and clear intermediate code logs before drafting prose.                                                 |
+| **`/teamwork`** | **Codex Parallel Tasks / Staged Waves**    | Prefix prompt with `[STAGED SWARM]` (or launch parallel Codex tasks)    | Partitions exploratory branches (laws, networks/fronts, core lit, SOM) into disjoint directories (`./lab_exploration/` or `./evidence_vault/`) with manifest consolidation. |
 | **`/browser`**  | **Canvas Document Editor**                 | Prefix prompt with `[OPEN IN CANVAS]`                                 | Opens ChatGPT Canvas for side-by-side iterative drafting of manuscripts, reports, and tables.                                                                         |
 
 ---
@@ -242,32 +246,49 @@ Execution requirements:
 [OPEN IN CANVAS] Draft an executive summary and key indicator diagnosis based on the attached `corpus.parquet`. Open the draft in Canvas so we can iteratively refine the methodological notes and policy recommendations side by side.
 ```
 
+#### Workflow E: `[STAGED SWARM]` + OpenAI Codex Parallel Tasks / Wave Execution
+
+*(Ideal in OpenAI Codex CLI—or as sequential wave checkpoints in ChatGPT Code Interpreter—over `./corpus.parquet` and `./matrices/`)*
+
+```markdown
+[STAGED SWARM] Execute exploratory families into strictly disjoint subdirectories before curating:
+1. Branch 1 (`./lab_exploration/01_laws/`): run `classical-bibliometrics-laws` (`growth-phase`, `lotka`, `bradford`, `price-index`).
+2. Branch 2 (`./lab_exploration/02_networks_fronts/`): test competing `coupling` vs. `cocitation` partitions (`topics-research-fronts-intelligence` + `bibliometric-network-analyst`), saving `*_partition_eval.csv` and `ami_window_summary.csv`.
+3. Branch 3 (`./lab_exploration/03_deep_lit/`): run `deep-literature-researcher` (+ `open-access-pdf-downloader`) using N/A-strict extraction, separating Author-Signaled Future Work from Analytically Assessed Unexplored Paths.
+4. Branch 4 (`./lab_exploration/04_som/`): run Big SOM (`--norm divmax --grid-type big --max-k 15`), persisting `QE`, `TE`, and `*_cluster_eval.csv` (checking local peaks K>2 whenever global max Silhouette gives K=2).
+Consolidate all `*_run_manifest.json` summaries into `./reportes/exploration_scorecard.csv` before drafting.
+```
+
 ---
 
-## Section 3: Scientific Master Templates & the 2-Stage Protocol
+## Section 3: Scientific Master Templates & the Curated Laboratory Protocol
 
-The repository includes **4 Master Templates** (`template-*`) modeled after the human research workflows of the Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM scientometric research group.
+The repository includes **5 Master Templates** (`template-*`) modeled after the human research workflows of the Laboratorio de Dinámica no Lineal (Departamento de Matemáticas, Facultad de Ciencias) & Centro de Ciencias de la Complejidad (C3), UNAM scientometric research group.
 
-### 3.1. The 2-Stage Protocol (Exploration vs. Curation) in ChatGPT
+### 3.1. The Curated Laboratory Protocol (Exploration, Full Evidence-First & Curation) in ChatGPT
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ STAGE I: LABORATORY PHASE (Workspace-First Data Analysis)              │
-│  - Load `./corpus.parquet` into Python sandbox (Code Interpreter).     │
-│  - Compute full 46-column matrix (42 indicators + 4 meta) in Parquet.  │
-│  - Execute exploratory skills: growth kinetics, Leiden coupling,       │
-│    SOM static/trajectories, core paper reading.                        │
+│ STAGE I: LABORATORY PHASE (Code Interpreter / Codex Parallel Waves)    │
+│  - Load or harvest `./corpus.parquet` (OpenAlex-first API).            │
+│  - Compute full 46-column matrices (42 indicators + 4 meta) in Parquet │
+│    across focal scales filtered by critical-mass (`min_docs`).         │
+│  - Execute competing skills preserving Full Evidence-First outputs:    │
+│      * Classical laws (`AIC`, `RMSE`, `alpha`, KS test).               │
+│      * Networks & Fronts (`*_partition_eval.csv`, Q, AMI lineages).    │
+│      * Big SOM (`--norm divmax --max-k 15`, QE/TE, `*_cluster_eval`).  │
+│      * Core paper reading + OA PDF extraction (N/A-strict synthesis).  │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ STAGE II: SCIENTIFIC CURATION & PRUNING PROTOCOL (Canvas / o1)         │
-│  - Select the primary narrative arc (3 to 5 core analytical blocks).   │
-│  - Discard noisy networks and uninformative fits.                      │
-│  - Zero Empty Columns: Never include columns filled with N/D or N/A.   │
-│  - Strict Academic Tone: Absolute ban on superlatives / hype words.    │
-│  - Anti-Scaffolding Leakage: Zero internal prompts/scripts in prose.   │
-│  - Draft full paper/report in the user's language (English or Spanish).│
+│ STAGE II–III: CURATION, AUDIT & COMPILATION (Canvas / o1 / Codex)      │
+│  - Summarize candidates in `exploration_scorecard.csv` / `diagnostic_  │
+│    scorecard.csv` (recording both strong signals and discarded runs).  │
+│  - Select the primary narrative arc (3–5 core analytical blocks).      │
+│  - Dual Discussion: Author-Signaled Future Work vs. Unexplored Paths.  │
+│  - Zero Empty Columns (`N/D`), Sober Tone, Zero-Scaffolding Leakage.   │
+│  - 1:1 OpenAlex DOI verification & compile `.md`, `.docx`, `.pdf`.     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -278,6 +299,7 @@ The repository includes **4 Master Templates** (`template-*`) modeled after the 
 #### Template 1: Original Research Article (IMRaD / IMRyD Format - Q1 Journal)
 
 * **Skill Name:** `template-articulo-cientifico-imryd`
+* **Scope:** Focused Q1/Q2 manuscript organized around 3–5 curated blocks across **2–3 RQ-linked granularities** (use `template-estudio-cienciometrico-exhaustivo` instead if an unfiltered 39-skill, all-scale monograph is desired).
 * **Target Venues:** *Journal of Informetrics*, *Scientometrics*, *Quantitative Science Studies*, *Research Evaluation*.
 * **Step 1: Alignment Interview:**
 
@@ -285,18 +307,18 @@ The repository includes **4 Master Templates** (`template-*`) modeled after the 
 [INTERVIEW MODE] I want to draft an original scientific research manuscript using `template-articulo-cientifico-imryd` on the global evolution of "Quantum Computing Architectures (Superconducting vs. Trapped Ions vs. Photonic)" from 2000 to 2025. 
 
 Interview me regarding:
-1. Research questions and core hypotheses.
-2. Data sources (harvesting via `openalex-harvester` into `./corpus.parquet` vs. ingesting an existing Parquet/CSV dataset).
-3. The analytical families to test in the laboratory phase (classical growth kinetics, Leiden bibliographic coupling, core paper reading, and Kohonen SOM).
-4. The target journal (e.g., Scientometrics or Journal of Informetrics).
+1. Research questions and core hypotheses ($RQ_1 \dots RQ_k$).
+2. Data sources (harvesting via `openalex-harvester` into `./corpus.parquet` vs. ingesting an attached Parquet/CSV dataset) and the 2–3 focal granularities (`min_docs >= 3-5`).
+3. Which analytical families to test in competition in Stage I (classical kinetics, Leiden coupling vs. co-citation, core paper reading + OA PDFs, and Big SOM `--norm divmax`).
+4. Target journal and execution mode (`[AUTONOMOUS PIPELINE]` vs. `[STAGED SWARM]` across 3–4 RQ branches in Codex).
 ```
 
-* **Step 2: Execution & Drafting with o1 / Canvas:**
+* **Step 2: Execution & Drafting with o1 / Canvas (or Codex Staged Waves):**
 
 ```markdown
-[CANVAS MODE] [DEEP REASONING] Proceed with Stage I (Laboratory Exploration) and Stage II (Curation & Drafting) of `template-articulo-cientifico-imryd` using the attached `corpus.parquet`. 
+[CANVAS MODE] [DEEP REASONING] Proceed with Stage I (Targeted Laboratory Exploration), Stage II (Curation), and Stage III (Verification & Compilation) of `template-articulo-cientifico-imryd` using `corpus.parquet`. 
 
-Analyze the data in Python, log curation decisions, and write the complete manuscript in Canvas with full canonical IMRaD sections and zero empty table columns.
+Compute full matrices across the selected 2–3 scales, preserve Full Evidence-First curves (`*_cluster_eval.csv` K=2..15 avoiding trivial K=2 blind spots, `*_partition_eval.csv`, `QE`/`TE`), summarize candidates in `exploration_scorecard.csv` + `exploration_log.md`, separate Author-Signaled Future Work from Analytically Assessed Unexplored Paths in Discussion, verify every citation against OpenAlex, and compile the complete IMRaD manuscript (`.md` / Canvas / `.docx` / `.pdf`) with zero empty table columns.
 ```
 
 ---
@@ -364,6 +386,26 @@ Required laboratory and curation steps:
 
 ---
 
+#### Template 5: Exhaustive Multi-Scale Scientometric Study (39 Skills · 4-Wave Swarm)
+
+* **Skill Name:** `template-estudio-cienciometrico-exhaustivo`
+* **Target Use Cases:** Full-spectrum monographs, doctoral state-of-the-art baselines, and comprehensive multi-scale benchmarks (`country`, `institution`, `source`, `author`, `topic`, `front`) using OpenAI Codex CLI (`[STAGED SWARM]`) or multi-wave Code Interpreter analysis.
+
+```markdown
+[STAGED SWARM] [AUTONOMOUS PIPELINE] Execute `template-estudio-cienciometrico-exhaustivo` on "<Research Domain or Institution>" (2015–2026):
+
+1. Wave 0–1 (Gate & Harvest): Audit all 39 skills into `./evidence_vault/00_gate/skills_execution_matrix.csv` (`QUEUED` / `SKIPPED_OUT_OF_SCOPE` / `SKIPPED_MISSING_DEP`) and prepare `./corpus.parquet` (`openalex-harvester` or attached Parquet).
+2. Wave 2 (Disjoint `./evidence_vault/` Analytical Waves):
+   - Metrics & Laws (`02_metrics/` & `03_laws/`): compute untruncated 46-column indicators across all active scales + classical laws (`growth-phase`, `lotka`, `bradford`, `price-index`).
+   - Networks & Fronts (`04_networks/` & `05_fronts/`): compare `coupling` vs `cocitation` vs `topics` with `*_partition_eval.csv` and AMI alluvial lineages.
+   - Context & Policy (`06_context/`): geopolitics (Salton affinity, sovereignty), 6 OA routes/APC USD, SDGs, plus conditional editorial/SNII modules.
+   - Deep Literature (`07_literature/`): core-paper synthesis (strict N/A rule) + `literature_review_draft.md` separating Author-Signaled Future Work from Analytically Assessed Unexplored Paths.
+3. Wave 3 (Multi-Scale SOM): Run intrinsic-dimension check + Big SOM triad (`--norm divmax --grid-type big --max-k 15`, `QE`/`TE`, local-max K>2 check) across `country`, `institution`, `source`, `topic`, and `author_core`.
+4. Wave 4 (Verifier & Compilation): Consolidate `./evidence_vault/diagnostic_scorecard.csv`, verify references 1:1 against OpenAlex, and deliver `./reportes/estudio_exhaustivo_maestro.{md,docx,pdf}` (or Canvas + `.docx` bundle).
+```
+
+---
+
 ## Appendix: Core Principles & Standardized Parquet Schemas
 
 1. **Workspace-First Principle:**
@@ -379,3 +421,6 @@ Required laboratory and curation steps:
    - Prohibit superlatives and marketing hype. Maintain a measured, evidence-grounded academic register.
 5. **Universal Language Rule:**
    - Scripts default to English (`--lang en`). Pass `--lang es` when users interact in Spanish, ensuring all figures, axis titles, and report sections match the user's language.
+6. **Full Evidence-First & OpenAlex-First Rule:**
+   - Never discard intermediate clustering/partition curves (`K=2..15` Silhouette/DB/CH, `QE`/`TE`, modularity `Q` sweeps, AMI transition matrices) or normalization audits (`divmax` scale factors).
+   - Default to OpenAlex APIs and 1:1 OpenAlex DOI verification before compiling Canvas, `.docx`, and `.pdf` deliverables.
