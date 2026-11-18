@@ -43,8 +43,9 @@ flowchart TD
         INC --> NET["Co-Citation & Bibliographic Coupling Networks"]
     end
 
-    subgraph Phase5 ["5. Interpretation & Epistemic Synthesis"]
+    subgraph Phase5 ["5. Narrative Synthesis & Draft Generation"]
         SYN --> GAP["Detection of Consensuses, Controversies & Research Gaps"]
+        GAP --> DRAFT["Extended Narrative Draft (literature_review_draft.md)"]
     end
 ```
 
@@ -129,25 +130,45 @@ flowchart LR
 
 All extracted evidence must be structured in the **Canonical Synthesis Matrix**:
 
-| Identifier (DOI) | Authors (Year)       | Approach / Theoretical Dimension | Methodology / Benchmark | Sample / Corpus ($N$) | Main Findings                                           | Stated Limitations                          | Open Research Gap                              |
-| ---------------- | -------------------- | -------------------------------- | ----------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
-| `10.xxxx/...`  | Author et al. (2023) | Symbolic / Causal networks       | Synthetic SCMs          | 10,000 queries          | 94% accuracy on Rung 1; collapse on Rung 3 without SCM. | Everyday variable names with semantic bias. | Evaluate autonomous agents on abstract graphs. |
+| Identifier (DOI) | Authors (Year)       | Approach / Theoretical Dimension | Methodology / Benchmark | Sample / Corpus ($N$) | Main Findings                                           | Stated Limitations & Author Future Work                       | Open Research Gap                              |
+| ---------------- | -------------------- | -------------------------------- | ----------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `10.xxxx/...`  | Author et al. (2023) | Symbolic / Causal networks       | Synthetic SCMs          | 10,000 queries          | 94% accuracy on Rung 1; collapse on Rung 3 without SCM. | Everyday variable names; authors call for multi-step tool use. | Evaluate autonomous agents on abstract graphs. |
 
 ### Inviolable Anti-Hallucination Principle (Grounded Extraction)
 
-- **Strict Rule:** If a datum (sample size, statistical metric, limitation) is not explicitly stated in the retrieved metadata, abstract, or harvested full text, the agent must rigorously record `N/A` (Not Available in text/abstract).
-- **Full-Text Prioritization:** When `--download-oa-pdfs` is enabled, the agent must inspect the layout-preserved text files in `<output>/text/` to extract exact empirical sample sizes ($N$), experimental conditions, and formal limitations before falling back to `N/A`.
+- **Strict Rule:** If a datum (sample size, statistical metric, limitation, or author-proposed future work) is not explicitly stated in the retrieved metadata, abstract, or harvested full text, the agent must rigorously record `N/A` (Not Available in text/abstract).
+- **Full-Text Prioritization:** When `--download-oa-pdfs` is enabled, the agent must inspect the layout-preserved text files in `<output>/text/` (including *Limitations*, *Discussion*, *Conclusion*, and *Future Work* sections) to extract exact empirical sample sizes ($N$), experimental conditions, stated limitations, and explicit author-signaled future directions before falling back to `N/A`.
 - **Absolute Prohibition:** Never conjecture or fabricate unverified metrics, sample sizes, or conclusions.
 
 ---
 
-## 5. Detection of Consensuses, Controversies, and Research Gaps
+## 5. Extended Narrative Literature Review Draft (`literature_review_draft.md`)
 
-The qualitative synthesis report must be structured around 3 analytical axes:
+In addition to structured tables, the agent must synthesize the evidence into an **extensive, publication-grade narrative draft** saved as `literature_review_draft.md` in the output directory. This document is intentionally thorough and modular so it can serve both as a standalone State-of-the-Art working paper and as rich source material to be condensed later into the *Introduction*, *Theoretical Framework*, or *Related Work* section of a manuscript.
 
-1. **Community Consensus Points:** Findings independently validated by multiple groups (e.g., insufficiency of purely autoregressive training for causal inference).
-2. **Methodological Controversies:** Theoretical or empirical discrepancies between schools of thought (e.g., emergence of latent *world models* vs. the *causal parrot* hypothesis).
-3. **Epistemic Gaps (Research Gaps):** Unresolved research questions at the frontier of knowledge that justify new experiments or conceptual frameworks.
+### Narrative Writing Standards
+
+- **Thematic Synthesis Over Paper-by-Paper Summaries:** Organize prose around **conceptual themes, methodological families, and empirical debates**, comparing and contrasting multiple authors within each paragraph rather than listing disconnected one-paragraph study summaries or bullet lists.
+- **Grounded Quantitative Depth:** Integrate exact sample sizes ($N$), benchmark metrics, effect directions, and methodological limitations directly verified from `<output>/text/`, `snowball_candidates.json`, and the Canonical Synthesis Matrix (enforcing `N/A` whenever a figure is absent).
+- **1:1 OpenAlex Reference Fidelity:** Every in-text citation in the narrative draft must correspond 1:1 to a complete entry verified against `snowball_candidates.json` or OpenAlex (`https://api.openalex.org/works`) with exact authors, year, title, venue, and official DOI.
+
+### Recommended Modular Structure
+
+1. **Search Scope and Retrieval Traceability:** Concise methodological account summarizing Boolean/semantic queries, seed set, Glänzel density filtering ($k \ge 2$), PRIBA/PRISMA flow counts (`prisma_flow_data.json`), and full-text OA coverage.
+2. **Intellectual Genealogy and Conceptual Evolution:** Narrative tracing how foundational landmark works gave rise to contemporary research lines.
+3. **Thematic State-of-the-Art Synthesis (3–5 Core Subsections):** Deep, comparative academic prose analyzing competing approaches, architectures, datasets/benchmarks, and empirical findings across the reviewed literature.
+4. **Community Consensuses, Controversies, and Cross-Cutting Limitations:**
+   - **Community Consensus Points:** Findings independently validated across multiple groups.
+   - **Methodological Controversies:** Open theoretical or empirical disagreements between schools of thought.
+   - **Cross-Cutting Limitations:** Recurrent evaluation gaps, contamination risks, or scope restrictions.
+5. **Future Directions: Author-Signaled Work vs. Agent-Assessed Unexplored Paths:** A dedicated analytical section that explicitly separates:
+   - **Future Work Signaled by Original Authors:** Specific extensions, hypotheses, and pending experiments explicitly proposed by authors in the *Discussion*, *Conclusion*, or *Future Work* sections of the inspected papers (cited per paper from `<output>/text/` or abstracts, never attributed without textual evidence).
+   - **Unexplored Paths Diagnosed by the Agent:** Untested methodological intersections, neglected baselines, scale/domain blind spots, and structural gaps identified across the corpus as a whole — explicitly labeled as cross-corpus analytical synthesis by the agent, with a brief rationale on scientific relevance, feasibility, and how they position a downstream manuscript or experimental agenda.
+6. **Canonical Synthesis Table and Verified Reference List:** Embedded comparative evidence matrix plus complete OpenAlex-verified bibliography.
+
+### Optional Formatted Export (`.docx` / `.pdf`)
+
+When compiling a shareable review draft (or when requested by the user), convert `literature_review_draft.md` to Word (`.docx` via `pandoc`) and PDF (`.pdf` via `pandoc`/`xelatex` or LibreOffice headless) alongside the Markdown source.
 
 ---
 
