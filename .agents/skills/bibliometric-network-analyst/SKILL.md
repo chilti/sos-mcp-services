@@ -83,9 +83,10 @@ python scripts/biblio_network_cli.py build-network \
 * **Jaccard Index:** Ratio between intersection and union: $J_{ij} = C_{ij} / (C_i + C_j - C_{ij})$.
 * **Counting:** Full (`full`) or fractional (`fractional`).
 
-### 3.2 Modular Partitioning (Community Detection):
+### 3.2 Modular Partitioning & Full Evidence-First Evaluation (`evaluate_network_partitions`):
 * **Leiden Algorithm (`--algorithm leiden` - Recommended):** Guarantees connected communities and robustly optimizes modularity, eliminating fragmented communities.
 * **Louvain Algorithm (`--algorithm louvain`):** Classical heuristic modularity algorithm.
+* **Mandatory Partition Audit (`--eval-resolutions`):** Both `build-network` and `detect-communities` evaluate multiple resolutions (`0.5, 0.75, 1.0, 1.25, 1.5` or `--eval-resolutions`) across Leiden and Louvain, persisting **Modularity $Q$**, community counts, singleton counts, min/median/max cluster sizes, and graph topology (`density`, `connected_components`, `isolated_nodes`) in `partition_evaluation` inside JSON plus `*_partition_eval.csv`, `*_partition_eval_<lang>.png`, and `*_run_manifest.json`. In `sequential-networks` / `period-networks`, pairwise **Adjusted Mutual Information (AMI)** and NMI across consecutive windows are also saved in `sequence_manifest.json`.
 
 ### 3.3 Node Centrality Metrics:
 Calculated automatically with `--auto-analyze` or via the `calculate-centralities` subcommand:

@@ -126,25 +126,41 @@ Identifies which quadrants of the map concentrate the greatest structural transf
 Location of the execution CLI script: [`scripts/neural_longitudinal_cli.py`](file://scripts/neural_longitudinal_cli.py)
 
 ```bash
-# 1. Windowed time-series preparation
+# 1. Windowed time-series preparation (with --norm divmax/zscore audit & raw stats)
 python neural_longitudinal_cli.py prepare \
   --input dataset.parquet \
   --entity-col university \
   --period-col year \
   --window 5 --step 5 \
+  --norm divmax \
   --output prepared_series.json
 
-# 2. Warm-Start Chaining training
+# 2. Warm-Start Chaining training (Big SOM via SVD, K=2..15 eval, QE/TE per period, cluster profiles)
 python neural_longitudinal_cli.py train \
   --input prepared_series.json \
-  --rows 10 --cols 20 \
+  --grid-type big \
+  --clustering hierarchical \
+  --max-k 15 \
+  --cluster-strategy global_max \
   --base-epochs 1000 --refine-epochs 200 \
+  --plot-dir ./reports \
   --output longitudinal_results.json
 
-# 3. 3-level evolutionary and cohort analysis
+# Optional zero-retrain re-clustering onto local peak K > 2:
+python neural_longitudinal_cli.py train \
+  --input prepared_series.json \
+  --recluster-from longitudinal_results.json \
+  --cluster-strategy local_max_gt2 --min-clusters 3 \
+  --plot-dir ./reports \
+  --output longitudinal_results.json
+
+# 3. 3-level evolutionary and cohort analysis (carries QE/TE, clustering_evaluation, profiles)
 python neural_longitudinal_cli.py analyze \
   --input longitudinal_results.json \
   --output dynamics_analysis.json
+```
+
+*Mandatory Full Evidence-First Outputs from `train`:* `longitudinal_results.json`, `*_cluster_eval.csv`, `*_cluster_eval_en.png` / `_es.png`, `*_cluster_profiles.csv`, `*_run_manifest.json`, and `quality_metrics_by_period` (**QE** & **TE** per time slice).
 
 # 4. Structured Markdown report generation
 python neural_longitudinal_cli.py report \

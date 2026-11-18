@@ -572,6 +572,130 @@ def detect_network_communities(
     return communities_list, node_to_comm
 
 
+def compute_graph_topology(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Compute basic graph topological metrics (density, connected components, isolated nodes)."""
+    G = nx.Graph()
+    for n in nodes:
+        G.add_node(n["id"])
+    for e in edges:
+        if e["source"] in G and e["target"] in G:
+            G.add_edge(e["source"], e["target"], weight=float(e.get("weight", 1.0)))
+    n_nodes = G.number_of_nodes()
+    n_edges = G.number_of_edges()
+    comps = list(nx.connected_components(G)) if n_nodes > 0 else []
+    isolated = sum(1 for _, deg in G.degree() if deg == 0)
+    return {
+        "nodes": n_nodes,
+        "edges": n_edges,
+        "density": round(float(nx.density(G)), 6) if n_nodes > 1 else 0.0,
+        "connected_components": len(comps),
+        "largest_component_size": max((len(c) for c in comps), default=0),
+        "isolated_nodes": isolated,
+    }
+
+
+def evaluate_network_partitions(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    resolutions: Optional[List[float]] = None,
+    algorithms: Optional[List[str]] = None,
+    selected_algorithm: str = "leiden",
+    selected_resolution: float = 1.0,
+) -> List[Dict[str, Any]]:
+    """Evaluate candidate community partitions across algorithms & resolutions preserving modularity Q and size stats."""
+    if not nodes or not edges:
+        return []
+    G = nx.Graph()
+    for n in nodes:
+        G.add_node(n["id"])
+    for e in edges:
+        if e["source"] in G and e["target"] in G:
+            G.add_edge(e["source"], e["target"], weight=float(e.get("weight", 1.0)))
+
+    if G.number_of_edges() == 0:
+        return []
+
+    algos = algorithms or (["leiden", "louvain"] if LEIDEN_AVAILABLE else ["louvain"])
+    res_list = sorted(set([round(float(r), 4) for r in (resolutions or [0.5, 0.75, 1.0, 1.25, 1.5])] + [round(float(selected_resolution), 4)]))
+
+    rows: List[Dict[str, Any]] = []
+    for algo in algos:
+        for res in res_list:
+            comms, _ = detect_network_communities(nodes, edges, algorithm=algo, resolution=res)
+            comm_sets = [set(c["members"]) for c in comms if c.get("members")]
+            sizes = sorted([len(c["members"]) for c in comms])
+            try:
+                mod_q = float(nx.community.modularity(G, comm_sets, weight="weight")) if comm_sets else 0.0
+            except Exception:
+                mod_q = 0.0
+            singletons = sum(1 for s in sizes if s == 1)
+            mid = len(sizes) // 2
+            med_size = float(sizes[mid]) if sizes else 0.0
+            rows.append({
+                "algorithm": algo,
+                "resolution": res,
+                "modularity_q": round(mod_q, 6),
+                "n_communities": len(comms),
+                "singleton_communities": singletons,
+                "min_cluster_size": sizes[0] if sizes else 0,
+                "median_cluster_size": med_size,
+                "max_cluster_size": sizes[-1] if sizes else 0,
+                "is_selected": (algo == selected_algorithm and abs(res - float(selected_resolution)) < 1e-6),
+            })
+    return rows
+
+
+def render_partition_eval_figure(eval_rows: List[Dict[str, Any]], out_path: str, lang: str = "en", dpi: int = 300) -> None:
+    """Render Modularity Q and Number of Communities vs. resolution across candidate algorithms."""
+    if not eval_rows:
+        return
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    is_es = (lang == "es")
+    algos = sorted(set(r["algorithm"] for r in eval_rows))
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.6), dpi=dpi, facecolor="white")
+    palette = {"leiden": "#1d4ed8", "louvain": "#047857"}
+
+    for algo in algos:
+        sub = sorted([r for r in eval_rows if r["algorithm"] == algo], key=lambda x: x["resolution"])
+        xs = [r["resolution"] for r in sub]
+        qs = [r["modularity_q"] for r in sub]
+        cs = [r["n_communities"] for r in sub]
+        col = palette.get(algo, "#7c3aed")
+        axes[0].plot(xs, qs, marker="o", linewidth=2.0, label=algo.upper(), color=col)
+        axes[1].plot(xs, cs, marker="s", linewidth=2.0, label=algo.upper(), color=col)
+        for r in sub:
+            if r.get("is_selected"):
+                axes[0].scatter([r["resolution"]], [r["modularity_q"]], s=120, marker="*", color="#dc2626", zorder=6)
+                axes[1].scatter([r["resolution"]], [r["n_communities"]], s=120, marker="*", color="#dc2626", zorder=6)
+
+    axes[0].set_title("Modularidad Q vs. Resolución" if is_es else "Modularity Q vs. Resolution", fontweight="bold")
+    axes[0].set_xlabel("Parámetro de resolución" if is_es else "Resolution parameter")
+    axes[0].set_ylabel("Modularidad Q" if is_es else "Modularity Q")
+    axes[0].grid(alpha=0.28, linestyle="--")
+    axes[0].legend()
+
+    axes[1].set_title("Comunidades Detectadas vs. Resolución" if is_es else "Detected Communities vs. Resolution", fontweight="bold")
+    axes[1].set_xlabel("Parámetro de resolución" if is_es else "Resolution parameter")
+    axes[1].set_ylabel("# Comunidades" if is_es else "# Communities")
+    axes[1].grid(alpha=0.28, linestyle="--")
+    axes[1].legend()
+
+    fig.suptitle(
+        "Evaluación Multi-Resolución de Particiones de Red" if is_es else "Multi-Resolution Network Partition Evaluation",
+        fontsize=12.5, fontweight="bold", y=1.02
+    )
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def compute_network_centralities(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]]
@@ -1956,7 +2080,7 @@ def cmd_build(args):
     nodes = [{"id": item, "label": item, "frequency": freqs.get(item, 0.0)} for item in items if any(item in p for p in norm_pairs)]
     edges = [{"source": u, "target": v, "weight": w, "raw_cooccur": pairs.get((u, v), w)} for (u, v), w in norm_pairs.items()]
 
-    # Auto-analysis (communities and centralities) if requested or when exporting visualizers
+    # Auto-analysis (communities and centralities) + Full Evidence-First partition evaluation
     needs_analysis = (
         getattr(args, "auto_analyze", False)
         or getattr(args, "html_knomap", None)
@@ -1964,8 +2088,22 @@ def cmd_build(args):
         or getattr(args, "vosviewer_json", None)
         or getattr(args, "som_matrix", None)
     )
+    lang = getattr(args, "lang", "en") or "en"
+    graph_topology = compute_graph_topology(nodes, edges)
+    partition_eval = []
+    selected_modularity = None
+
+    if len(nodes) > 0 and len(edges) > 0:
+        res_grid = [float(x.strip()) for x in getattr(args, "eval_resolutions", "0.5,0.75,1.0,1.25,1.5").split(",") if x.strip()]
+        partition_eval = evaluate_network_partitions(
+            nodes, edges, resolutions=res_grid, selected_algorithm="leiden" if LEIDEN_AVAILABLE else "louvain", selected_resolution=1.0
+        )
+        sel_row = next((r for r in partition_eval if r.get("is_selected")), None)
+        if sel_row:
+            selected_modularity = sel_row.get("modularity_q")
+
     if needs_analysis and len(nodes) > 0:
-        comms, node_to_comm = detect_network_communities(nodes, edges, "leiden", 1.0)
+        comms, node_to_comm = detect_network_communities(nodes, edges, "leiden" if LEIDEN_AVAILABLE else "louvain", 1.0)
         for n in nodes:
             n["community"] = node_to_comm.get(n["id"], 1)
 
@@ -1977,6 +2115,35 @@ def cmd_build(args):
             n["betweenness"] = c_info.get("betweenness", 0.0)
             n["pagerank"] = c_info.get("pagerank", 0.0)
 
+    out_abs = os.path.abspath(args.output)
+    out_dir = os.path.dirname(out_abs)
+    out_stem = os.path.splitext(os.path.basename(out_abs))[0]
+    os.makedirs(out_dir, exist_ok=True)
+    eval_csv_path = os.path.join(out_dir, f"{out_stem}_partition_eval.csv")
+    eval_png_path = os.path.join(out_dir, f"{out_stem}_partition_eval_{lang}.png")
+    manifest_path = os.path.join(out_dir, f"{out_stem}_run_manifest.json")
+
+    if partition_eval:
+        import csv as _csv
+        with open(eval_csv_path, "w", encoding="utf-8", newline="") as cf:
+            writer = _csv.DictWriter(cf, fieldnames=list(partition_eval[0].keys()))
+            writer.writeheader()
+            writer.writerows(partition_eval)
+        render_partition_eval_figure(partition_eval, eval_png_path, lang=lang)
+
+    methodology_audit = {
+        "input_corpus": args.input,
+        "network_type": net_type,
+        "unit": unit,
+        "counting": counting,
+        "normalization": norm_method,
+        "min_freq": args.min_freq,
+        "min_cooccur": args.min_cooccur,
+        "period": period_meta,
+        "graph_topology": graph_topology,
+        "selected_modularity_q": selected_modularity,
+    }
+
     graph_data = {
         "network_type": net_type,
         "unit": unit,
@@ -1985,16 +2152,34 @@ def cmd_build(args):
         "period": period_meta,
         "node_count": len(nodes),
         "edge_count": len(edges),
+        "modularity_q": selected_modularity,
+        "graph_topology": graph_topology,
+        "partition_evaluation": partition_eval,
+        "methodology_audit": methodology_audit,
         "nodes": nodes,
         "edges": edges
     }
 
-    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
+    with open(out_abs, "w", encoding="utf-8") as f:
         json.dump(graph_data, f, indent=2, ensure_ascii=False)
 
+    with open(manifest_path, "w", encoding="utf-8") as mf:
+        json.dump({
+            "pipeline": "bibliometric-network-analyst",
+            "command": "build-network",
+            "methodology_audit": methodology_audit,
+            "artifacts": {
+                "network_json": out_abs,
+                "partition_eval_csv": eval_csv_path if partition_eval else None,
+                "partition_eval_png": eval_png_path if partition_eval else None,
+            },
+        }, mf, indent=2, ensure_ascii=False)
+
     p_str = f" [Period: {period_meta.get('label')}]" if period_meta.get("filter_applied") else ""
-    print(f"Built network ({net_type}, {unit}){p_str}: {len(nodes)} nodes, {len(edges)} edges. Output: {args.output}")
+    print(f"Built network ({net_type}, {unit}){p_str}: {len(nodes)} nodes, {len(edges)} edges, Q={selected_modularity}. Output: {args.output}")
+    if partition_eval:
+        print(f"  - Partition Eval CSV: {eval_csv_path}")
+        print(f"  - Run Manifest JSON: {manifest_path}")
 
     # Generate visualizers if requested
     lang = getattr(args, "lang", "en") or "en"
@@ -2056,7 +2241,7 @@ def cmd_sequential(args):
 
     # 1. Determine period windows
     if args.periods:
-        windows = [parse_period_string(p) for p in args.periods.split(",") if p.strip()]
+        windows = [(lbl, s, e) for s, e, lbl in (parse_period_string(p) for p in args.periods.split(",") if p.strip())]
     else:
         all_years = [d["year"] for d in docs if d.get("year") is not None]
         if not all_years:
@@ -2223,6 +2408,50 @@ def cmd_sequential(args):
 
         print(f"  ✓ [{label}]: {len(period_docs)} docs, {len(nodes)} active nodes, {len(edges)} edges, {len(comms)} communities -> {net_filename}")
 
+    # Compute inter-period Adjusted Mutual Information (AMI) over shared active nodes
+    ami_transitions = []
+    try:
+        from sklearn.metrics import adjusted_mutual_info_score, normalized_mutual_info_score
+        period_comm_maps = []
+        for p_sum in periods_summary:
+            p_path = os.path.join(output_dir, p_sum["network_file"])
+            with open(p_path, "r", encoding="utf-8") as pf:
+                p_net = json.load(pf)
+            topo = compute_graph_topology(p_net.get("nodes", []), p_net.get("edges", []))
+            p_sum["connected_components"] = topo["connected_components"]
+            p_sum["isolated_nodes"] = topo["isolated_nodes"]
+            G_p = nx.Graph()
+            for n in p_net.get("nodes", []):
+                G_p.add_node(n["id"])
+            for e in p_net.get("edges", []):
+                G_p.add_edge(e["source"], e["target"], weight=float(e.get("weight", 1.0)))
+            comm_sets = [set(c["members"]) for c in p_net.get("communities", []) if c.get("members")]
+            try:
+                p_sum["modularity_q"] = round(float(nx.community.modularity(G_p, comm_sets, weight="weight")), 6) if comm_sets and G_p.number_of_edges() > 0 else 0.0
+            except Exception:
+                p_sum["modularity_q"] = 0.0
+            period_comm_maps.append((p_sum["period"], {n["id"]: n.get("community", 0) for n in p_net.get("nodes", [])}))
+
+        for idx in range(len(period_comm_maps) - 1):
+            p1, m1 = period_comm_maps[idx]
+            p2, m2 = period_comm_maps[idx + 1]
+            shared = sorted(set(m1.keys()).intersection(m2.keys()))
+            if len(shared) >= 2:
+                l1 = [m1[k] for k in shared]
+                l2 = [m2[k] for k in shared]
+                ami_val = round(float(adjusted_mutual_info_score(l1, l2)), 6)
+                nmi_val = round(float(normalized_mutual_info_score(l1, l2)), 6)
+            else:
+                ami_val, nmi_val = 0.0, 0.0
+            ami_transitions.append({
+                "transition": f"{p1} -> {p2}",
+                "shared_nodes": len(shared),
+                "ami": ami_val,
+                "nmi": nmi_val,
+            })
+    except Exception:
+        pass
+
     # Build sequence manifest
     manifest = {
         "corpus_path": input_path,
@@ -2230,11 +2459,14 @@ def cmd_sequential(args):
         "unit": unit,
         "counting": counting,
         "normalization": norm_method,
+        "algorithm": args.algorithm,
+        "resolution": args.resolution,
         "total_periods": len(periods_summary),
         "periods": [p["period"] for p in periods_summary],
         "vocabulary_size": len(vocabulary),
         "vocabulary": vocabulary,
         "periods_summary": periods_summary,
+        "ami_transitions": ami_transitions,
         "indicators": vocabulary,
         "periods_data": periods_data
     }
@@ -2263,6 +2495,7 @@ def cmd_communities(args):
     edges = net.get("edges", [])
     algorithm = args.algorithm or "leiden"
     resolution = args.resolution or 1.0
+    lang = getattr(args, "lang", "en") or "en"
 
     communities_list, node_to_comm = detect_network_communities(
         nodes, edges, algorithm=algorithm, resolution=resolution
@@ -2271,20 +2504,46 @@ def cmd_communities(args):
     for n in nodes:
         n["community"] = node_to_comm.get(n["id"], 0)
 
+    res_grid = [float(x.strip()) for x in getattr(args, "eval_resolutions", "0.25,0.5,0.75,1.0,1.25,1.5,2.0").split(",") if x.strip()]
+    partition_eval = evaluate_network_partitions(
+        nodes, edges, resolutions=res_grid, selected_algorithm=algorithm, selected_resolution=resolution
+    )
+    graph_topology = compute_graph_topology(nodes, edges)
+    sel_row = next((r for r in partition_eval if r.get("is_selected")), None)
+    mod_q = sel_row.get("modularity_q") if sel_row else None
+
+    out_abs = os.path.abspath(args.output)
+    out_dir = os.path.dirname(out_abs)
+    out_stem = os.path.splitext(os.path.basename(out_abs))[0]
+    os.makedirs(out_dir, exist_ok=True)
+    eval_csv_path = os.path.join(out_dir, f"{out_stem}_partition_eval.csv")
+    eval_png_path = os.path.join(out_dir, f"{out_stem}_partition_eval_{lang}.png")
+    if partition_eval:
+        import csv as _csv
+        with open(eval_csv_path, "w", encoding="utf-8", newline="") as cf:
+            writer = _csv.DictWriter(cf, fieldnames=list(partition_eval[0].keys()))
+            writer.writeheader()
+            writer.writerows(partition_eval)
+        render_partition_eval_figure(partition_eval, eval_png_path, lang=lang)
+
     output_data = {
         "algorithm": algorithm,
         "resolution": resolution,
+        "modularity_q": mod_q,
         "total_communities": len(communities_list),
+        "graph_topology": graph_topology,
+        "partition_evaluation": partition_eval,
         "communities": communities_list,
         "nodes_with_community": nodes,
         "edges": edges
     }
 
-    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
+    with open(out_abs, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"Detected {len(communities_list)} communities via {algorithm} (resolution={resolution}). Saved to {args.output}")
+    print(f"Detected {len(communities_list)} communities via {algorithm} (resolution={resolution}, Q={mod_q}). Saved to {args.output}")
+    if partition_eval:
+        print(f"  - Partition Eval CSV/PNG: {eval_csv_path} | {eval_png_path}")
     sys.exit(0)
 
 
@@ -2407,6 +2666,7 @@ def main():
     p_bld.add_argument("--last-years", type=int, default=None, help="Filter last N years relative to corpus max year")
     p_bld.add_argument("--max-terms", type=int, default=None, help="Limit network to top N prominent terms")
     p_bld.add_argument("--auto-analyze", action="store_true", help="Automatically run Leiden communities and centralities")
+    p_bld.add_argument("--eval-resolutions", type=str, default="0.5,0.75,1.0,1.25,1.5", help="Comma-separated resolution grid for partition evaluation")
     p_bld.add_argument("--html-knomap", type=str, default=None, help="Path to output standalone KnoMap Force Graph HTML")
     p_bld.add_argument("--html-vosviewer", type=str, default=None, help="Path to output standalone VOSviewer HTML visualizer")
     p_bld.add_argument("--vosviewer-json", type=str, default=None, help="Path to output canonical VOSviewer JSON format")
@@ -2468,6 +2728,7 @@ def main():
     p_com.add_argument("--output", required=True, help="Path to output communities JSON")
     p_com.add_argument("--algorithm", choices=["leiden", "louvain"], default="leiden")
     p_com.add_argument("--resolution", type=float, default=1.0)
+    p_com.add_argument("--eval-resolutions", type=str, default="0.25,0.5,0.75,1.0,1.25,1.5,2.0", help="Comma-separated resolution grid for partition evaluation")
     p_com.set_defaults(func=cmd_communities)
 
     # Subcommand: calculate-centralities

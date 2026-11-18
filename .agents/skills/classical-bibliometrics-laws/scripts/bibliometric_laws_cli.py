@@ -423,6 +423,10 @@ def cmd_growth(args):
     r2_exp = max(0.0, 1.0 - (ss_res_exp / ss_tot)) if ss_tot > 0 else 0.0
     doubling_time = math.log(2) / popt_exp[1] if popt_exp[1] > 0 else float("inf")
 
+    n_pts = max(1, len(docs))
+    rmse_exp = float(np.sqrt(ss_res_exp / n_pts))
+    aic_exp = float(n_pts * np.log(max(1e-12, ss_res_exp / n_pts)) + 2 * 2)
+
     # Fit Logistic
     try:
         popt_log, _ = curve_fit(logistic_func, t_norm, docs, p0=[max(docs) * 2, 0.1, len(t_norm) / 2], maxfev=10000)
@@ -430,10 +434,17 @@ def cmd_growth(args):
         ss_res_log = np.sum((docs - docs_pred_log) ** 2)
         r2_log = max(0.0, 1.0 - (ss_res_log / ss_tot)) if ss_tot > 0 else 0.0
         saturation_K = float(popt_log[0])
+        rmse_log = float(np.sqrt(ss_res_log / n_pts))
+        aic_log = float(n_pts * np.log(max(1e-12, ss_res_log / n_pts)) + 2 * 3)
+        inflection_yr = float(years[0]) + float(popt_log[2])
     except Exception:
         r2_log = 0.0
         saturation_K = None
         docs_pred_log = None
+        popt_log = None
+        rmse_log = None
+        aic_log = None
+        inflection_yr = None
 
     default_lang = getattr(args, "lang", "en") or "en"
     is_es_default = (default_lang == "es")
@@ -450,18 +461,37 @@ def cmd_growth(args):
 
     growth_phase = growth_phase_es if is_es_default else growth_phase_en
 
+    annual_series = []
+    for idx_y, yr in enumerate(years):
+        annual_series.append({
+            "year": int(yr),
+            "empirical_docs": int(docs[idx_y]),
+            "exp_predicted": round(float(docs_pred_exp[idx_y]), 3),
+            "log_predicted": round(float(docs_pred_log[idx_y]), 3) if docs_pred_log is not None else None,
+        })
+
     result = {
         "law": "Scientific Growth Phases",
         "years_range": [int(years[0]), int(years[-1])],
+        "n_years": int(n_pts),
         "exponential_fit": {
+            "n0_baseline": round(float(popt_exp[0]), 4),
+            "alpha_growth_rate": round(float(popt_exp[1]), 6),
             "r_squared": round(float(r2_exp), 4),
+            "rmse": round(rmse_exp, 4),
+            "aic": round(aic_exp, 4),
             "doubling_time_years": round(doubling_time, 2) if doubling_time != float("inf") else None
         },
         "logistic_fit": {
             "r_squared": round(float(r2_log), 4),
+            "rmse": round(rmse_log, 4) if rmse_log is not None else None,
+            "aic": round(aic_log, 4) if aic_log is not None else None,
+            "logistic_rate_r": round(float(popt_log[1]), 6) if popt_log is not None else None,
+            "inflection_year": round(inflection_yr, 2) if inflection_yr is not None else None,
             "estimated_saturation_carrying_capacity_K": round(saturation_K, 1) if saturation_K else None
         },
-        "diagnosed_phase": growth_phase
+        "diagnosed_phase": growth_phase,
+        "annual_series": annual_series,
     }
 
     dpi = getattr(args, "dpi", 300) or 300

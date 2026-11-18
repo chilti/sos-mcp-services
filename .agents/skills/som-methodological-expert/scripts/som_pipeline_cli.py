@@ -38,11 +38,20 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.patheffects as pe
 
 CURRENT_DIR = Path(__file__).resolve().parent
-SOS_ROOT = CURRENT_DIR.parents[3]
+SOS_ROOT = next((p for p in Path(__file__).resolve().parents if (p / "services" / "knomap" / "tools").exists()), CURRENT_DIR.parents[3])
 if str(SOS_ROOT) not in sys.path:
     sys.path.insert(0, str(SOS_ROOT))
 
 from services.knomap.tools.som_tools import suggest_grid_size, train_som, evaluate_som_clusters, recluster_som
+from services.knomap.tools.som_evidence import (
+    get_hex_neighbors,
+    normalize_matrix_with_audit,
+    build_svd_audit,
+    compute_som_quality_metrics,
+    evaluate_clustering_curve,
+    render_cluster_eval_figure,
+    build_cluster_profiles,
+)
 from services.knomap.tools.viz_tools import render_knomap_som_dashboard
 
 NON_INDICATOR_META_COLS = {
@@ -155,6 +164,11 @@ I18N = {
         "lbl_clusters_en": "  - Clusters EN (300 DPI): {path}",
         "lbl_umatrix_es": "  - U-Matrix ES (300 DPI): {path}",
         "lbl_umatrix_en": "  - U-Matrix EN (300 DPI): {path}",
+        "lbl_eval_csv": "  - Cluster Evaluation CSV: {path}",
+        "lbl_eval_png_en": "  - Cluster Eval EN (300 DPI): {path}",
+        "lbl_eval_png_es": "  - Cluster Eval ES (300 DPI): {path}",
+        "lbl_profiles_csv": "  - Cluster Profiles CSV: {path}",
+        "lbl_manifest": "  - Run Audit Manifest: {path}",
         "lbl_diag": "  - Diagnosis & Peers: {path}",
     },
     "es": {
@@ -174,6 +188,11 @@ I18N = {
         "lbl_clusters_en": "  - Clusters EN (300 DPI): {path}",
         "lbl_umatrix_es": "  - U-Matrix ES (300 DPI): {path}",
         "lbl_umatrix_en": "  - U-Matrix EN (300 DPI): {path}",
+        "lbl_eval_csv": "  - Evaluación de Clusters CSV: {path}",
+        "lbl_eval_png_en": "  - Evaluación Clusters EN (300 DPI): {path}",
+        "lbl_eval_png_es": "  - Evaluación Clusters ES (300 DPI): {path}",
+        "lbl_profiles_csv": "  - Perfiles por Cluster CSV: {path}",
+        "lbl_manifest": "  - Manifiesto de Auditoría: {path}",
         "lbl_diag": "  - Diagnóstico y Pares: {path}",
     },
 }
@@ -201,39 +220,11 @@ def load_matrix_df(path: str, lang: str = "en") -> pd.DataFrame:
     return pd.read_parquet(p)
 
 
-def normalize_matrix(X: np.ndarray, method: str = "zscore") -> np.ndarray:
-    X = np.nan_to_num(X.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
-    if method == "none":
-        return X
-    elif method == "minmax":
-        mn = X.min(axis=0)
-        mx = X.max(axis=0)
-        rng = np.where((mx - mn) == 0, 1.0, mx - mn)
-        return (X - mn) / rng
-    elif method == "robust":
-        med = np.median(X, axis=0)
-        q75, q25 = np.percentile(X, [75, 25], axis=0)
-        iqr = np.where((q75 - q25) == 0, 1.0, q75 - q25)
-        return (X - med) / iqr
-    else:  # zscore
-        mean = X.mean(axis=0)
-        std = X.std(axis=0)
-        std = np.where(std < 1e-9, 1.0, std)
-        return (X - mean) / std
-
-
-def get_hex_neighbors(r: int, c: int, rows: int, cols: int) -> List[Tuple[int, int]]:
-    """Order-1 hexagonal neighborhood (flat-topped offset)."""
-    if c % 2 == 0:
-        deltas = [(-1, 0), (1, 0), (-1, -1), (0, -1), (-1, 1), (0, 1)]
-    else:
-        deltas = [(-1, 0), (1, 0), (0, -1), (1, -1), (0, 1), (1, 1)]
-    out = []
-    for dr, dc in deltas:
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < rows and 0 <= nc < cols:
-            out.append((nr, nc))
-    return out
+def normalize_matrix(X: np.ndarray, method: str = "divmax") -> np.ndarray:
+    """Thin wrapper delegating to canonical normalize_matrix_with_audit."""
+    cols = [f"col_{i}" for i in range(X.shape[1])] if X.ndim == 2 else ["col_0"]
+    norm_X, _ = normalize_matrix_with_audit(X, cols, method=method)
+    return norm_X
 
 
 def render_som_publication_figures(
@@ -480,14 +471,19 @@ def render_som_publication_figures(
 
 def main():
     parser = argparse.ArgumentParser(description="SOM Methodological Expert CLI - SOM Training & Scientometric Diagnosis")
-    parser.add_argument("--input", "-i", required=True, help="Path to indicator matrix (.parquet, .csv, .json)")
+    parser.add_argument("--input", "-i", default=None, help="Path to indicator matrix (.parquet, .csv, .json)")
     parser.add_argument("--entity-col", default=None, help="Entity identity column (default: auto)")
     parser.add_argument(
         "--indicator-cols",
         default=None,
         help="Optional comma-separated list of indicators (if omitted, uses all numeric indicator columns in the matrix without truncation)",
     )
-    parser.add_argument("--norm", choices=["zscore", "minmax", "robust", "none"], default="zscore", help="Normalization (default: zscore)")
+    parser.add_argument(
+        "--norm",
+        choices=["divmax", "zscore", "minmax", "robust", "none"],
+        default="divmax",
+        help="Normalization rule (default: divmax = X / X.max, primary LabSOM standard)",
+    )
     parser.add_argument(
         "--grid-type",
         choices=["small", "big"],
@@ -497,11 +493,25 @@ def main():
     parser.add_argument("--rows", type=int, default=None, help="SOM grid rows (overrides --grid-type)")
     parser.add_argument("--cols", type=int, default=None, help="SOM grid cols (overrides --grid-type)")
     parser.add_argument("--iterations", type=int, default=200, help="Training epochs (default: 200)")
-    parser.add_argument("--clusters", type=int, default=0, help="Number of clusters k (0 = automatic optimal selection via Silhouette)")
+    parser.add_argument("--clusters", type=int, default=0, help="Number of clusters k (0 = automatic selection via --cluster-strategy)")
+    parser.add_argument("--max-k", type=int, default=15, help="Maximum K evaluated in Silhouette/DB/CH curve (default: 15)")
+    parser.add_argument(
+        "--cluster-strategy",
+        choices=["global_max", "local_max_gt2", "manual"],
+        default="global_max",
+        help="Cluster selection strategy: global_max, local_max_gt2 (best local peak for K>2), or manual",
+    )
+    parser.add_argument("--min-clusters", type=int, default=2, help="Minimum K allowed during automatic selection (set 3 to skip K=2)")
+    parser.add_argument("--recluster-from", default=None, help="Existing som_state.json to re-cluster without retraining")
     parser.add_argument("--title", default="KnoMap SOM Scientometric Dashboard", help="HTML dashboard title")
     parser.add_argument("--state-out", default="./reports/som_state.json", help="Output path for SOM state (.json)")
     parser.add_argument("--html-out", default="./reports/som_dashboard.html", help="Output path for interactive dashboard (.html)")
     parser.add_argument("--diagnosis-out", default="./reports/som_diagnosis.json", help="Output path for scientometric diagnosis (.json)")
+    parser.add_argument("--eval-csv-out", default=None, help="Optional CSV path for full K=2..Kmax cluster evaluation table")
+    parser.add_argument("--eval-png-es", default=None, help="Optional Spanish cluster evaluation PNG (300 DPI)")
+    parser.add_argument("--eval-png-en", default=None, help="Optional English cluster evaluation PNG (300 DPI)")
+    parser.add_argument("--profiles-csv-out", default=None, help="Optional CSV path for per-cluster raw/norm indicator statistics")
+    parser.add_argument("--manifest-out", default=None, help="Optional JSON path for methodological run manifest")
     parser.add_argument("--png-clusters-es", default="./reports/som_clusters_es.png", help="Spanish publication clusters PNG path (300 DPI)")
     parser.add_argument("--png-clusters-en", default="./reports/som_clusters_en.png", help="English publication clusters PNG path (300 DPI)")
     parser.add_argument("--png-umatrix-es", default="./reports/som_umatrix_es.png", help="Spanish publication U-Matrix PNG path (300 DPI)")
@@ -513,95 +523,170 @@ def main():
     lang = args.lang
     t = I18N[lang]
 
-    df = load_matrix_df(args.input, lang=lang)
-    if df.empty:
-        sys.stderr.write(t["err_empty"])
-        sys.exit(1)
+    if not args.input and not args.recluster_from:
+        parser.error("Provide --input <matrix> or --recluster-from <som_state.json>.")
 
-    entity_col = args.entity_col or next(
-        (c for c in df.columns if c.lower() in ("entity", "institution", "researcher", "author", "country", "name", "source")),
-        df.columns[0],
-    )
-    labels = df[entity_col].astype(str).tolist()
+    diag_out_abs = str(Path(args.diagnosis_out).resolve())
+    diag_dir = Path(diag_out_abs).parent
+    diag_dir.mkdir(parents=True, exist_ok=True)
+    stem_prefix = diag_dir / (Path(diag_out_abs).stem.replace("_diagnosis", "") or "som")
 
-    if args.indicator_cols:
-        requested = [c.strip() for c in args.indicator_cols.split(",") if c.strip()]
-        indicator_cols = [c for c in requested if c in df.columns]
-        missing = [c for c in requested if c not in df.columns]
-        if missing:
-            sys.stderr.write(t["warn_missing_cols"].format(missing=missing))
-    else:
-        num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        indicator_cols = [c for c in num_cols if c not in NON_INDICATOR_META_COLS and c.lower() not in NON_INDICATOR_META_COLS]
-
-    if not indicator_cols:
-        sys.stderr.write(t["err_no_num_cols"])
-        sys.exit(1)
-
-    raw_X = df[indicator_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0).values
-    norm_X = normalize_matrix(raw_X, method=args.norm)
-
-    # SVD spectral grid sizing
-    suggestion = suggest_grid_size(norm_X.tolist())
-    if args.rows and args.cols:
-        rows, cols = args.rows, args.cols
-    else:
-        rec_key = "big_som_recommendation" if args.grid_type == "big" else "small_som_recommendation"
-        rec = suggestion.get(rec_key, {"rows": 6, "cols": 6})
-        rows, cols = int(rec.get("rows", 6)), int(rec.get("cols", 6))
-
-    # k selection (automatic via Silhouette across k=3..min(8, rows*cols-1) or fixed)
+    eval_csv_abs = str(Path(args.eval_csv_out).resolve()) if args.eval_csv_out else f"{stem_prefix}_cluster_eval.csv"
+    eval_png_es_abs = str(Path(args.eval_png_es).resolve()) if args.eval_png_es else f"{stem_prefix}_cluster_eval_es.png"
+    eval_png_en_abs = str(Path(args.eval_png_en).resolve()) if args.eval_png_en else f"{stem_prefix}_cluster_eval_en.png"
+    profiles_csv_abs = str(Path(args.profiles_csv_out).resolve()) if args.profiles_csv_out else f"{stem_prefix}_cluster_profiles.csv"
+    manifest_abs = str(Path(args.manifest_out).resolve()) if args.manifest_out else f"{stem_prefix}_run_manifest.json"
     state_out_abs = str(Path(args.state_out).resolve())
     Path(state_out_abs).parent.mkdir(parents=True, exist_ok=True)
 
-    train_res = train_som(
-        data=norm_X.tolist(),
-        labels=labels,
-        rows=rows,
-        cols=cols,
-        method="batch",
-        init="pca",
-        iterations=args.iterations,
-        clustering_algorithm="hierarchical",
-        n_clusters=args.clusters if args.clusters > 0 else 4,
-        run_umap=True,
-        output_state_path=state_out_abs,
-        indicator_names=indicator_cols,
-    )
+    df = None
+    if args.input:
+        df = load_matrix_df(args.input, lang=lang)
+        if df.empty:
+            sys.stderr.write(t["err_empty"])
+            sys.exit(1)
 
-    with open(state_out_abs, "r", encoding="utf-8") as f:
-        som_state = json.load(f)
-
-    best_k = args.clusters if args.clusters > 0 else 4
-    best_sil = -1.0
-    weights_list = som_state.get("weights", [])
-    eval_res = evaluate_som_clusters(weights=weights_list, max_k=min(8, max(3, len(weights_list) // 3)))
-    if args.clusters <= 0 and eval_res.get("status") == "success":
-        best_k = int(eval_res.get("recommended_k") or 4)
-        for ev in eval_res.get("evaluations", []):
-            if ev.get("k") == best_k:
-                best_sil = float(ev.get("silhouette", 0.0))
-        rec_res = recluster_som(weights=weights_list, algorithm="hierarchical", n_clusters=best_k)
-        if rec_res.get("status") == "success":
-            som_state["clustering"] = rec_res.get("cluster_assignments", som_state.get("clustering", []))
+    if args.recluster_from:
+        with open(args.recluster_from, "r", encoding="utf-8") as f:
+            som_state = json.load(f)
+        rows = int(som_state["rows"])
+        cols = int(som_state["cols"])
+        indicator_cols = list(som_state.get("indicators", []))
+        weights_list = som_state.get("weights", [])
+        if df is not None:
+            entity_col = args.entity_col or (som_state.get("methodology_audit") or {}).get("entity_col") or next(
+                (c for c in df.columns if c.lower() in ("entity", "institution", "researcher", "author", "country", "name", "source")),
+                df.columns[0],
+            )
+            labels = df[entity_col].astype(str).tolist()
+            raw_X = df[indicator_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0).values
+            norm_method = (som_state.get("methodology_audit") or {}).get("normalization", {}).get("method", args.norm)
+            norm_X, norm_audit = normalize_matrix_with_audit(raw_X, indicator_cols, method=norm_method, raw_df_for_missing=df)
+            excluded_cols = [c for c in df.columns if c not in indicator_cols and c != entity_col]
+        else:
+            entity_col = (som_state.get("methodology_audit") or {}).get("entity_col", "entity")
+            labels = list(som_state.get("entity_labels", []))
+            raw_X = np.asarray(som_state.get("raw_matrix", []), dtype=float)
+            norm_X = np.asarray(som_state.get("norm_matrix", []), dtype=float)
+            if not labels and som_state.get("mapped_labels"):
+                labels = [e for cell in som_state["mapped_labels"] for e in (cell or [])]
+            norm_audit = (som_state.get("methodology_audit") or {}).get("normalization", {"method": args.norm})
+            excluded_cols = (som_state.get("methodology_audit") or {}).get("excluded_columns", [])
+        svd_audit = (som_state.get("methodology_audit") or {}).get(
+            "svd_sizing",
+            build_svd_audit(norm_X, {}, args.grid_type, rows, cols, explicit_override=True),
+        )
+        train_hyper = (som_state.get("methodology_audit") or {}).get("training_hyperparameters", {"reclustered_from": str(Path(args.recluster_from).resolve())})
+        input_ref = args.input or (som_state.get("methodology_audit") or {}).get("input_matrix", str(args.recluster_from))
     else:
-        for ev in eval_res.get("evaluations", []):
-            if ev.get("k") == best_k:
-                best_sil = float(ev.get("silhouette", 0.0))
+        assert df is not None
+        entity_col = args.entity_col or next(
+            (c for c in df.columns if c.lower() in ("entity", "institution", "researcher", "author", "country", "name", "source")),
+            df.columns[0],
+        )
+        labels = df[entity_col].astype(str).tolist()
+
+        if args.indicator_cols:
+            requested = [c.strip() for c in args.indicator_cols.split(",") if c.strip()]
+            indicator_cols = [c for c in requested if c in df.columns]
+            missing = [c for c in requested if c not in df.columns]
+            if missing:
+                sys.stderr.write(t["warn_missing_cols"].format(missing=missing))
+        else:
+            num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            indicator_cols = [c for c in num_cols if c not in NON_INDICATOR_META_COLS and c.lower() not in NON_INDICATOR_META_COLS]
+
+        if not indicator_cols:
+            sys.stderr.write(t["err_no_num_cols"])
+            sys.exit(1)
+
+        excluded_cols = [c for c in df.columns if c not in indicator_cols and c != entity_col]
+        raw_X = df[indicator_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0).values
+        norm_X, norm_audit = normalize_matrix_with_audit(raw_X, indicator_cols, method=args.norm, raw_df_for_missing=df)
+
+        # SVD spectral grid sizing
+        suggestion = suggest_grid_size(norm_X.tolist())
+        explicit_override = bool(args.rows and args.cols)
+        if explicit_override:
+            rows, cols = args.rows, args.cols
+        else:
+            rec_key = "big_som_recommendation" if args.grid_type == "big" else "small_som_recommendation"
+            rec = suggestion.get(rec_key, {"rows": 6, "cols": 6})
+            rows, cols = int(rec.get("rows", 6)), int(rec.get("cols", 6))
+
+        svd_audit = build_svd_audit(norm_X, suggestion, args.grid_type, rows, cols, explicit_override=explicit_override)
+        train_hyper = {
+            "method": "batch",
+            "init": "pca",
+            "iterations": args.iterations,
+            "clustering_algorithm": "hierarchical",
+            "topology": "hexagonal",
+        }
+        train_som(
+            data=norm_X.tolist(),
+            labels=labels,
+            rows=rows,
+            cols=cols,
+            method="batch",
+            init="pca",
+            iterations=args.iterations,
+            clustering_algorithm="hierarchical",
+            n_clusters=args.clusters if args.clusters > 0 else 4,
+            run_umap=True,
+            output_state_path=state_out_abs,
+            indicator_names=indicator_cols,
+        )
+        with open(state_out_abs, "r", encoding="utf-8") as f:
+            som_state = json.load(f)
+        weights_list = som_state.get("weights", [])
+        input_ref = args.input
+
+    # Full K=2..Kmax Clustering Evaluation Curve (Global Max + Local Max K>2 + Selected)
+    existing_evals = som_state.get("clustering_evaluation_raw") if args.recluster_from else None
+    curve_res = evaluate_clustering_curve(
+        weights=np.asarray(weights_list, dtype=float),
+        max_k=args.max_k,
+        cluster_strategy="manual" if args.clusters > 0 else args.cluster_strategy,
+        min_clusters=args.min_clusters,
+        manual_k=args.clusters,
+        existing_evals=existing_evals,
+    )
+    best_k = int(curve_res["selected_k"])
+    best_sil = float(curve_res["selected_silhouette"])
+    labels_by_k = curve_res["labels_by_k"] or som_state.get("cluster_labels_by_k", {})
+
+    if str(best_k) in labels_by_k and len(labels_by_k[str(best_k)]) == len(weights_list):
+        som_state["clustering"] = labels_by_k[str(best_k)]
+    else:
         rec_res = recluster_som(weights=weights_list, algorithm="hierarchical", n_clusters=best_k)
         if rec_res.get("status") == "success":
             som_state["clustering"] = rec_res.get("cluster_assignments", som_state.get("clustering", []))
-    som_state["silhouette_score"] = round(best_sil, 4)
-    som_state["n_clusters"] = best_k
-    with open(state_out_abs, "w", encoding="utf-8") as f:
-        json.dump(som_state, f, indent=2, ensure_ascii=False)
 
-    # Render HTML Dashboard
-    html_out_abs = str(Path(args.html_out).resolve())
-    Path(html_out_abs).parent.mkdir(parents=True, exist_ok=True)
-    render_knomap_som_dashboard(som_state=som_state, output_path=html_out_abs, title=args.title)
+    # Compute Exact Quality Metrics (Quantization Error + Topological Error)
+    weights_np = np.asarray(weights_list, dtype=float)
+    quality_metrics = compute_som_quality_metrics(norm_X, weights_np, rows, cols)
 
-    # Build Comparable Peers and Metric Paradoxes diagnosis
+    methodology_audit = {
+        "input_matrix": input_ref,
+        "entity_col": entity_col,
+        "included_indicators": indicator_cols,
+        "excluded_columns": excluded_cols,
+        "normalization": norm_audit,
+        "svd_sizing": svd_audit,
+        "training_hyperparameters": train_hyper,
+        "clustering_selection": {
+            "algorithm": "vesanto_hierarchical",
+            "strategy": curve_res["strategy"],
+            "min_clusters": args.min_clusters,
+            "max_k_evaluated": args.max_k,
+            "global_max_k": curve_res["global_max_k"],
+            "local_max_gt2_k": curve_res["local_max_gt2_k"],
+            "selected_k": best_k,
+            "selected_silhouette": round(best_sil, 4),
+        },
+    }
+
+    # Build Comparable Peers, Profiles, and Metric Paradoxes diagnosis
     mapped_labels = som_state.get("mapped_labels", [])
     clustering = som_state.get("clustering", [])
     entity_bmu: Dict[str, Tuple[int, int, int]] = {}
@@ -612,9 +697,25 @@ def main():
         for ent in (ent_list or []):
             entity_bmu[ent] = (n_idx, r, c)
 
+    bmu_per_row = quality_metrics["bmu_indices"] if len(quality_metrics["bmu_indices"]) == len(labels) else [
+        entity_bmu.get(ent, (0, 0, 0))[0] for ent in labels
+    ]
+    qe_per_row = quality_metrics.get("per_sample_qe", [])
+
+    cluster_profiles, flat_profile_rows, singular_profiles = build_cluster_profiles(
+        raw_X=raw_X,
+        norm_X=norm_X,
+        entity_labels=labels,
+        indicator_cols=indicator_cols,
+        bmu_indices=bmu_per_row,
+        neuron_clusters=clustering,
+    ) if len(raw_X) == len(labels) and len(labels) > 0 else ([], [], [])
+
     entity_diagnostics = []
+    ind_idx_map = {c: idx for idx, c in enumerate(indicator_cols)}
     for idx_row, ent in enumerate(labels):
-        n_idx, r, c = entity_bmu.get(ent, (0, 0, 0))
+        n_idx = bmu_per_row[idx_row] if idx_row < len(bmu_per_row) else entity_bmu.get(ent, (0, 0, 0))[0]
+        r, c = n_idx // cols, n_idx % cols
         cid = clustering[n_idx] if n_idx < len(clustering) else 0
         same_bmu_peers = [e for e in neuron_entities.get(n_idx, []) if e != ent]
         adj_peers = []
@@ -622,9 +723,12 @@ def main():
             adj_idx = nr * cols + nc
             adj_peers.extend(neuron_entities.get(adj_idx, []))
 
-        row_dict = df.iloc[idx_row].to_dict()
-        fwci_val = float(row_dict.get("fwci_avg") or 0.0)
-        perc_val = float(row_dict.get("avg_percentile") or 0.0)
+        fwci_val = float(raw_X[idx_row, ind_idx_map["fwci_avg"]]) if "fwci_avg" in ind_idx_map and idx_row < len(raw_X) else (
+            float(df.iloc[idx_row].get("fwci_avg") or 0.0) if df is not None and "fwci_avg" in df.columns else 0.0
+        )
+        perc_val = float(raw_X[idx_row, ind_idx_map["avg_percentile"]]) if "avg_percentile" in ind_idx_map and idx_row < len(raw_X) else (
+            float(df.iloc[idx_row].get("avg_percentile") or 0.0) if df is not None and "avg_percentile" in df.columns else 0.0
+        )
         paradox_type = None
         if fwci_val >= 1.5 and 0 < perc_val < 55.0:
             paradox_type = "A_OUTLIER_INFLATION (High FWCI driven by outlier paper, moderate Average Percentile)"
@@ -633,14 +737,49 @@ def main():
 
         entity_diagnostics.append({
             "entity": ent,
-            "bmu_index": n_idx,
-            "bmu_row": r,
-            "bmu_col": c,
+            "bmu_index": int(n_idx),
+            "bmu_row": int(r),
+            "bmu_col": int(c),
             "cluster_id": int(cid),
+            "quantization_error": qe_per_row[idx_row] if idx_row < len(qe_per_row) else None,
             "exact_bmu_peers": same_bmu_peers,
             "adjacent_topological_peers": adj_peers[:15],
             "paradox_diagnosis": paradox_type,
         })
+
+    # Persist full evidence in som_state.json (including matrices/labels for zero-retrain recluster)
+    som_state["silhouette_score"] = round(best_sil, 4)
+    som_state["n_clusters"] = best_k
+    som_state["quantization_error"] = quality_metrics["mean_quantization_error"]
+    som_state["topological_error"] = quality_metrics["topological_error"]
+    som_state["quality_metrics"] = {k: v for k, v in quality_metrics.items() if k not in ("per_sample_qe", "bmu_indices", "second_bmu_indices")}
+    som_state["clustering_evaluation"] = curve_res["evaluations"]
+    if labels_by_k:
+        som_state["cluster_labels_by_k"] = labels_by_k
+    som_state["methodology_audit"] = methodology_audit
+    som_state["cluster_profiles"] = cluster_profiles
+    if len(labels) > 0:
+        som_state["entity_labels"] = labels
+    if len(raw_X) > 0:
+        som_state["raw_matrix"] = np.round(raw_X, 6).tolist()
+    if len(norm_X) > 0:
+        som_state["norm_matrix"] = np.round(norm_X, 6).tolist()
+
+    with open(state_out_abs, "w", encoding="utf-8") as f:
+        json.dump(som_state, f, indent=2, ensure_ascii=False)
+
+    # Save CSVs and Cluster Evaluation Plots (300 DPI EN/ES)
+    if curve_res["evaluations"]:
+        pd.DataFrame(curve_res["evaluations"]).to_csv(eval_csv_abs, index=False)
+        render_cluster_eval_figure(curve_res["evaluations"], eval_png_en_abs, lang="en", dpi=args.dpi)
+        render_cluster_eval_figure(curve_res["evaluations"], eval_png_es_abs, lang="es", dpi=args.dpi)
+    if flat_profile_rows:
+        pd.DataFrame(flat_profile_rows).to_csv(profiles_csv_abs, index=False)
+
+    # Render HTML Dashboard
+    html_out_abs = str(Path(args.html_out).resolve())
+    Path(html_out_abs).parent.mkdir(parents=True, exist_ok=True)
+    render_knomap_som_dashboard(som_state=som_state, output_path=html_out_abs, title=args.title)
 
     # Generate Static Figures for Scientific Publication (300 DPI, EN and ES)
     clusters_es_abs = str(Path(args.png_clusters_es).resolve())
@@ -656,38 +795,65 @@ def main():
         dpi=args.dpi
     )
 
+    artifacts = {
+        "som_state_json": state_out_abs,
+        "som_dashboard_html": html_out_abs,
+        "som_clusters_es_png": clusters_es_abs,
+        "som_clusters_en_png": clusters_en_abs,
+        "som_umatrix_es_png": umatrix_es_abs,
+        "som_umatrix_en_png": umatrix_en_abs,
+        "cluster_eval_csv": eval_csv_abs,
+        "cluster_eval_en_png": eval_png_en_abs,
+        "cluster_eval_es_png": eval_png_es_abs,
+        "cluster_profiles_csv": profiles_csv_abs,
+        "run_manifest_json": manifest_abs,
+    }
+
     diagnosis = {
-        "input_matrix": args.input,
+        "input_matrix": input_ref,
         "n_entities": len(labels),
         "n_indicators": len(indicator_cols),
         "indicators_used": indicator_cols,
         "normalization": args.norm,
+        "methodology_audit": methodology_audit,
         "grid_shape": {"rows": rows, "cols": cols, "total_neurons": rows * cols, "topology": "hexagonal"},
-        "quantization_error": train_res.get("quantization_error"),
-        "clustering": {"algorithm": "vesanto_hierarchical", "n_clusters": best_k, "silhouette_score": round(best_sil, 4)},
-        "artifacts": {
-            "som_state_json": state_out_abs,
-            "som_dashboard_html": html_out_abs,
-            "som_clusters_es_png": clusters_es_abs,
-            "som_clusters_en_png": clusters_en_abs,
-            "som_umatrix_es_png": umatrix_es_abs,
-            "som_umatrix_en_png": umatrix_en_abs,
-        },
+        "quantization_error": quality_metrics["mean_quantization_error"],
+        "topological_error": quality_metrics["topological_error"],
+        "quality_metrics": som_state["quality_metrics"],
+        "clustering": methodology_audit["clustering_selection"],
+        "clustering_evaluation": curve_res["evaluations"],
+        "cluster_profiles": cluster_profiles,
+        "singular_profiles": singular_profiles,
+        "artifacts": artifacts,
         "entities": entity_diagnostics,
     }
 
-    diag_out_abs = str(Path(args.diagnosis_out).resolve())
-    Path(diag_out_abs).parent.mkdir(parents=True, exist_ok=True)
     with open(diag_out_abs, "w", encoding="utf-8") as f:
         json.dump(diagnosis, f, indent=2, ensure_ascii=False)
 
+    manifest_payload = {
+        "pipeline": "som-methodological-expert",
+        "recluster_mode": bool(args.recluster_from),
+        "methodology_audit": methodology_audit,
+        "quality_metrics": som_state["quality_metrics"],
+        "artifacts": artifacts,
+    }
+    with open(manifest_abs, "w", encoding="utf-8") as f:
+        json.dump(manifest_payload, f, indent=2, ensure_ascii=False)
+
     print(t["summary_header"].format(rows=rows, cols=cols, dims=len(indicator_cols), k=best_k, sil=best_sil))
+    print(f"  - QE={quality_metrics['mean_quantization_error']} | TE={quality_metrics['topological_error']}")
     print(t["lbl_state"].format(path=state_out_abs))
     print(t["lbl_html"].format(path=html_out_abs))
     print(t["lbl_clusters_en"].format(path=clusters_en_abs))
     print(t["lbl_clusters_es"].format(path=clusters_es_abs))
     print(t["lbl_umatrix_en"].format(path=umatrix_en_abs))
     print(t["lbl_umatrix_es"].format(path=umatrix_es_abs))
+    print(t["lbl_eval_csv"].format(path=eval_csv_abs))
+    print(t["lbl_eval_png_en"].format(path=eval_png_en_abs))
+    print(t["lbl_eval_png_es"].format(path=eval_png_es_abs))
+    print(t["lbl_profiles_csv"].format(path=profiles_csv_abs))
+    print(t["lbl_manifest"].format(path=manifest_abs))
     print(t["lbl_diag"].format(path=diag_out_abs))
 
 

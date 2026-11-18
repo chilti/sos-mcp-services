@@ -43,9 +43,13 @@ This skill orchestrates continuous temporal evolution in latent space and operat
   * `som-methodological-expert`: Provides SVD spectral calibration, continuous over-gridding ($20N\text{--}30N$), and LabSOM chromatic rules.
 * **Workspace-First CLI Execution of this Skill (`scripts/som_trajectory_cli.py`):**
   ```bash
-  # Trains over the full universe of entities and traces splines for up to 5 focal entities
+  # Trains over the full universe of entities (Full Evidence-First: --norm divmax, Big SOM, K=2..15, QE/TE, profiles)
   /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-trajectory-mapping/scripts/som_trajectory_cli.py \
     --input ./matrices/series_cma_som.parquet \
+    --norm divmax \
+    --grid-type big \
+    --max-k 15 \
+    --cluster-strategy global_max \
     --top-entities 5 \
     --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
     --html-out ./reports/som_trajectories.html \
@@ -54,6 +58,9 @@ This skill orchestrates continuous temporal evolution in latent space and operat
     --json-out ./reports/som_trajectories.json \
     --lang en
   ```
+* **Mandatory Full Evidence-First Outputs (`som_trajectory_cli.py`):**
+  * `som_trajectory_state.json` & `som_trajectories.json`: Persist `methodology_audit` (`normalization` raw stats + scale factors, `cma_window`, `svd_sizing`), `quality_metrics` (**QE** and **TE**), full `clustering_evaluation` ($K = 2 \dots K_{\max}$), `cluster_profiles`, and `singular_profiles`. Supports `--recluster-from <som_trajectory_state.json>` (`--cluster-strategy local_max_gt2` or `--clusters <K>`) without retraining.
+  * `*_cluster_eval.csv`, `*_cluster_eval_en.png`, `*_cluster_eval_es.png`, `*_cluster_profiles.csv`, and `*_run_manifest.json`.
 * **Associated Software Tools:**
   * `scripts/som_trajectory_cli.py`: Standalone CLI to project continuous trajectories from `.parquet`/`.csv`/`.json`.
   * `services/knomap/tools/viz_tools.py`: `knomap_render_som_dashboard` (SVG rendering of Catmull-Rom splines over a hexagonal grid).

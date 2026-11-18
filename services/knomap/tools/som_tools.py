@@ -39,16 +39,31 @@ def suggest_grid_size(data: List[List[float]]) -> Dict[str, Any]:
     if not data or len(data) == 0:
         return {"error": "Se requiere matriz numérica de datos (lista de listas)."}
 
+    n_samples = len(data)
+    matrix = np.array(data, dtype=float)
+    singular_values: List[float] = []
+    eigen_ratio = 1.0
+    try:
+        _, s, _ = np.linalg.svd(matrix - np.mean(matrix, axis=0), full_matrices=False)
+        singular_values = [round(float(v), 6) for v in s[:2]]
+        eigen_ratio = float(min(5.0, max(0.2, s[0] / s[1]))) if len(s) > 1 and s[1] > 1e-4 else 1.0
+    except Exception:
+        eigen_ratio = 1.0
+
     if HAS_KNOMAP_ENGINE:
         try:
             res = main_engine.handle_suggest_size({"data": data})
             if res.get("success"):
-                n = res.get("N", len(data))
+                n = res.get("N", n_samples)
                 bw, bh = res.get("bigSomWidth", 10), res.get("bigSomHeight", 10)
                 sw, sh = res.get("smallSomWidth", 5), res.get("smallSomHeight", 5)
+                res_ratio = res.get("eigenRatio") or res.get("spectral_aspect_ratio")
+                final_ratio = round(float(res_ratio), 4) if res_ratio is not None else round(float(eigen_ratio), 4)
                 return {
                     "status": "success",
                     "n_samples": n,
+                    "spectral_aspect_ratio": final_ratio,
+                    "singular_values": singular_values,
                     "recommended_grid": res.get("recommended", "big"),
                     "small_som_recommendation": {
                         "rows": sh,
@@ -70,14 +85,6 @@ def suggest_grid_size(data: List[List[float]]) -> Dict[str, Any]:
             pass
 
     # Fallback matemático clásico si el engine no está disponible
-    n_samples = len(data)
-    matrix = np.array(data)
-    try:
-        _, s, _ = np.linalg.svd(matrix - np.mean(matrix, axis=0), full_matrices=False)
-        eigen_ratio = float(min(5.0, max(0.2, s[0] / s[1]))) if len(s) > 1 and s[1] > 1e-4 else 1.0
-    except Exception:
-        eigen_ratio = 1.0
-
     total_small = max(9, int(5 * math.sqrt(n_samples)))
     cols_s = max(3, int(math.sqrt(total_small * eigen_ratio)))
     rows_s = max(3, int(total_small / cols_s))
@@ -89,11 +96,13 @@ def suggest_grid_size(data: List[List[float]]) -> Dict[str, Any]:
     return {
         "status": "success",
         "n_samples": n_samples,
-        "spectral_aspect_ratio": round(float(eigen_ratio), 3),
+        "spectral_aspect_ratio": round(float(eigen_ratio), 4),
+        "singular_values": singular_values,
+        "recommended_grid": "big",
         "small_som_recommendation": {"rows": rows_s, "cols": cols_s, "total_neurons": rows_s * cols_s},
         "big_som_recommendation": {"rows": rows_b, "cols": cols_b, "total_neurons": rows_b * cols_b},
         "suggested_topology": "hexagonal",
-        "summary": f"Para N={n_samples}, se recomienda malla Small SOM de {rows_s}x{cols_s} ({rows_s*cols_s} neuronas)."
+        "summary": f"Para N={n_samples}, se recomienda malla Big SOM de {rows_b}x{cols_b} ({rows_b*cols_b} neuronas) o Small SOM de {rows_s}x{cols_s} ({rows_s*cols_s} neuronas)."
     }
 
 
@@ -154,7 +163,9 @@ def train_som(
                     "device": device_str,
                     "grid_dimensions": {"rows": rows, "cols": cols, "total_neurons": rows * cols},
                     "training_parameters": {"method": method, "init": init, "iterations": iterations},
+                    "quantization_error": mean_qe,
                     "mean_quantization_error": mean_qe,
+                    "quantization_errors": [round(float(x), 6) for x in qe_list] if qe_list else [],
                     "weights": res.get("weights", []),
                     "u_matrix": res.get("umatrix", []),
                     "bmus": res.get("bmus", []),
@@ -228,6 +239,40 @@ def evaluate_som_clusters(weights: List[List[float]], max_k: int = 15) -> Dict[s
             logger.exception("evaluate_som_clusters: fallo del motor KnoMap")
             engine_error = f"{type(e).__name__}: {e}"
 
+    # Pure scikit-learn fallback when KnoMap engine is unavailable
+    try:
+        from sklearn.cluster import AgglomerativeClustering
+        from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+
+        w_np = np.asarray(weights, dtype=float)
+        actual_max_k = min(int(max_k), len(w_np) - 1)
+        metrics = []
+        for k in range(2, actual_max_k + 1):
+            labels = AgglomerativeClustering(n_clusters=k, metric="euclidean", linkage="ward").fit_predict(w_np)
+            if len(set(labels)) > 1:
+                sil = float(silhouette_score(w_np, labels))
+                db = float(davies_bouldin_score(w_np, labels))
+                ch = float(calinski_harabasz_score(w_np, labels))
+            else:
+                sil, db, ch = 0.0, 0.0, 0.0
+            metrics.append({
+                "k": k,
+                "silhouette": sil,
+                "davies_bouldin": db,
+                "calinski_harabasz": ch,
+                "labels": labels.tolist(),
+            })
+        if metrics:
+            best_k = max(metrics, key=lambda x: x.get("silhouette", 0)).get("k")
+            return {
+                "status": "success",
+                "evaluations": metrics,
+                "recommended_k": best_k,
+                "summary": f"Evaluación de clusters completada (sklearn) para K=2..{actual_max_k}. K óptimo sugerido: K={best_k}."
+            }
+    except Exception as sk_err:
+        engine_error = f"{engine_error}; sklearn fallback failed: {sk_err}"
+
     return {
         "status": "error",
         "error": f"No se pudo evaluar K óptimo: {engine_error}. No se generaron resultados (se omiten valores sintéticos).",
@@ -266,6 +311,26 @@ def recluster_som(
         except Exception as e:
             logger.exception("recluster_som: fallo del motor KnoMap")
             engine_error = f"{type(e).__name__}: {e}"
+
+    try:
+        from sklearn.cluster import AgglomerativeClustering, KMeans
+
+        w_np = np.asarray(weights, dtype=float)
+        k = max(2, min(int(n_clusters), len(w_np) - 1))
+        alg_l = (algorithm or "hierarchical").lower()
+        if alg_l in ("hierarchical", "vesanto", "ward"):
+            labels = AgglomerativeClustering(n_clusters=k, metric="euclidean", linkage="ward").fit_predict(w_np).tolist()
+        else:
+            labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(w_np).tolist()
+        return {
+            "status": "success",
+            "algorithm": algorithm,
+            "n_clusters": k,
+            "cluster_assignments": labels,
+            "summary": f"Clusters reasignados exitosamente (sklearn) mediante {algorithm} con K={k}."
+        }
+    except Exception as sk_err:
+        engine_error = f"{engine_error}; sklearn fallback failed: {sk_err}"
 
     return {
         "status": "error",

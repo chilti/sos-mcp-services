@@ -175,19 +175,29 @@ def main():
     X, labels, clusters, existing_umap = load_matrix_or_som(args.input)
     id_metrics = estimate_manifold_id(X)
 
+    scaler_audit = None
     if existing_umap and len(existing_umap) == len(X):
         coords_2d = existing_umap
+        embedding_method = "precomputed_som_umap"
     else:
         from sklearn.preprocessing import StandardScaler
-        X_std = StandardScaler().fit_transform(X)
+        scaler = StandardScaler()
+        X_std = scaler.fit_transform(X)
+        scaler_audit = {
+            "method": "zscore_standard_scaler",
+            "means": [round(float(v), 6) for v in scaler.mean_],
+            "scales": [round(float(v), 6) for v in scaler.scale_],
+        }
         try:
             import umap
             n_neighbors = max(2, min(15, len(X_std) - 1))
             reducer = umap.UMAP(n_components=2, n_neighbors=n_neighbors, random_state=42)
             emb = reducer.fit_transform(X_std)
+            embedding_method = f"umap(n_neighbors={n_neighbors})"
         except Exception:
             from sklearn.decomposition import PCA
             emb = PCA(n_components=2, random_state=42).fit_transform(X_std)
+            embedding_method = "pca_fallback"
         coords_2d = [{"x": round(float(r[0]), 4), "y": round(float(r[1]), 4)} for r in emb]
 
     res = {
@@ -196,6 +206,8 @@ def main():
         "samples": int(X.shape[0]),
         "original_dimension": int(X.shape[1]),
         "intrinsic_dimension": id_metrics,
+        "embedding_method": embedding_method,
+        "normalization_audit": scaler_audit,
         "compression_ratio": round(float(X.shape[1]) / max(1, id_metrics.get("mle_p95_ceiling", 1)), 2),
         "coords_2d": coords_2d,
     }

@@ -568,6 +568,62 @@ def render_knomap_som_dashboard(
             )
         traj_buttons_html += '</div>'
 
+    # Sección 4 (Full Evidence-First): Auditoría SVD/Normalización, QE/TE y curva de clustering K=2..Kmax
+    evidence_section_html = ""
+    cluster_eval_list = som_state.get("clustering_evaluation") or []
+    qual_metrics = som_state.get("quality_metrics") or {}
+    meth_audit = som_state.get("methodology_audit") or {}
+    if cluster_eval_list or qual_metrics or meth_audit:
+        qe_val = qual_metrics.get("mean_quantization_error", som_state.get("quantization_error"))
+        te_val = qual_metrics.get("topological_error")
+        norm_m = (meth_audit.get("normalization") or {}).get("method", "N/A")
+        svd_ratio = (meth_audit.get("svd_sizing") or {}).get("spectral_aspect_ratio", "N/A")
+
+        badges_html = (
+            f'<div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 14px 0;">'
+            f'<span class="legend-stat">Grid: {rows}×{cols} ({rows*cols} neuronas)</span>'
+            f'<span class="legend-stat">Norm: {norm_m}</span>'
+            f'<span class="legend-stat">SVD σ₁/σ₂: {svd_ratio}</span>'
+            + (f'<span class="legend-stat">QE: {qe_val:.4f}</span>' if isinstance(qe_val, (int, float)) else '')
+            + (f'<span class="legend-stat">TE: {te_val:.4f}</span>' if isinstance(te_val, (int, float)) else '')
+            + '</div>'
+        )
+        rows_html = ""
+        for ev in cluster_eval_list:
+            marks = []
+            if ev.get("is_selected"):
+                marks.append("★ SELECTED")
+            if ev.get("is_global_max_silhouette"):
+                marks.append("Global Max Sil")
+            if ev.get("is_local_max_silhouette"):
+                marks.append("Local Max K>2")
+            bg = "rgba(124,58,237,0.18)" if ev.get("is_selected") else "transparent"
+            rows_html += (
+                f'<tr style="background:{bg};">'
+                f'<td style="padding:6px 10px;border-bottom:1px solid #1e293b;">K={ev.get("k")}</td>'
+                f'<td style="padding:6px 10px;border-bottom:1px solid #1e293b;">{float(ev.get("silhouette", 0.0)):.4f}</td>'
+                f'<td style="padding:6px 10px;border-bottom:1px solid #1e293b;">{float(ev.get("davies_bouldin", 0.0)):.4f}</td>'
+                f'<td style="padding:6px 10px;border-bottom:1px solid #1e293b;">{float(ev.get("calinski_harabasz", 0.0)):.2f}</td>'
+                f'<td style="padding:6px 10px;border-bottom:1px solid #1e293b;color:#a78bfa;font-weight:700;">{" · ".join(marks) if marks else "—"}</td>'
+                f'</tr>'
+            )
+        table_html = (
+            '<div style="overflow-x:auto;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px;">'
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;color:#e2e8f0;text-align:left;">'
+            '<thead><tr style="color:#94a3b8;border-bottom:1px solid #334155;">'
+            '<th style="padding:6px 10px;">K</th><th style="padding:6px 10px;">Silhouette (↑)</th>'
+            '<th style="padding:6px 10px;">Davies-Bouldin (↓)</th><th style="padding:6px 10px;">Calinski-Harabasz (↑)</th>'
+            '<th style="padding:6px 10px;">Estado / Criterio</th></tr></thead>'
+            f'<tbody>{rows_html}</tbody></table></div>'
+        ) if rows_html else ""
+
+        evidence_section_html = (
+            '<div class="grid-section-header" style="margin-top:26px;">'
+            '<div class="grid-title">METHODOLOGICAL AUDIT & CLUSTERING EVALUATION (FULL EVIDENCE-FIRST)</div>'
+            '</div>'
+            f'{badges_html}{table_html}'
+        )
+
     # Template HTML completo estilo KnoMap Dark
     html_content = f"""<!DOCTYPE html>
 <html lang="es" class="dark">
@@ -1117,6 +1173,8 @@ def render_knomap_som_dashboard(
     </div>
     ''' for rc in radar_cluster_cards)}
   </div>
+
+  {evidence_section_html}
 
   <div id="som-tooltip"></div>
 

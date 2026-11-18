@@ -111,6 +111,12 @@ def parse_arguments():
         help="Parámetro de resolución (para modularity default 1.0, para cpm default 0.01)"
     )
     parser.add_argument(
+        "--eval-resolutions",
+        type=str,
+        default=None,
+        help="Optional comma-separated resolutions to evaluate (e.g. '0.5,0.75,1.0,1.25,1.5' or '0.005,0.01,0.02,0.05')"
+    )
+    parser.add_argument(
         "--hybrid-lambda",
         type=float,
         default=0.6,
@@ -467,6 +473,132 @@ def detect_clusters_leiden(
     return membership
 
 
+def evaluate_fronts_partitions(
+    S: sp.csr_matrix,
+    min_sim: float = 0.05,
+    min_cluster_size: int = 3,
+    selected_partition_type: str = "modularity",
+    selected_resolution: Optional[float] = None,
+    eval_resolutions: Optional[List[float]] = None,
+    seed: int = 42,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Evaluate candidate Leiden partitions (modularity and CPM across resolutions)
+    preserving Modularity Q, valid fronts count, coverage %, and cluster size stats.
+    """
+    n_docs = S.shape[0]
+    S_coo = S.tocoo()
+    mask = S_coo.data >= min_sim
+    rows = S_coo.row[mask]
+    cols = S_coo.col[mask]
+    weights = S_coo.data[mask]
+    undir_mask = rows < cols
+    rows, cols, weights = rows[undir_mask], cols[undir_mask], weights[undir_mask]
+
+    g = ig.Graph()
+    g.add_vertices(n_docs)
+    edges = list(zip(rows.tolist(), cols.tolist()))
+    g.add_edges(edges)
+    g.es["weight"] = weights.tolist()
+
+    comps = g.connected_components()
+    density = round(2.0 * len(edges) / (n_docs * (n_docs - 1)), 6) if n_docs > 1 else 0.0
+    isolated = sum(1 for d in g.degree() if d == 0)
+    topo = {
+        "n_nodes": n_docs,
+        "n_edges": len(edges),
+        "density": density,
+        "connected_components": len(comps),
+        "largest_component_size": max((len(c) for c in comps), default=0),
+        "isolated_nodes": isolated,
+    }
+    if len(edges) == 0:
+        return [], topo
+
+    sel_res = selected_resolution if selected_resolution is not None else (0.01 if selected_partition_type == "cpm" else 1.0)
+    if eval_resolutions:
+        configs = [(selected_partition_type, float(r)) for r in eval_resolutions]
+    else:
+        configs = [
+            ("modularity", 0.5), ("modularity", 0.75), ("modularity", 1.0), ("modularity", 1.25), ("modularity", 1.5),
+            ("cpm", 0.005), ("cpm", 0.01), ("cpm", 0.02), ("cpm", 0.05),
+        ]
+    if not any(pt == selected_partition_type and abs(r - sel_res) < 1e-9 for pt, r in configs):
+        configs.append((selected_partition_type, sel_res))
+
+    eval_rows: List[Dict[str, Any]] = []
+    for ptype, res in configs:
+        if ptype == "cpm":
+            part = leidenalg.find_partition(g, leidenalg.CPMVertexPartition, weights="weight", resolution_parameter=res, seed=seed)
+        else:
+            part = leidenalg.find_partition(g, leidenalg.RBConfigurationVertexPartition, weights="weight", resolution_parameter=res, seed=seed)
+        counts = Counter(part.membership)
+        valid_sizes = sorted([c for c in counts.values() if c >= min_cluster_size])
+        covered = sum(valid_sizes)
+        try:
+            mod_q = float(g.modularity(part.membership, weights="weight"))
+        except Exception:
+            mod_q = 0.0
+        mid = len(valid_sizes) // 2
+        eval_rows.append({
+            "algorithm": "leiden",
+            "partition_type": ptype,
+            "resolution": round(float(res), 6),
+            "modularity_q": round(mod_q, 6),
+            "objective_quality": round(float(part.quality()), 6),
+            "n_raw_clusters": len(counts),
+            "n_valid_fronts": len(valid_sizes),
+            "valid_docs_covered": covered,
+            "coverage_pct": round(100.0 * covered / max(1, n_docs), 2),
+            "min_front_size": valid_sizes[0] if valid_sizes else 0,
+            "median_front_size": float(valid_sizes[mid]) if valid_sizes else 0.0,
+            "max_front_size": valid_sizes[-1] if valid_sizes else 0,
+            "is_selected": (ptype == selected_partition_type and abs(res - sel_res) < 1e-9),
+        })
+    return eval_rows, topo
+
+
+def render_fronts_eval_figure(eval_rows: List[Dict[str, Any]], out_path: str, lang: str = "en", dpi: int = 300) -> None:
+    """Render Modularity Q and Valid Fronts across evaluated partition resolutions."""
+    if not eval_rows:
+        return
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+    is_es = (lang == "es")
+    ptypes = sorted(set(r["partition_type"] for r in eval_rows))
+    fig, axes = plt.subplots(1, len(ptypes), figsize=(6.5 * len(ptypes), 4.4), dpi=dpi, facecolor="white")
+    if len(ptypes) == 1:
+        axes = [axes]
+    for ax, pt in zip(axes, ptypes):
+        sub = sorted([r for r in eval_rows if r["partition_type"] == pt], key=lambda x: x["resolution"])
+        xs = [r["resolution"] for r in sub]
+        qs = [r["modularity_q"] for r in sub]
+        fs = [r["n_valid_fronts"] for r in sub]
+        ax.plot(xs, qs, marker="o", color="#1d4ed8", linewidth=2.0, label="Modularity Q")
+        ax2 = ax.twinx()
+        ax2.plot(xs, fs, marker="s", linestyle="--", color="#047857", linewidth=1.8, label="# Frentes" if is_es else "# Fronts")
+        for r in sub:
+            if r.get("is_selected"):
+                ax.scatter([r["resolution"]], [r["modularity_q"]], s=130, marker="*", color="#dc2626", zorder=6)
+        ax.set_title(f"Leiden ({pt.upper()})", fontweight="bold")
+        ax.set_xlabel("Resolución" if is_es else "Resolution")
+        ax.set_ylabel("Modularidad Q" if is_es else "Modularity Q", color="#1d4ed8")
+        ax2.set_ylabel("# Frentes válidos" if is_es else "# Valid Fronts", color="#047857")
+        ax.grid(alpha=0.25, linestyle="--")
+    fig.suptitle(
+        "Evaluación Multi-Resolución de Frentes de Investigación" if is_es else "Multi-Resolution Research Fronts Evaluation",
+        fontweight="bold", y=1.02,
+    )
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def label_fronts(df: pd.DataFrame, cluster_col: str = "cluster_id", lang: str = "en") -> Dict[int, str]:
     """
     Generates an automatic descriptive name for each front from titles and keywords.
@@ -556,7 +688,7 @@ def main():
         else:
             S = compute_coupling_network(A, metric=args.similarity_metric)
 
-        # 4. Clustering comunitario Leiden
+        # 4. Clustering comunitario Leiden + Evaluación multi-resolución (Full Evidence-First)
         logger.info(f"Ejecutando partición modular {args.algorithm.upper()} (type={args.partition_type}, min_sim={args.min_similarity})...")
         raw_clusters = detect_clusters_leiden(
             S,
@@ -564,6 +696,16 @@ def main():
             partition_type=args.partition_type,
             resolution=args.resolution,
             seed=args.random_seed
+        )
+        eval_res_list = [float(x.strip()) for x in args.eval_resolutions.split(",") if x.strip()] if getattr(args, "eval_resolutions", None) else None
+        partition_eval, graph_topology = evaluate_fronts_partitions(
+            S,
+            min_sim=args.min_similarity,
+            min_cluster_size=args.min_cluster_size,
+            selected_partition_type=args.partition_type,
+            selected_resolution=args.resolution,
+            eval_resolutions=eval_res_list,
+            seed=args.random_seed,
         )
         df["cluster_id_raw"] = raw_clusters
 
@@ -582,7 +724,11 @@ def main():
         labels_dict[0] = "Residual / Trabajos Aislados" if is_es else "Residual / Isolated Works"
         df["front_name"] = df["front_id"].map(labels_dict)
 
-    # 5. Generar Tabla Resumen de Frentes (fronts_summary.csv)
+    if args.method == "topics":
+        partition_eval = []
+        graph_topology = {"n_nodes": len(df), "method": "topics"}
+
+    # 5. Generar Tabla Resumen de Frentes (fronts_summary.csv) + Evidencia Completa de Particiones
     is_es = (getattr(args, "lang", "en") == "es")
     cites_lbl = "Citas" if is_es else "Citations"
     na_lbl = "N/D" if is_es else "N/A"
@@ -647,11 +793,35 @@ def main():
                     "weight": round(float(w), 4)
                 })
 
+    sel_eval = next((r for r in partition_eval if r.get("is_selected")), None)
+    selected_mod_q = sel_eval.get("modularity_q") if sel_eval else None
+    front_sizes = [r["publications_count"] for r in summary_records]
+
+    eval_csv_path = os.path.join(args.output_dir, "fronts_partition_eval.csv")
+    eval_png_en = os.path.join(args.output_dir, "fronts_partition_eval_en.png")
+    eval_png_es = os.path.join(args.output_dir, "fronts_partition_eval_es.png")
+    if partition_eval:
+        pd.DataFrame(partition_eval).to_csv(eval_csv_path, index=False)
+        render_fronts_eval_figure(partition_eval, eval_png_en, lang="en")
+        render_fronts_eval_figure(partition_eval, eval_png_es, lang="es")
+        logger.info(f"Evaluación multi-resolución guardada en: {eval_csv_path}")
+
     network_payload = {
         "metadata": {
             "method": args.method,
             "similarity_metric": args.similarity_metric,
             "min_similarity": args.min_similarity,
+            "algorithm": args.algorithm,
+            "partition_type": args.partition_type,
+            "resolution": args.resolution if args.resolution is not None else (0.01 if args.partition_type == "cpm" else 1.0),
+            "modularity_q": selected_mod_q,
+            "graph_topology": graph_topology,
+            "cluster_size_distribution": {
+                "min": min(front_sizes) if front_sizes else 0,
+                "median": float(np.median(front_sizes)) if front_sizes else 0.0,
+                "max": max(front_sizes) if front_sizes else 0,
+            },
+            "partition_evaluation": partition_eval,
             "total_nodes": len(network_nodes),
             "total_edges": len(network_edges),
             "total_fronts": len(active_fronts)
@@ -664,6 +834,25 @@ def main():
     with open(network_path, "w", encoding="utf-8") as f:
         json.dump(network_payload, f, indent=2, ensure_ascii=False)
     logger.info(f"Red relacional exportada en: {network_path} ({len(network_nodes)} nodos, {len(network_edges)} aristas).")
+
+    manifest_path = os.path.join(args.output_dir, "fronts_run_manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as mf:
+        json.dump({
+            "pipeline": "topics-research-fronts-intelligence",
+            "input_file": args.input_file,
+            "parameters": vars(args),
+            "graph_topology": graph_topology,
+            "modularity_q": selected_mod_q,
+            "partition_evaluation": partition_eval,
+            "artifacts": {
+                "fronts_summary_csv": summary_path,
+                "fronts_network_json": network_path,
+                "fronts_partition_eval_csv": eval_csv_path if partition_eval else None,
+                "fronts_partition_eval_en_png": eval_png_en if partition_eval else None,
+                "fronts_partition_eval_es_png": eval_png_es if partition_eval else None,
+                "works_with_fronts_parquet": os.path.join(args.output_dir, "works_with_fronts.parquet"),
+            },
+        }, mf, indent=2, ensure_ascii=False, default=str)
 
     # 7. Guardar Dataset Aumentado
     works_output_path = os.path.join(args.output_dir, "works_with_fronts.parquet")

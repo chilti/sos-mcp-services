@@ -47,9 +47,13 @@ This skill provides the neurocomputational and methodological core for the entir
   * **Option C (Clarivate InCites CSV reports): `scientometrics-incites-expert`** (`extract_incites_som_matrix`).
 * **Workspace-First CLI Execution of this Skill (`scripts/som_pipeline_cli.py`):**
   ```bash
-  # Using all indicator columns or selecting specific dimensions with --indicator-cols
+  # Full training (Full Evidence-First: divmax normalization, Big SOM, K=2..15 evaluation, QE/TE, profiles)
   /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/scripts/som_pipeline_cli.py \
     --input ./matrices/indicadores_som.parquet \
+    --norm divmax \
+    --grid-type big \
+    --max-k 15 \
+    --cluster-strategy global_max \
     --indicator-cols "num_documents,cites_per_doc,h_index,fwci_avg,avg_percentile,pct_top_10,pct_oa,pct_international" \
     --state-out ./reports/som_state.json \
     --html-out ./reports/som_dashboard.html \
@@ -59,7 +63,18 @@ This skill provides the neurocomputational and methodological core for the entir
     --png-umatrix-en ./reports/som_umatrix_en.png \
     --diagnosis-out ./reports/som_diagnosis.json \
     --lang en
+
+  # Zero-retrain re-clustering onto the best local peak K > 2 (e.g., when global max yields K=2)
+  /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/som-methodological-expert/scripts/som_pipeline_cli.py \
+    --recluster-from ./reports/som_state.json \
+    --cluster-strategy local_max_gt2 \
+    --min-clusters 3 \
+    --diagnosis-out ./reports/som_diagnosis.json
   ```
+* **Mandatory Full Evidence-First Outputs (`som_pipeline_cli.py`):**
+  * `som_state.json` & `som_diagnosis.json`: Persist `methodology_audit` (input path, included/excluded columns, raw stats `min`/`max`/`mean`/`median`/`std`/`missing`/`zero`, exact normalization `scale_factors`, and SVD spectral sizing $\sigma_1/\sigma_2$, `big_som_recommendation`, `small_som_recommendation`, over-gridding ratio), topological quality (`quantization_error` **QE** and hexagonal **Topological Error TE**), full $K = 2 \dots K_{\max}$ `clustering_evaluation`, `cluster_profiles` (raw + normalized stats per cluster), `singular_profiles`, and comparable peers.
+  * `*_cluster_eval.csv`, `*_cluster_eval_en.png`, `*_cluster_eval_es.png`: Complete Silhouette, Davies-Bouldin, and Calinski-Harabasz table and 300 DPI multi-criteria diagnostic plots marking Global Max, Local Max ($K>2$), and Selected $K$.
+  * `*_cluster_profiles.csv` & `*_run_manifest.json`: Flat per-cluster raw/normalized statistics table and complete reproducibility manifest.
 * **Downstream Skills (Evolution and Trajectories):**
   * `som-trajectory-mapping`: Intertemporal cubic spline tracing over the latent space (`./matrices/series_cma_som.parquet`).
   * `neural-longitudinal-mapping`: Inter-period Warm-Start chaining (`./matrices/periodos_som.parquet`).
@@ -188,8 +203,8 @@ Neurocomputational interpretation is not based on raw numerical tables, but on t
 * **Foundation:** To avoid noise inherent in individual data points, clustering is not applied to raw data, but to the **reference vectors (weights $W$) of the trained neurons**.
 * **Procedure:**
   1. Apply Agglomerative Hierarchical Clustering (Ward or Complete Linkage) or $k$-means to the weight matrix $W \in \mathbb{R}^{M \times D}$.
-  2. Evaluate partition quality for $K \in [2, K_{\max}]$ using the **Silhouette coefficient** ($s$), complemented by the Davies-Bouldin index (minimum) and Calinski-Harabasz index (maximum).
-  3. Select the partition $K^*$ that maximizes the mean Silhouette coefficient.
+  2. Evaluate partition quality for $K \in [2, K_{\max}]$ (`--max-k`, default `15`) using the **Silhouette coefficient** ($s$), complemented by the Davies-Bouldin index (minimum) and Calinski-Harabasz index (maximum), persisting the full curve in `*_cluster_eval.csv` and `*_cluster_eval_<lang>.png`.
+  3. **Handling Trivial $K=2$ Global Maxima (Mandatory Audit Protocol):** Whenever global Silhouette maximization yields a trivial binary partition ($K = 2$), inspect `*_cluster_eval.csv` and `*_cluster_eval_<lang>.png` to audit the **next local maximum for $K > 2$**, and apply `--cluster-strategy local_max_gt2` (or `--min-clusters 3`, or `--recluster-from <som_state.json> --clusters <K>`) to evaluate finer institutional profiles **without retraining** the SOM weights.
   4. Color each hexagon with a qualitative/categorical hue corresponding to its neuron's cluster (KnoMap golden-angle HSL palette).
   5. Each entity projected onto its Best Matching Unit (BMU) inherits that neuron's cluster label.
 
@@ -226,7 +241,7 @@ Configure a balanced multidimensional battery covering the 4 cardinal axes of sc
 
 ### Step 2: Variable Normalization
 
-* Primarily apply division by the maximum, or use $z$-score standardization or range scaling depending on dispersion, ensuring that absolute volume indicators (e.g., thousands of papers) do not distort Euclidean distances relative to percentage or normalized ratio indicators.
+* Primarily apply **division by the maximum** (`--norm divmax`, $X / \max(X)$, default in `som_pipeline_cli.py`), or choose `--norm zscore`, `--norm minmax`, `--norm robust`, or `--norm none` depending on dispersion, ensuring that absolute volume indicators (e.g., thousands of papers) do not distort Euclidean distances relative to percentage or normalized ratio indicators. All raw column statistics and exact scale factors are persisted in `methodology_audit` for reproducibility.
 
 ### Step 3: Execution and Topological Validation
 
@@ -305,9 +320,9 @@ Invoke `knomap-som-engine -> knomap_render_som_dashboard` (or `render_knomap_som
 - ❌ **Anti-pattern 2: Under-sizing the grid (Small SOM for institutional profiles)**
   Using small grids ($5\sqrt{N}$) to model institutional profiles or bibliographic sources. This causes qualitatively distinct entities to collapse onto the same neuron.
   **Solution:** Always apply the **standard Big SOM ($M \approx 10N$ neurons)** with SVD spectral aspect ratio, allowing the SOM to act as a high-resolution continuous topological space.
-- ❌ **Anti-pattern 3: Training on heterogeneous variables without prior standardization (Z-score)**
+- ❌ **Anti-pattern 3: Training on heterogeneous variables without prior normalization (`divmax` / `zscore`)**
   Feeding raw volume indicators (e.g., $10,000$ documents) directly alongside normalized impact indicators (e.g., $\text{FWCI} = 1.25$ or $\text{CNCI} = 1.10$). Document variance will absorb 99% of the Euclidean distance calculation, nullifying qualitative impact.
-  **Solution:** Center and standardize each indicator ($z = \frac{x - \mu}{\sigma}$) or normalize before SVD calculation and training.
+  **Solution:** Normalize prior to SVD calculation and training using division by the maximum (`--norm divmax`, primary rule) or standardization (`--norm zscore`, `--norm minmax`, `--norm robust`), and persist raw stats and scale factors in `methodology_audit`.
 - ❌ **Anti-pattern 4: Overcrowding text labels in the visualization**
   Attempting to print all 50 or 100 entity names simultaneously over hexagons without density filters, causing an unreadable overlap.
   **Solution:** Apply `max_labels_per_neuron = 1` or `2`, display labels only for priority entities, or use interactive font scaling controls in the dashboard.

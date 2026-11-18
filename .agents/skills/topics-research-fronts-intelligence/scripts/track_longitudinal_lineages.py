@@ -221,8 +221,10 @@ def main():
                 "doc_ids": set(f_docs["id"].astype(str))
             }
 
-    # Emparejamiento intertemporal y cálculo de eventos
+    # Emparejamiento intertemporal, matriz completa y cálculo AMI
     events_records = []
+    similarity_matrix_records = []
+    ami_window_records = []
     sankey_nodes = []
     sankey_node_map = {}  # (w_idx, front_id) -> sankey_idx
     sankey_links = []
@@ -238,29 +240,67 @@ def main():
 
     # Analizar transiciones entre ventanas contiguas
     for w_idx in range(len(windows) - 1):
-        w_prev_label = windows[w_idx][0]
-        w_curr_label = windows[w_idx + 1][0]
+        w_prev_label, p_s, p_e = windows[w_idx]
+        w_curr_label, c_s, c_e = windows[w_idx + 1]
         fronts_prev = window_fronts_data[w_idx]
         fronts_curr = window_fronts_data[w_idx + 1]
 
-        # Calcular matriz de similitud de Jaccard entre frentes
+        # AMI / NMI entre particiones de ventanas contiguas sobre documentos compartidos
+        sub_p = df[(df["publication_year"] >= p_s) & (df["publication_year"] <= p_e)]
+        sub_c = df[(df["publication_year"] >= c_s) & (df["publication_year"] <= c_e)]
+        map_p = {str(r["id"]): int(r["front_id"]) for _, r in sub_p.iterrows() if str(r.get("front_id", 0)) not in ["0", "Residual / Isolated Works"]}
+        map_c = {str(r["id"]): int(r["front_id"]) for _, r in sub_c.iterrows() if str(r.get("front_id", 0)) not in ["0", "Residual / Isolated Works"]}
+        shared_ids = sorted(set(map_p.keys()).intersection(map_c.keys()))
+        ami_val, nmi_val = 0.0, 0.0
+        if len(shared_ids) >= 2:
+            try:
+                from sklearn.metrics import adjusted_mutual_info_score, normalized_mutual_info_score
+                l_p = [map_p[k] for k in shared_ids]
+                l_c = [map_c[k] for k in shared_ids]
+                ami_val = round(float(adjusted_mutual_info_score(l_p, l_c)), 6)
+                nmi_val = round(float(normalized_mutual_info_score(l_p, l_c)), 6)
+            except Exception:
+                pass
+        ami_window_records.append({
+            "source_window": w_prev_label,
+            "target_window": w_curr_label,
+            "n_fronts_prev": len(fronts_prev),
+            "n_fronts_curr": len(fronts_curr),
+            "shared_docs": len(shared_ids),
+            "ami": ami_val,
+            "nmi": nmi_val,
+        })
+
+        # Calcular matriz de similitud completa entre frentes (Full Evidence-First)
         for f_p_id, f_p in fronts_prev.items():
             outgoing_transitions = []
             for f_c_id, f_c in fronts_curr.items():
-                # Jaccard sobre referencias compartidas
                 u_refs = f_p["refs"].union(f_c["refs"])
                 i_refs = f_p["refs"].intersection(f_c["refs"])
                 j_score = (len(i_refs) / len(u_refs)) if u_refs else 0.0
 
-                # Solapamiento directo de documentos
                 u_docs = f_p["doc_ids"].union(f_c["doc_ids"])
                 i_docs = f_p["doc_ids"].intersection(f_c["doc_ids"])
                 doc_overlap = (len(i_docs) / len(u_docs)) if u_docs else 0.0
 
-                # Score combinado
                 combined_score = (0.7 * j_score) + (0.3 * doc_overlap)
+                passed = combined_score >= args.min_similarity
+                similarity_matrix_records.append({
+                    "source_window": w_prev_label,
+                    "source_front_id": f_p_id,
+                    "source_front": f_p["name"],
+                    "target_window": w_curr_label,
+                    "target_front_id": f_c_id,
+                    "target_front": f_c["name"],
+                    "jaccard_refs": round(j_score, 6),
+                    "jaccard_docs": round(doc_overlap, 6),
+                    "combined_score": round(combined_score, 6),
+                    "shared_refs_count": len(i_refs),
+                    "shared_docs_count": len(i_docs),
+                    "passed_threshold": passed,
+                })
 
-                if combined_score >= args.min_similarity:
+                if passed:
                     outgoing_transitions.append((f_c_id, f_c["name"], combined_score, len(i_refs) + len(i_docs)))
 
             # Event classification
@@ -335,12 +375,19 @@ def main():
                     "flow_weight": 0
                 })
 
-    # Save Events Summary Table (lineages_summary.csv)
+    # Save Events Summary Table + Full Similarity Matrix + AMI Window Summary
     events_df = pd.DataFrame(events_records)
     lineages_path = os.path.join(args.output_dir, "lineages_summary.csv")
     events_df.to_csv(lineages_path, index=False)
     logger.info(f"Tabla de linajes longitudinales guardada en: {lineages_path} ({len(events_df)} transiciones registradas).")
 
+    sim_mat_path = os.path.join(args.output_dir, "lineage_similarity_matrix.csv")
+    pd.DataFrame(similarity_matrix_records).to_csv(sim_mat_path, index=False)
+    ami_path = os.path.join(args.output_dir, "ami_window_summary.csv")
+    pd.DataFrame(ami_window_records).to_csv(ami_path, index=False)
+    logger.info(f"Matriz completa de similitud ({len(similarity_matrix_records)} pares) y AMI por ventana guardadas en: {sim_mat_path}, {ami_path}")
+
+    alluvial_html_path = os.path.join(args.output_dir, "alluvial_lineages.html")
     # Render Interactive Alluvial Diagram in HTML with Plotly
     if sankey_links and sankey_nodes:
         logger.info("Construyendo Diagrama Aluvial interactivo con Plotly...")
@@ -376,11 +423,25 @@ def main():
             template="plotly_white"
         )
 
-        alluvial_html_path = os.path.join(args.output_dir, "alluvial_lineages.html")
         fig.write_html(alluvial_html_path, include_plotlyjs="cdn")
         logger.info(f"Diagrama Aluvial interactivo guardado en: {alluvial_html_path}")
     else:
         logger.warning("No se generaron enlaces suficientes para renderizar el diagrama aluvial Sankey.")
+
+    manifest_path = os.path.join(args.output_dir, "lineages_run_manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as mf:
+        json.dump({
+            "pipeline": "track-longitudinal-lineages",
+            "parameters": vars(args),
+            "windows": [{"label": w[0], "start": int(w[1]), "end": int(w[2])} for w in windows],
+            "ami_window_summary": ami_window_records,
+            "artifacts": {
+                "lineages_summary_csv": lineages_path,
+                "lineage_similarity_matrix_csv": sim_mat_path,
+                "ami_window_summary_csv": ami_path,
+                "alluvial_lineages_html": alluvial_html_path if (sankey_links and sankey_nodes) else None,
+            },
+        }, mf, indent=2, ensure_ascii=False, default=str)
 
     logger.info("=== SEGUIMIENTO LONGITUDINAL DE LINAJES COMPLETADO EXITOSAMENTE ===")
 

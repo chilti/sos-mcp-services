@@ -17,8 +17,16 @@ import argparse
 from collections import defaultdict, Counter
 from typing import Dict, List, Any, Optional, Tuple, Set
 
-# Ensure knomap engine is in sys.path for direct local execution
+from pathlib import Path
+import numpy as np
+import pandas as pd
+
+# Ensure knomap engine & shared SOS tools are in sys.path for direct local execution
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SOS_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "services" / "knomap" / "tools").exists()), Path(__file__).resolve().parents[4]))
+if SOS_ROOT not in sys.path:
+    sys.path.insert(0, SOS_ROOT)
+
 ENGINE_CANDIDATES = [
     os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "..", "..", "services", "knomap", "engine")),
     os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "..")),
@@ -32,6 +40,16 @@ for cand in ENGINE_CANDIDATES:
         if os.path.exists(lib_cand) and lib_cand not in sys.path:
             sys.path.insert(0, lib_cand)
         break
+
+from services.knomap.tools.som_tools import suggest_grid_size, recluster_som
+from services.knomap.tools.som_evidence import (
+    normalize_matrix_with_audit,
+    build_svd_audit,
+    compute_som_quality_metrics,
+    evaluate_clustering_curve,
+    render_cluster_eval_figure,
+    build_cluster_profiles,
+)
 
 
 I18N = {
@@ -307,7 +325,7 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
             sys.exit(1)
 
         if args.periods:
-            windows = [parse_period_string(p) for p in args.periods.split(",") if p.strip()]
+            windows = [(lbl, s, e) for s, e, lbl in (parse_period_string(p) for p in args.periods.split(",") if p.strip())]
         else:
             if args.last_years and args.last_years > 0:
                 max_y = max(all_years)
@@ -399,6 +417,20 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
         sys.stderr.write(f"Error: Longitudinal analysis requires at least 2 distinct periods. Found: {sorted_periods}\n")
         sys.exit(1)
 
+    # Global normalization with scale-factor audit across all stacked period rows
+    norm_method = getattr(args, "norm", "divmax") or "divmax"
+    all_raw_rows = [row for p in sorted_periods for row in periods_data[p]["data"]]
+    raw_stack = np.asarray(all_raw_rows, dtype=float)
+    norm_stack, norm_audit = normalize_matrix_with_audit(raw_stack, indicators, method=norm_method)
+
+    offset_idx = 0
+    for p in sorted_periods:
+        raw_mat = periods_data[p]["data"]
+        cnt = len(raw_mat)
+        periods_data[p]["raw_data"] = raw_mat
+        periods_data[p]["data"] = np.round(norm_stack[offset_idx:offset_idx + cnt], 6).tolist()
+        offset_idx += cnt
+
     # Panel Balance Audit
     all_entity_sets = [set(periods_data[p]["labels"]) for p in sorted_periods]
     total_unique_entities = len(set.union(*all_entity_sets))
@@ -415,7 +447,8 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
             "total_unique_entities": total_unique_entities,
             "core_persistent_entities": core_entities,
             "balanced_panel": is_balanced,
-            "aggregation": agg_method if use_windowing else "direct"
+            "aggregation": agg_method if use_windowing else "direct",
+            "normalization": norm_audit,
         }
     }
 
@@ -431,8 +464,8 @@ def _process_tabular_rows(rows: List[Dict[str, Any]], fieldnames: List[str], arg
 
 def cmd_train(args):
     """
-    Trains Longitudinal SOM using Warm-Start Chaining protocol.
-    Supports direct GPU/PyTorch execution or HTTP call to KnoMap backend.
+    Trains Longitudinal SOM using Warm-Start Chaining protocol (or reclusters existing results).
+    Persists full evidence: SVD sizing, QE/TE per period, K=2..max_k evaluation, and cluster profiles.
     """
     if not os.path.exists(args.input):
         sys.stderr.write(f"Error: Input file does not exist: {args.input}\n")
@@ -441,88 +474,248 @@ def cmd_train(args):
     with open(args.input, "r", encoding="utf-8") as f:
         prep_data = json.load(f)
 
-    periods_data = prep_data.get("periods_data", prep_data)
-    rows = int(args.rows)
-    cols = int(args.cols)
-    base_epochs = int(args.base_epochs)
-    refine_epochs = int(args.refine_epochs)
-    base_lr = float(args.base_lr)
-    refine_lr = float(args.refine_lr)
+    out_abs = os.path.abspath(args.output)
+    out_dir = os.path.dirname(out_abs)
+    os.makedirs(out_dir, exist_ok=True)
+    stem_prefix = os.path.join(out_dir, os.path.splitext(os.path.basename(out_abs))[0].replace("_results", "") or "longitudinal")
+    recluster_mode = bool(getattr(args, "recluster_from", None))
 
-    grid_avg = (rows + cols) / 2.0
-    base_sigma = args.base_sigma if args.base_sigma is not None else round(0.5 * grid_avg, 2)
-    refine_sigma = args.refine_sigma if args.refine_sigma is not None else round(0.125 * grid_avg, 3)
+    if recluster_mode:
+        with open(args.recluster_from, "r", encoding="utf-8") as f:
+            results = json.load(f)
+        prep_ref = results.get("periods_data")
+        periods_data = prep_ref if prep_ref else prep_data.get("periods_data", {})
+        hp = results.get("hyperparameters", {})
+        rows = int(hp.get("rows", 10))
+        cols = int(hp.get("cols", 20))
+        svd_audit = (results.get("methodology_audit") or {}).get("svd_sizing", {})
+        norm_audit = (results.get("methodology_audit") or {}).get("normalization", {})
+        indicators = results.get("indicators", prep_data.get("indicators", []))
+    else:
+        periods_data = prep_data.get("periods_data", prep_data)
+        indicators = prep_data.get("indicators", [])
+        norm_audit = (prep_data.get("metadata") or {}).get("normalization", {})
 
-    payload = {
-        "periods_data": periods_data,
-        "rows": rows,
-        "cols": cols,
-        "iterations": base_epochs,
-        "refine_iterations": refine_epochs,
-        "method": "basic",
-        "learning_rate": base_lr,
-        "refine_learning_rate": refine_lr,
-        "sigma": base_sigma,
-        "refine_sigma": refine_sigma,
-        "clustering_algorithm": args.clustering or "dbscan",
-        "n_clusters": args.n_clusters or 4,
-        "eps": args.eps or 0.5,
-        "min_samples": args.min_samples or 3,
-        "run_umap": False
-    }
+        # Stack period data for SVD spectral sizing
+        sorted_p = sorted(list(periods_data.keys()))
+        stacked = np.asarray([row for p in sorted_p for row in periods_data[p].get("data", [])], dtype=float)
+        grid_type = getattr(args, "grid_type", "big") or "big"
+        suggestion = suggest_grid_size(stacked.tolist()) if stacked.size > 0 else {}
+        explicit_override = bool(args.rows and args.cols)
+        if explicit_override:
+            rows = int(args.rows)
+            cols = int(args.cols)
+        else:
+            rec_key = "big_som_recommendation" if grid_type == "big" else "small_som_recommendation"
+            rec = suggestion.get(rec_key, {"rows": 10, "cols": 20})
+            rows = int(rec.get("rows", 10))
+            cols = int(rec.get("cols", 20))
+        svd_audit = build_svd_audit(stacked, suggestion, grid_type, rows, cols, explicit_override=explicit_override)
 
-    results = None
+        base_epochs = int(args.base_epochs)
+        refine_epochs = int(args.refine_epochs)
+        base_lr = float(args.base_lr)
+        refine_lr = float(args.refine_lr)
+        grid_avg = (rows + cols) / 2.0
+        base_sigma = args.base_sigma if args.base_sigma is not None else round(0.5 * grid_avg, 2)
+        refine_sigma = args.refine_sigma if args.refine_sigma is not None else round(0.125 * grid_avg, 3)
 
-    if args.api_url:
-        import urllib.request
-        import urllib.error
-        url = args.api_url.rstrip("/")
-        if not url.endswith("/api/som/train-longitudinal"):
-            url = f"{url}/api/som/train-longitudinal"
+        payload = {
+            "periods_data": periods_data,
+            "rows": rows,
+            "cols": cols,
+            "iterations": base_epochs,
+            "refine_iterations": refine_epochs,
+            "method": "basic",
+            "learning_rate": base_lr,
+            "refine_learning_rate": refine_lr,
+            "sigma": base_sigma,
+            "refine_sigma": refine_sigma,
+            "clustering_algorithm": args.clustering or "hierarchical",
+            "n_clusters": args.n_clusters if args.n_clusters > 0 else 4,
+            "eps": args.eps or 0.5,
+            "min_samples": args.min_samples or 3,
+            "run_umap": False
+        }
 
-        req_data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"}, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                results = json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            sys.stderr.write(f"Warning: Failed to train via HTTP API ({url}): {e}\nFalling back to local Python engine.\n")
+        results = None
+        if args.api_url:
+            import urllib.request
+            import urllib.error
+            url = args.api_url.rstrip("/")
+            if not url.endswith("/api/som/train-longitudinal"):
+                url = f"{url}/api/som/train-longitudinal"
+            req_data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"}, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    results = json.loads(resp.read().decode("utf-8"))
+            except Exception as e:
+                sys.stderr.write(f"Warning: Failed to train via HTTP API ({url}): {e}\nFalling back to local Python engine.\n")
 
-    if results is None:
-        try:
-            from main_engine import handle_train_longitudinal
-            results = handle_train_longitudinal(payload)
-        except ImportError as e:
-            sys.stderr.write(f"Error: Could not import handle_train_longitudinal from KnoMap engine: {e}\n")
+        if results is None:
+            try:
+                from main_engine import handle_train_longitudinal
+                results = handle_train_longitudinal(payload)
+            except ImportError as e:
+                sys.stderr.write(f"Error: Could not import handle_train_longitudinal from KnoMap engine: {e}\n")
+                sys.exit(1)
+
+        if not results or not results.get("success"):
+            err_msg = results.get("error", "Unknown engine error") if results else "Empty response"
+            sys.stderr.write(f"Error during longitudinal training: {err_msg}\n")
             sys.exit(1)
 
-    if not results or not results.get("success"):
-        err_msg = results.get("error", "Unknown engine error") if results else "Empty response"
-        sys.stderr.write(f"Error during longitudinal training: {err_msg}\n")
-        sys.exit(1)
+        results["hyperparameters"] = {
+            "rows": rows,
+            "cols": cols,
+            "base_epochs": base_epochs,
+            "refine_epochs": refine_epochs,
+            "base_lr": base_lr,
+            "refine_lr": refine_lr,
+            "base_sigma": base_sigma,
+            "refine_sigma": refine_sigma,
+            "grid_avg": grid_avg,
+        }
+        if indicators:
+            results["indicators"] = indicators
+        if "metadata" in prep_data:
+            results["metadata"] = prep_data["metadata"]
 
-    results["hyperparameters"] = {
-        "rows": rows,
-        "cols": cols,
-        "base_epochs": base_epochs,
-        "refine_epochs": refine_epochs,
-        "base_lr": base_lr,
-        "refine_lr": refine_lr,
-        "base_sigma": base_sigma,
-        "refine_sigma": refine_sigma,
-        "grid_avg": grid_avg
+    # Full Evidence-First per period: QE, TE, K=2..max_k evaluation, re-cluster, and cluster profiles
+    max_k = int(getattr(args, "max_k", 15))
+    cluster_strategy = getattr(args, "cluster_strategy", "global_max")
+    min_clusters = int(getattr(args, "min_clusters", 2))
+    manual_k = int(args.n_clusters) if getattr(args, "n_clusters", 0) and int(args.n_clusters) > 0 else 0
+    cl_algo = (getattr(args, "clustering", "hierarchical") or "hierarchical").lower()
+
+    maps = results.get("maps", {})
+    sorted_periods = sorted(list(maps.keys()))
+    all_eval_rows: List[Dict[str, Any]] = []
+    all_profile_rows: List[Dict[str, Any]] = []
+    quality_by_period: Dict[str, Any] = {}
+    clustering_eval_by_period: Dict[str, Any] = {}
+    profiles_by_period: Dict[str, Any] = {}
+    last_curve_evals: List[Dict[str, Any]] = []
+
+    for p_key in sorted_periods:
+        m = maps[p_key]
+        w_list = m.get("weights", [])
+        w_np = np.asarray(w_list, dtype=float)
+        p_obj = periods_data.get(p_key, {}) if isinstance(periods_data, dict) else {}
+        norm_mat = np.asarray(p_obj.get("data", []), dtype=float)
+        raw_mat = np.asarray(p_obj.get("raw_data", p_obj.get("data", [])), dtype=float)
+        p_labels = list(p_obj.get("labels", []))
+
+        curve = evaluate_clustering_curve(
+            weights=w_np,
+            max_k=max_k,
+            cluster_strategy="manual" if manual_k > 0 else cluster_strategy,
+            min_clusters=min_clusters,
+            manual_k=manual_k,
+        )
+        sel_k = int(curve["selected_k"])
+        last_curve_evals = curve["evaluations"]
+        if (cl_algo in ("hierarchical", "vesanto", "kmeans") or recluster_mode or manual_k > 0) and curve["evaluations"]:
+            lbls_k = curve["labels_by_k"].get(str(sel_k))
+            if lbls_k and len(lbls_k) == len(w_list) and cl_algo != "kmeans":
+                m["clustering"] = lbls_k
+            else:
+                rc = recluster_som(w_list, algorithm="kmeans" if cl_algo == "kmeans" else "hierarchical", n_clusters=sel_k)
+                if rc.get("status") == "success":
+                    m["clustering"] = rc["cluster_assignments"]
+            m["n_clusters"] = sel_k
+            m["silhouette_score"] = curve["selected_silhouette"]
+
+        for ev in curve["evaluations"]:
+            all_eval_rows.append({"period": p_key, **ev})
+        clustering_eval_by_period[p_key] = {
+            "selected_k": sel_k,
+            "selected_silhouette": curve["selected_silhouette"],
+            "global_max_k": curve["global_max_k"],
+            "local_max_gt2_k": curve["local_max_gt2_k"],
+            "strategy": curve["strategy"],
+            "evaluations": curve["evaluations"],
+        }
+        m["clustering_evaluation"] = curve["evaluations"]
+
+        qm = compute_som_quality_metrics(norm_mat, w_np, rows, cols) if norm_mat.size > 0 else {}
+        q_clean = {k: v for k, v in qm.items() if k not in ("per_sample_qe", "bmu_indices", "second_bmu_indices")}
+        m["quality_metrics"] = q_clean
+        quality_by_period[p_key] = q_clean
+
+        if raw_mat.size > 0 and norm_mat.size > 0 and p_labels and indicators:
+            bmus = qm.get("bmu_indices", [])
+            profs, flat_profs, _ = build_cluster_profiles(
+                raw_X=raw_mat,
+                norm_X=norm_mat,
+                entity_labels=p_labels,
+                indicator_cols=indicators,
+                bmu_indices=bmus,
+                neuron_clusters=m.get("clustering", []),
+            )
+            profiles_by_period[p_key] = profs
+            m["cluster_profiles"] = profs
+            for fp in flat_profs:
+                all_profile_rows.append({"period": p_key, **fp})
+
+    eval_csv_abs = f"{stem_prefix}_cluster_eval.csv"
+    eval_png_en_abs = f"{stem_prefix}_cluster_eval_en.png"
+    eval_png_es_abs = f"{stem_prefix}_cluster_eval_es.png"
+    profiles_csv_abs = f"{stem_prefix}_cluster_profiles.csv"
+    manifest_abs = f"{stem_prefix}_run_manifest.json"
+
+    if all_eval_rows:
+        pd.DataFrame(all_eval_rows).to_csv(eval_csv_abs, index=False)
+    if last_curve_evals:
+        dpi_val = getattr(args, "dpi", 300)
+        render_cluster_eval_figure(last_curve_evals, eval_png_en_abs, lang="en", dpi=dpi_val)
+        render_cluster_eval_figure(last_curve_evals, eval_png_es_abs, lang="es", dpi=dpi_val)
+    if all_profile_rows:
+        pd.DataFrame(all_profile_rows).to_csv(profiles_csv_abs, index=False)
+
+    results["periods_data"] = periods_data
+    results["quality_metrics_by_period"] = quality_by_period
+    results["clustering_evaluation_by_period"] = clustering_eval_by_period
+    results["cluster_profiles_by_period"] = profiles_by_period
+    results["methodology_audit"] = {
+        "normalization": norm_audit,
+        "svd_sizing": svd_audit,
+        "hyperparameters": results.get("hyperparameters", {}),
+        "clustering_algorithm": cl_algo,
+        "cluster_strategy": cluster_strategy,
+        "max_k_evaluated": max_k,
+        "min_clusters": min_clusters,
     }
-    if "indicators" in prep_data:
-        results["indicators"] = prep_data["indicators"]
-    if "metadata" in prep_data:
-        results["metadata"] = prep_data["metadata"]
+    results["artifacts"] = {
+        "longitudinal_results_json": out_abs,
+        "cluster_eval_csv": eval_csv_abs,
+        "cluster_eval_en_png": eval_png_en_abs,
+        "cluster_eval_es_png": eval_png_es_abs,
+        "cluster_profiles_csv": profiles_csv_abs,
+        "run_manifest_json": manifest_abs,
+    }
 
-    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
+    with open(out_abs, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
-    print(f"Success! Trained {len(results.get('maps', {}))} longitudinal SOM maps.")
-    print(f"Output saved to: {args.output}")
+    with open(manifest_abs, "w", encoding="utf-8") as f:
+        json.dump({
+            "pipeline": "neural-longitudinal-mapping",
+            "recluster_mode": recluster_mode,
+            "methodology_audit": results["methodology_audit"],
+            "quality_metrics_by_period": quality_by_period,
+            "artifacts": results["artifacts"],
+        }, f, indent=2, ensure_ascii=False)
+
+    print(f"Success! Trained/updated {len(maps)} longitudinal SOM maps ({rows}x{cols}).")
+    for pk, qv in quality_by_period.items():
+        if qv:
+            print(f"  - [{pk}] QE={qv.get('mean_quantization_error')} | TE={qv.get('topological_error')} | K={clustering_eval_by_period.get(pk, {}).get('selected_k')}")
+    print(f"Output saved to: {out_abs}")
+    print(f"Cluster Eval CSV/PNG: {eval_csv_abs}")
+    print(f"Cluster Profiles CSV: {profiles_csv_abs}")
+    print(f"Run Audit Manifest: {manifest_abs}")
 
     if getattr(args, "plot_dir", None):
         render_longitudinal_publication_figures(results, args.plot_dir, dpi=getattr(args, "dpi", 300))
@@ -882,7 +1075,11 @@ def cmd_analyze(args):
             "transient_entities_count": len(transient_entities),
             "transient_entities_sample": transient_entities[:15]
         },
-        "synaptic_drift": drift_metrics
+        "synaptic_drift": drift_metrics,
+        "quality_metrics_by_period": res.get("quality_metrics_by_period", {}),
+        "clustering_evaluation_by_period": res.get("clustering_evaluation_by_period", {}),
+        "cluster_profiles_by_period": res.get("cluster_profiles_by_period", {}),
+        "methodology_audit": res.get("methodology_audit", {}),
     }
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
@@ -1068,6 +1265,7 @@ def main():
     p_prep.add_argument("--periods", type=str, default=None, help="Explicit periods list (e.g. '2010-2014,2015-2019')")
     p_prep.add_argument("--last-years", type=int, default=None, help="Filter last N years relative to max year")
     p_prep.add_argument("--agg", choices=["mean", "sum", "last"], default="mean", help="Indicator aggregation method per entity window (default: mean)")
+    p_prep.add_argument("--norm", choices=["divmax", "zscore", "minmax", "robust", "none"], default="divmax", help="Normalization rule with audit factors (default: divmax)")
     p_prep.add_argument("--output", required=True, help="Path to write prepared_series.json")
     p_prep.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (en or es)")
     p_prep.set_defaults(func=cmd_prepare)
@@ -1075,16 +1273,21 @@ def main():
     # Subcommand: train
     p_train = subparsers.add_parser("train", help="Train longitudinal SOMs using Warm-Start Chaining")
     p_train.add_argument("--input", required=True, help="Path to prepared_series.json")
-    p_train.add_argument("--rows", default=10, type=int, help="Grid rows (default: 10)")
-    p_train.add_argument("--cols", default=20, type=int, help="Grid cols (default: 20)")
+    p_train.add_argument("--grid-type", choices=["small", "big"], default="big", help="Automatic SVD sizing rule when --rows/--cols omitted (default: big)")
+    p_train.add_argument("--rows", default=None, type=int, help="Grid rows (overrides --grid-type)")
+    p_train.add_argument("--cols", default=None, type=int, help="Grid cols (overrides --grid-type)")
     p_train.add_argument("--base-epochs", default=1000, type=int, help="Epochs for Period 1 (default: 1000)")
     p_train.add_argument("--refine-epochs", default=200, type=int, help="Epochs for refinement (default: 200)")
     p_train.add_argument("--base-lr", default=0.9, type=float, help="Base learning rate alpha_0 (default: 0.9)")
     p_train.add_argument("--refine-lr", default=0.1, type=float, help="Refine learning rate alpha (default: 0.1)")
     p_train.add_argument("--base-sigma", type=float, help="Base sigma (default: auto 0.5 * grid_avg)")
     p_train.add_argument("--refine-sigma", type=float, help="Refine sigma (default: auto 0.125 * grid_avg)")
-    p_train.add_argument("--clustering", default="dbscan", help="Clustering algorithm (default: dbscan)")
-    p_train.add_argument("--n-clusters", default=4, type=int, help="Target clusters if kmeans (default: 4)")
+    p_train.add_argument("--clustering", default="hierarchical", help="Clustering algorithm (default: hierarchical / Vesanto)")
+    p_train.add_argument("--n-clusters", default=0, type=int, help="Target clusters K (0 = automatic via --cluster-strategy)")
+    p_train.add_argument("--max-k", default=15, type=int, help="Maximum K evaluated in Silhouette/DB/CH curve (default: 15)")
+    p_train.add_argument("--cluster-strategy", choices=["global_max", "local_max_gt2", "manual"], default="global_max", help="Cluster selection strategy")
+    p_train.add_argument("--min-clusters", default=2, type=int, help="Minimum K allowed during automatic selection")
+    p_train.add_argument("--recluster-from", default=None, help="Existing longitudinal_results.json to re-cluster without retraining")
     p_train.add_argument("--eps", default=0.5, type=float, help="DBSCAN eps")
     p_train.add_argument("--min-samples", default=3, type=int, help="DBSCAN min_samples")
     p_train.add_argument("--api-url", help="Optional KnoMap HTTP backend URL (e.g. http://localhost:5015)")
