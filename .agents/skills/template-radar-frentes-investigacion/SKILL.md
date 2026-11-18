@@ -86,7 +86,7 @@ Before drafting the report, the agent evaluates the artifacts generated in `./re
 - **2.1. Disciplinary Convergence (Macro / Meso / Micro):**
   * Distribution of scholarly output across domains, fields, subfields, and topics, complemented by a **Mermaid** diagram of the corpus's actual thematic architecture.
 - **2.2. Knowledge Network Structure:**
-  * Analysis of the bibliographic coupling, co-citation, or conceptual co-occurrence network (`network_keywords.html`, `fronts_summary.csv`), highlighting interdisciplinary bridges and modular cohesion ($Q$).
+  * Analysis of the bibliographic coupling, co-citation, or conceptual co-occurrence network (`*_network_<lang>.png` / `fronts_network_<lang>.png` embedded at 300 DPI alongside `network_keywords.html` and `fronts_summary.csv`), highlighting interdisciplinary bridges and modular cohesion ($Q$).
 
 ---
 
@@ -97,7 +97,7 @@ Before drafting the report, the agent evaluates the artifacts generated in `./re
      2. *The findings, methodologies, or architectures proposed in its most-cited/central core papers within the corpus.*
      3. *Its impact profile, growth velocity, and leading institutions/countries.*
 - **3.2. Evolutionary Dynamics and Alluvial Lineages (AMI):**
-  * Analysis of intertemporal transitions across time windows (`alluvial_lineages.html`, `alluvial_events.csv`): which fronts exhibit **Persistence** (consolidated thread), which underwent **Splitting (*Split*)** into specialized sub-lines, which emerged via **Merging (*Merge*)** of prior communities, and which represent recent **Genesis** events.
+  * Analysis of intertemporal transitions across time windows (`alluvial_lineages_<lang>.png` embedded at 300 DPI alongside `alluvial_lineages.html` and `lineages_summary.csv` / `ami_window_summary.csv`): which fronts exhibit **Persistence** (consolidated thread), which underwent **Splitting (*Split*)** into specialized sub-lines, which emerged via **Merging (*Merge*)** of prior communities, and which represent recent **Genesis** events.
 
 ---
 

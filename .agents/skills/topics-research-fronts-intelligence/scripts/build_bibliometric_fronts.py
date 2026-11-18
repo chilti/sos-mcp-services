@@ -599,6 +599,217 @@ def render_fronts_eval_figure(eval_rows: List[Dict[str, Any]], out_path: str, la
     plt.close(fig)
 
 
+_FRONT_PALETTE = [
+    "#1d4ed8", "#dc2626", "#059669", "#d97706", "#7c3aed",
+    "#0891b2", "#db2777", "#65a30d", "#ea580c", "#4f46e5",
+    "#0d9488", "#be123c", "#ca8a04", "#9333ea", "#0284c7",
+]
+
+
+def render_fronts_network_png(
+    network_nodes: List[Dict[str, Any]],
+    network_edges: List[Dict[str, Any]],
+    summary_records: List[Dict[str, Any]],
+    out_path: str,
+    method: str = "coupling",
+    modularity_q: float = None,
+    lang: str = "en",
+    dpi: int = 300,
+) -> None:
+    """Render a 2-panel 300 DPI static PNG figure of research fronts (doc network + macro front backbone)."""
+    active_recs = [r for r in summary_records if int(r.get("front_id", 0)) > 0]
+    if not active_recs:
+        return
+    try:
+        import math
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import networkx as nx
+        from matplotlib.collections import LineCollection
+        from matplotlib.patches import Polygon
+        from scipy.spatial import ConvexHull
+    except Exception:
+        return
+
+    is_es = (lang == "es")
+    front_ids = [int(r["front_id"]) for r in active_recs]
+    front_color = {fid: _FRONT_PALETTE[idx % len(_FRONT_PALETTE)] for idx, fid in enumerate(front_ids)}
+
+    # Keep up to 300 top-cited active documents so dense corpora render crisply
+    active_nodes = [n for n in network_nodes if int(n.get("front_id", 0)) > 0]
+    if len(active_nodes) > 300:
+        active_nodes = sorted(active_nodes, key=lambda n: n.get("citations", 0), reverse=True)[:300]
+    active_ids = {n["id"] for n in active_nodes}
+    sub_edges = [e for e in network_edges if e["source"] in active_ids and e["target"] in active_ids]
+    node_front = {n["id"]: int(n["front_id"]) for n in active_nodes}
+
+    # Layout documents around front centroids
+    G_doc = nx.Graph()
+    for n in active_nodes:
+        G_doc.add_node(n["id"])
+    for e in sub_edges:
+        u, v = e["source"], e["target"]
+        w = max(0.05, float(e.get("weight", 1.0)))
+        vis_w = w * (2.6 if node_front.get(u) == node_front.get(v) else 0.35)
+        G_doc.add_edge(u, v, weight=vis_w)
+
+    centroids = {}
+    n_f = max(1, len(front_ids))
+    for idx, fid in enumerate(front_ids):
+        if n_f == 1:
+            centroids[fid] = (0.0, 0.0)
+        else:
+            ang = 2.0 * math.pi * idx / n_f
+            rad = 2.4 + 0.14 * min(n_f, 10)
+            centroids[fid] = (rad * math.cos(ang), rad * math.sin(ang))
+
+    rng = np.random.default_rng(42)
+    init_pos = {
+        n["id"]: (centroids[node_front[n["id"]]][0] + float(rng.normal(0, 0.32)),
+                  centroids[node_front[n["id"]]][1] + float(rng.normal(0, 0.32)))
+        for n in active_nodes
+    }
+    if len(active_nodes) > 1:
+        k_opt = 1.65 / math.sqrt(len(active_nodes))
+        pos = nx.spring_layout(G_doc, pos=init_pos, weight="weight", k=k_opt, iterations=100, seed=42)
+        xs = np.array([pos[nid][0] for nid in pos], dtype=float)
+        ys = np.array([pos[nid][1] for nid in pos], dtype=float)
+        span = max(float(xs.max() - xs.min()), float(ys.max() - ys.min()), 1e-6)
+        cx_m = 0.5 * float(xs.max() + xs.min())
+        cy_m = 0.5 * float(ys.max() + ys.min())
+        pos = {nid: ((xy[0] - cx_m) * 2.0 / span, (xy[1] - cy_m) * 2.0 / span) for nid, xy in pos.items()}
+    else:
+        pos = {n["id"]: (0.0, 0.0) for n in active_nodes}
+
+    fig, (ax_doc, ax_mac) = plt.subplots(1, 2, figsize=(15.5, 7.2), dpi=dpi, facecolor="white")
+    for ax in (ax_doc, ax_mac):
+        ax.set_facecolor("#fbfcfd")
+
+    # Left panel: document-level hulls, edges, nodes, cluster badges
+    for fid in front_ids:
+        pts = np.array([pos[n["id"]] for n in active_nodes if int(n["front_id"]) == fid], dtype=float)
+        if len(pts) >= 3:
+            try:
+                hull = ConvexHull(pts)
+                poly = pts[hull.vertices]
+                c = poly.mean(axis=0)
+                poly = c + 1.15 * (poly - c)
+                ax_doc.add_patch(Polygon(poly, closed=True, facecolor=front_color[fid], alpha=0.09,
+                                         edgecolor=front_color[fid], linewidth=1.0, linestyle="--", zorder=1))
+            except Exception:
+                pass
+
+    top_edges = sorted(sub_edges, key=lambda e: float(e.get("weight", 1.0)), reverse=True)[:700]
+    if top_edges:
+        ew = np.array([max(0.01, float(e.get("weight", 1.0))) for e in top_edges], dtype=float)
+        ew_max = max(float(ew.max()), 1e-6)
+        segs, ecols, ewids = [], [], []
+        for e, w in zip(top_edges, ew):
+            u, v = e["source"], e["target"]
+            if u in pos and v in pos:
+                segs.append([pos[u], pos[v]])
+                same = (node_front[u] == node_front[v])
+                col = front_color.get(node_front[u], "#64748b") if same else "#94a3b8"
+                rel = w / ew_max
+                ecols.append(matplotlib.colors.to_rgba(col, alpha=0.14 + 0.36 * rel))
+                ewids.append(0.5 + 1.8 * rel)
+        if segs:
+            ax_doc.add_collection(LineCollection(segs, colors=ecols, linewidths=ewids, zorder=2))
+
+    cites = np.array([max(0.0, float(n.get("citations", 0) or 0.0)) for n in active_nodes], dtype=float)
+    sz = [45.0 + 340.0 * math.sqrt(math.log1p(c) / max(math.log1p(float(cites.max())), 1e-6)) for c in cites]
+    ax_doc.scatter(
+        [pos[n["id"]][0] for n in active_nodes],
+        [pos[n["id"]][1] for n in active_nodes],
+        s=sz,
+        c=[front_color[int(n["front_id"])] for n in active_nodes],
+        edgecolors="white", linewidths=0.8, alpha=0.9, zorder=4,
+    )
+    for fid in front_ids:
+        pts = np.array([pos[n["id"]] for n in active_nodes if int(n["front_id"]) == fid], dtype=float)
+        if len(pts) > 0:
+            cx, cy = pts.mean(axis=0)
+            ax_doc.text(cx, cy, f"F{fid}", fontsize=9.0, fontweight="bold", color="white",
+                        ha="center", va="center", zorder=6,
+                        bbox=dict(boxstyle="round,pad=0.25", facecolor=front_color[fid], edgecolor="white", linewidth=1.0, alpha=0.92))
+
+    ax_doc.set_title(
+        f"Red Documental de Frentes ({method})" if is_es else f"Document-Level Research Front Network ({method})",
+        fontsize=11.5, fontweight="bold", color="#0f172a", pad=10,
+    )
+    ax_doc.set_xlim(-1.24, 1.24)
+    ax_doc.set_ylim(-1.24, 1.24)
+    ax_doc.axis("off")
+
+    # Right panel: Macro inter-front backbone
+    full_node_front = {n["id"]: int(n.get("front_id", 0)) for n in network_nodes}
+    inter_weights = {}
+    for e in network_edges:
+        fu = full_node_front.get(e["source"], 0)
+        fv = full_node_front.get(e["target"], 0)
+        if fu > 0 and fv > 0 and fu != fv:
+            pair = (min(fu, fv), max(fu, fv))
+            inter_weights[pair] = inter_weights.get(pair, 0.0) + float(e.get("weight", 1.0))
+
+    G_mac = nx.Graph()
+    for r in active_recs:
+        G_mac.add_node(int(r["front_id"]))
+    for (fu, fv), w in inter_weights.items():
+        G_mac.add_edge(fu, fv, weight=w)
+    if len(front_ids) > 1:
+        pos_mac = nx.spring_layout(G_mac, weight="weight", k=1.4 / math.sqrt(len(front_ids)), iterations=120, seed=42)
+    else:
+        pos_mac = {front_ids[0]: (0.0, 0.0)}
+
+    if inter_weights:
+        max_iw = max(inter_weights.values())
+        for (fu, fv), w in inter_weights.items():
+            if fu in pos_mac and fv in pos_mac:
+                x1, y1 = pos_mac[fu]
+                x2, y2 = pos_mac[fv]
+                rel = w / max(max_iw, 1e-6)
+                ax_mac.plot([x1, x2], [y1, y2], color="#64748b", alpha=0.22 + 0.55 * rel,
+                            linewidth=0.9 + 4.0 * rel, zorder=2)
+
+    pubs = np.array([max(1, int(r["publications_count"])) for r in active_recs], dtype=float)
+    p_max = max(float(pubs.max()), 1.0)
+    for r in active_recs:
+        fid = int(r["front_id"])
+        x, y = pos_mac[fid]
+        msz = 260.0 + 1350.0 * (r["publications_count"] / p_max)
+        ax_mac.scatter([x], [y], s=msz, c=[front_color[fid]], edgecolors="white", linewidths=1.6, alpha=0.93, zorder=4)
+        ax_mac.text(x, y, f"F{fid}", fontsize=9.5, fontweight="bold", color="white", ha="center", va="center", zorder=5)
+        fname = str(r.get("front_name", f"Front {fid}"))
+        if len(fname) > 30:
+            fname = fname[:27] + "..."
+        fw = r.get("mean_fwci")
+        fw_txt = f" | FWCI={fw:.2f}" if fw is not None else ""
+        lbl = f"{fname}\n(n={r['publications_count']}, {r['total_citations']} cit.{fw_txt})"
+        ax_mac.text(x, y - 0.14, lbl, fontsize=7.6, color="#0f172a", ha="center", va="top", zorder=6,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#cbd5e1", alpha=0.88))
+
+    ax_mac.set_title(
+        "Estructura Macro entre Frentes" if is_es else "Macro Inter-Front Backbone",
+        fontsize=11.5, fontweight="bold", color="#0f172a", pad=10,
+    )
+    ax_mac.set_xlim(-1.35, 1.35)
+    ax_mac.set_ylim(-1.42, 1.32)
+    ax_mac.axis("off")
+
+    q_txt = f" | Modularidad Q = {modularity_q:.3f}" if (is_es and modularity_q is not None) else (
+        f" | Modularity Q = {modularity_q:.3f}" if modularity_q is not None else ""
+    )
+    fig.suptitle(
+        ("Cartografía de Frentes de Investigación" if is_es else "Research Fronts Network Cartography") + q_txt,
+        fontsize=13.5, fontweight="bold", y=0.99, color="#0f172a",
+    )
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def label_fronts(df: pd.DataFrame, cluster_col: str = "cluster_id", lang: str = "en") -> Dict[int, str]:
     """
     Generates an automatic descriptive name for each front from titles and keywords.
@@ -835,6 +1046,19 @@ def main():
         json.dump(network_payload, f, indent=2, ensure_ascii=False)
     logger.info(f"Red relacional exportada en: {network_path} ({len(network_nodes)} nodos, {len(network_edges)} aristas).")
 
+    net_png_en = os.path.join(args.output_dir, "fronts_network_en.png")
+    net_png_es = os.path.join(args.output_dir, "fronts_network_es.png")
+    if summary_records:
+        render_fronts_network_png(
+            network_nodes, network_edges, summary_records, net_png_en,
+            method=args.method, modularity_q=selected_mod_q, lang="en",
+        )
+        render_fronts_network_png(
+            network_nodes, network_edges, summary_records, net_png_es,
+            method=args.method, modularity_q=selected_mod_q, lang="es",
+        )
+        logger.info(f"Imágenes 300 DPI de red de frentes guardadas en: {net_png_en} | {net_png_es}")
+
     manifest_path = os.path.join(args.output_dir, "fronts_run_manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as mf:
         json.dump({
@@ -847,6 +1071,8 @@ def main():
             "artifacts": {
                 "fronts_summary_csv": summary_path,
                 "fronts_network_json": network_path,
+                "fronts_network_en_png": net_png_en if os.path.exists(net_png_en) else None,
+                "fronts_network_es_png": net_png_es if os.path.exists(net_png_es) else None,
                 "fronts_partition_eval_csv": eval_csv_path if partition_eval else None,
                 "fronts_partition_eval_en_png": eval_png_en if partition_eval else None,
                 "fronts_partition_eval_es_png": eval_png_es if partition_eval else None,

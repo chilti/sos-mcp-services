@@ -18,6 +18,7 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Any, Tuple, Optional, Set
 
 import networkx as nx
+import numpy as np
 
 # Try igraph and leidenalg
 try:
@@ -691,6 +692,306 @@ def render_partition_eval_figure(eval_rows: List[Dict[str, Any]], out_path: str,
         fontsize=12.5, fontweight="bold", y=1.02
     )
     fig.tight_layout()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+_NET_PALETTE = [
+    "#1d4ed8", "#dc2626", "#059669", "#d97706", "#7c3aed",
+    "#0891b2", "#db2777", "#65a30d", "#ea580c", "#4f46e5",
+    "#0d9488", "#be123c", "#ca8a04", "#9333ea", "#0284c7",
+    "#16a34a", "#e11d48", "#b45309", "#6d28d9", "#475569",
+]
+
+
+def _compute_community_layout(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    cluster_key: str = "community",
+) -> Dict[Any, Tuple[float, float]]:
+    """Compute a community-aware spring layout that preserves clear cluster islands."""
+    G_vis = nx.Graph()
+    node_cluster = {}
+    for n in nodes:
+        nid = n["id"]
+        cid = n.get(cluster_key, 1)
+        node_cluster[nid] = cid
+        G_vis.add_node(nid)
+
+    for e in edges:
+        u, v = e["source"], e["target"]
+        w = max(0.05, float(e.get("weight", 1.0)))
+        if u in G_vis and v in G_vis and u != v:
+            vis_w = w * (1.6 if node_cluster.get(u) == node_cluster.get(v) else 0.45)
+            G_vis.add_edge(u, v, weight=vis_w)
+
+    unique_comms = sorted(set(node_cluster.values()))
+    n_comms = max(1, len(unique_comms))
+    centroids = {}
+    if n_comms == 1:
+        centroids[unique_comms[0]] = (0.0, 0.0)
+    else:
+        for i, cid in enumerate(unique_comms):
+            angle = 2.0 * math.pi * i / n_comms
+            radius = 1.45
+            centroids[cid] = (radius * math.cos(angle), radius * math.sin(angle))
+
+    rng = np.random.default_rng(42)
+    init_pos = {}
+    for n in nodes:
+        cx, cy = centroids.get(node_cluster[n["id"]], (0.0, 0.0))
+        init_pos[n["id"]] = (cx + float(rng.normal(0, 0.30)), cy + float(rng.normal(0, 0.30)))
+
+    if len(nodes) <= 1:
+        return {n["id"]: (0.0, 0.0) for n in nodes}
+
+    # Layout each connected component independently and pack nicely so islands don't scatter to opposite corners
+    comps = sorted(nx.connected_components(G_vis), key=len, reverse=True)
+    pos = {}
+    if len(comps) == 1:
+        k_opt = min(0.85, max(0.32, 1.5 / math.sqrt(max(2, len(nodes)))))
+        pos = nx.spring_layout(G_vis, pos=init_pos, weight="weight", k=k_opt, iterations=90, seed=42)
+    else:
+        n_c = len(comps)
+        cols = math.ceil(math.sqrt(n_c))
+        rows = math.ceil(n_c / cols)
+        for idx_c, comp_nodes in enumerate(comps):
+            subG = G_vis.subgraph(comp_nodes)
+            sub_init = {nid: init_pos[nid] for nid in comp_nodes}
+            if len(comp_nodes) == 1:
+                sub_pos = {next(iter(comp_nodes)): (0.0, 0.0)}
+            else:
+                k_sub = min(0.95, max(0.35, 1.4 / math.sqrt(len(comp_nodes))))
+                sub_pos = nx.spring_layout(subG, pos=sub_init, weight="weight", k=k_sub, iterations=90, seed=42)
+                sxs = np.array([sub_pos[k][0] for k in sub_pos], dtype=float)
+                sys_ = np.array([sub_pos[k][1] for k in sub_pos], dtype=float)
+                sp = max(float(sxs.max() - sxs.min()), float(sys_.max() - sys_.min()), 1e-6)
+                cx_s, cy_s = 0.5 * float(sxs.max() + sxs.min()), 0.5 * float(sys_.max() + sys_.min())
+                sub_pos = {k: ((v[0] - cx_s) * 0.95 / sp, (v[1] - cy_s) * 0.95 / sp) for k, v in sub_pos.items()}
+            gx = (idx_c % cols) - 0.5 * (cols - 1)
+            gy = 0.5 * (rows - 1) - (idx_c // cols)
+            for nid, xy in sub_pos.items():
+                pos[nid] = (gx * 1.35 + xy[0], gy * 1.35 + xy[1])
+
+    xs = np.array([pos[nid][0] for nid in pos], dtype=float)
+    ys = np.array([pos[nid][1] for nid in pos], dtype=float)
+    span_x = max(float(xs.max() - xs.min()), 1e-6)
+    span_y = max(float(ys.max() - ys.min()), 1e-6)
+    cx_mid = 0.5 * float(xs.max() + xs.min())
+    cy_mid = 0.5 * float(ys.max() + ys.min())
+    scale = 1.9 / max(span_x, span_y)
+    return {nid: ((xy[0] - cx_mid) * scale, (xy[1] - cy_mid) * scale) for nid, xy in pos.items()}
+
+
+def _spread_labels(
+    items: List[Dict[str, Any]],
+    n_iter: int = 30,
+    min_dx: float = 0.18,
+    min_dy: float = 0.068,
+    max_tether: float = 0.16,
+) -> None:
+    """Apply bounded iterative repulsion to keep labels near their anchor nodes without overlapping."""
+    for _ in range(n_iter):
+        moved = False
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                dx = items[i]["lx"] - items[j]["lx"]
+                dy = items[i]["ly"] - items[j]["ly"]
+                if abs(dx) < min_dx and abs(dy) < min_dy:
+                    push_y = (min_dy - abs(dy)) * 0.48 * (1.0 if dy >= 0 else -1.0)
+                    push_x = (min_dx - abs(dx)) * 0.20 * (1.0 if dx >= 0 else -1.0)
+                    if abs(dy) < 1e-6:
+                        push_y = min_dy * 0.48
+                    items[i]["ly"] += push_y
+                    items[j]["ly"] -= push_y
+                    items[i]["lx"] += push_x
+                    items[j]["lx"] -= push_x
+                    moved = True
+        for it in items:
+            ox, oy = it["lx"] - it["px"], it["ly"] - it["py"]
+            dist = math.hypot(ox, oy)
+            if dist > max_tether:
+                scale = max_tether / dist
+                it["lx"] = it["px"] + ox * scale
+                it["ly"] = it["py"] + oy * scale
+        if not moved:
+            break
+
+
+def render_network_png(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    out_path: str,
+    title: str = "Bibliometric Network",
+    subtitle: str = "",
+    lang: str = "en",
+    dpi: int = 300,
+    max_labels: int = 35,
+    cluster_key: str = "community",
+    modularity_q: Optional[float] = None,
+) -> None:
+    """Render a static 300 DPI community-clustered bibliometric network figure."""
+    if not nodes:
+        return
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+        from matplotlib.patches import Polygon
+    except Exception:
+        return
+
+    is_es = (lang == "es")
+    work_nodes = [dict(n) for n in nodes]
+    if any(cluster_key not in n or n.get(cluster_key) is None for n in work_nodes):
+        if edges:
+            _, node_to_comm = detect_network_communities(
+                work_nodes, edges, "leiden" if LEIDEN_AVAILABLE else "louvain", 1.0
+            )
+            for n in work_nodes:
+                n[cluster_key] = node_to_comm.get(n["id"], 1)
+        else:
+            for n in work_nodes:
+                n[cluster_key] = 1
+
+    pos = _compute_community_layout(work_nodes, edges, cluster_key=cluster_key)
+    scores = np.array([
+        max(1.0, float(n.get("frequency", n.get("citations", n.get("degree_weighted", 1.0))) or 1.0))
+        for n in work_nodes
+    ], dtype=float)
+    s_min, s_max = float(scores.min()), float(scores.max())
+    s_span = max(s_max - s_min, 1e-6)
+    sizes = [85.0 + 780.0 * math.sqrt((sc - s_min) / s_span) for sc in scores]
+
+    comm_counts = Counter(n.get(cluster_key, 1) for n in work_nodes)
+    ordered_comms = [cid for cid, _ in comm_counts.most_common()]
+    comm_color = {cid: _NET_PALETTE[idx % len(_NET_PALETTE)] for idx, cid in enumerate(ordered_comms)}
+
+    fig, ax = plt.subplots(figsize=(13.0, 8.6), dpi=dpi, facecolor="white")
+    ax.set_facecolor("#fbfcfd")
+
+    # 1. Soft community hulls
+    try:
+        from scipy.spatial import ConvexHull
+    except Exception:
+        ConvexHull = None
+
+    if ConvexHull is not None:
+        for cid in ordered_comms[:10]:
+            pts = np.array([pos[n["id"]] for n in work_nodes if n.get(cluster_key) == cid], dtype=float)
+            if len(pts) >= 3:
+                try:
+                    hull = ConvexHull(pts)
+                    poly_pts = pts[hull.vertices]
+                    center = poly_pts.mean(axis=0)
+                    poly_pts = center + 1.14 * (poly_pts - center)
+                    ax.add_patch(Polygon(
+                        poly_pts, closed=True, facecolor=comm_color[cid], alpha=0.075,
+                        edgecolor=comm_color[cid], linewidth=1.0, linestyle="--", zorder=1
+                    ))
+                except Exception:
+                    pass
+
+    # 2. Top weighted edges
+    sorted_edges = sorted(edges, key=lambda e: float(e.get("weight", 1.0)), reverse=True)[:750]
+    if sorted_edges:
+        ew = np.array([max(0.01, float(e.get("weight", 1.0))) for e in sorted_edges], dtype=float)
+        ew_max = max(float(ew.max()), 1e-6)
+        segments = []
+        edge_colors = []
+        edge_widths = []
+        node_map = {n["id"]: n for n in work_nodes}
+        for e, w in zip(sorted_edges, ew):
+            u, v = e["source"], e["target"]
+            if u in pos and v in pos:
+                segments.append([pos[u], pos[v]])
+                cu = node_map[u].get(cluster_key)
+                cv = node_map[v].get(cluster_key)
+                rel = w / ew_max
+                alpha = 0.14 + 0.38 * rel
+                col = comm_color.get(cu, "#64748b") if cu == cv else "#94a3b8"
+                rgba = matplotlib.colors.to_rgba(col, alpha=alpha)
+                edge_colors.append(rgba)
+                edge_widths.append(0.55 + 2.2 * rel)
+        if segments:
+            lc = LineCollection(segments, colors=edge_colors, linewidths=edge_widths, zorder=2)
+            ax.add_collection(lc)
+
+    # 3. Nodes ordered so top nodes sit cleanly on top
+    draw_order = sorted(range(len(work_nodes)), key=lambda i: scores[i])
+    xs = [pos[work_nodes[i]["id"]][0] for i in draw_order]
+    ys = [pos[work_nodes[i]["id"]][1] for i in draw_order]
+    sz = [sizes[i] for i in draw_order]
+    cols = [comm_color[work_nodes[i].get(cluster_key, 1)] for i in draw_order]
+    ax.scatter(xs, ys, s=sz, c=cols, edgecolors="white", linewidths=1.1, alpha=0.92, zorder=4)
+
+    # 4. Priority labels (top node per cluster + global top up to max_labels)
+    selected_idx = []
+    seen = set()
+    for cid in ordered_comms:
+        cluster_idxs = [i for i in range(len(work_nodes)) if work_nodes[i].get(cluster_key) == cid]
+        if cluster_idxs:
+            best_i = max(cluster_idxs, key=lambda i: scores[i])
+            if best_i not in seen:
+                selected_idx.append(best_i)
+                seen.add(best_i)
+    for i in sorted(range(len(work_nodes)), key=lambda idx: scores[idx], reverse=True):
+        if len(selected_idx) >= max_labels:
+            break
+        if i not in seen:
+            selected_idx.append(i)
+            seen.add(i)
+
+    label_items = []
+    for i in selected_idx:
+        nid = work_nodes[i]["id"]
+        raw_lbl = str(work_nodes[i].get("label", nid))
+        lbl = raw_lbl if len(raw_lbl) <= 34 else raw_lbl[:31] + "..."
+        px, py = pos[nid]
+        label_items.append({"px": px, "py": py, "lx": px, "ly": py + 0.045, "text": lbl, "score": scores[i]})
+
+    _spread_labels(label_items)
+    for it in label_items:
+        if math.hypot(it["lx"] - it["px"], it["ly"] - it["py"]) > 0.075:
+            ax.plot([it["px"], it["lx"]], [it["py"], it["ly"]], color="#94a3b8", linewidth=0.65, alpha=0.65, zorder=5)
+        ax.text(
+            it["lx"], it["ly"], it["text"],
+            fontsize=8.0, fontweight="semibold", color="#0f172a", ha="center", va="center", zorder=6,
+            bbox=dict(boxstyle="round,pad=0.16", facecolor="white", edgecolor="#e2e8f0", linewidth=0.5, alpha=0.86),
+        )
+
+    # 5. Legend for top clusters
+    legend_handles = []
+    for idx_c, cid in enumerate(ordered_comms[:8]):
+        members = [n for n in work_nodes if n.get(cluster_key) == cid]
+        top_mem = max(members, key=lambda n: float(n.get("frequency", n.get("citations", 1.0)) or 1.0))
+        top_txt = str(top_mem.get("label", top_mem["id"]))
+        if len(top_txt) > 24:
+            top_txt = top_txt[:21] + "..."
+        cl_lbl = f"C{idx_c + 1}: {top_txt} (n={len(members)})"
+        legend_handles.append(plt.Line2D([0], [0], marker="o", color="w", label=cl_lbl,
+                                         markerfacecolor=comm_color[cid], markeredgecolor="white", markersize=8.5))
+    if legend_handles:
+        leg_title = "Comunidades (Leiden/Louvain)" if is_es else "Communities (Leiden/Louvain)"
+        ax.legend(handles=legend_handles, title=leg_title, loc="upper left", bbox_to_anchor=(1.01, 1.0),
+                  frameon=True, facecolor="white", edgecolor="#cbd5e1", fontsize=8.2, title_fontsize=8.8)
+
+    q_txt = f" | Q = {modularity_q:.3f}" if modularity_q is not None else ""
+    stat_txt = (
+        f"Nodos: {len(work_nodes)} | Aristas: {len(edges)} | Comunidades: {len(ordered_comms)}{q_txt}"
+        if is_es else
+        f"Nodes: {len(work_nodes)} | Edges: {len(edges)} | Communities: {len(ordered_comms)}{q_txt}"
+    )
+    ax.set_title(title, fontsize=13.5, fontweight="bold", pad=22, color="#0f172a")
+    if subtitle:
+        ax.text(0.5, 1.008, subtitle, transform=ax.transAxes, ha="center", va="bottom", fontsize=9.5, color="#475569")
+    ax.text(0.5, -0.025, stat_txt, transform=ax.transAxes, ha="center", va="top", fontsize=8.5, color="#475569")
+    ax.set_xlim(-1.26, 1.26)
+    ax.set_ylim(-1.26, 1.26)
+    ax.axis("off")
+
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -2121,6 +2422,8 @@ def cmd_build(args):
     os.makedirs(out_dir, exist_ok=True)
     eval_csv_path = os.path.join(out_dir, f"{out_stem}_partition_eval.csv")
     eval_png_path = os.path.join(out_dir, f"{out_stem}_partition_eval_{lang}.png")
+    default_net_png = os.path.join(out_dir, f"{out_stem}_network_{lang}.png")
+    net_png_path = os.path.abspath(args.png) if getattr(args, "png", None) else (default_net_png if (needs_analysis or len(nodes) > 0) else None)
     manifest_path = os.path.join(out_dir, f"{out_stem}_run_manifest.json")
 
     if partition_eval:
@@ -2130,6 +2433,18 @@ def cmd_build(args):
             writer.writeheader()
             writer.writerows(partition_eval)
         render_partition_eval_figure(partition_eval, eval_png_path, lang=lang)
+
+    if net_png_path and len(nodes) > 0:
+        png_title = f"{unit.capitalize()} — {net_type.capitalize()}"
+        png_sub = (
+            (f"Periodo: {period_meta.get('label')}" if lang == "es" else f"Period: {period_meta.get('label')}")
+            if period_meta.get("filter_applied") else ""
+        )
+        render_network_png(
+            nodes, edges, net_png_path,
+            title=png_title, subtitle=png_sub, lang=lang,
+            modularity_q=selected_modularity,
+        )
 
     methodology_audit = {
         "input_corpus": args.input,
@@ -2170,6 +2485,7 @@ def cmd_build(args):
             "methodology_audit": methodology_audit,
             "artifacts": {
                 "network_json": out_abs,
+                "network_png": net_png_path if (net_png_path and os.path.exists(net_png_path)) else None,
                 "partition_eval_csv": eval_csv_path if partition_eval else None,
                 "partition_eval_png": eval_png_path if partition_eval else None,
             },
@@ -2177,6 +2493,8 @@ def cmd_build(args):
 
     p_str = f" [Period: {period_meta.get('label')}]" if period_meta.get("filter_applied") else ""
     print(f"Built network ({net_type}, {unit}){p_str}: {len(nodes)} nodes, {len(edges)} edges, Q={selected_modularity}. Output: {args.output}")
+    if net_png_path and os.path.exists(net_png_path):
+        print(f"  - Network PNG (300 DPI): {net_png_path}")
     if partition_eval:
         print(f"  - Partition Eval CSV: {eval_csv_path}")
         print(f"  - Run Manifest JSON: {manifest_path}")
@@ -2377,6 +2695,16 @@ def cmd_sequential(args):
         with open(net_filepath, "w", encoding="utf-8") as f:
             json.dump(period_network_payload, f, indent=2, ensure_ascii=False)
 
+        lang_seq = getattr(args, "lang", "en") or "en"
+        png_filename = f"network_{period_slug}_{lang_seq}.png"
+        png_filepath = os.path.join(output_dir, png_filename)
+        render_network_png(
+            nodes, edges, png_filepath,
+            title=f"{unit.capitalize()} {net_type.capitalize()} ({label})",
+            subtitle=("Evolución temporal de red" if lang_seq == "es" else "Longitudinal network snapshot"),
+            lang=lang_seq,
+        )
+
         # Extra format export if requested
         if args.format:
             ext = "gexf" if args.format == "gexf" else ("net" if args.format == "pajek" else "json")
@@ -2403,7 +2731,8 @@ def cmd_sequential(args):
             "edge_count": len(edges),
             "density": density,
             "communities_count": len(comms),
-            "network_file": net_filename
+            "network_file": net_filename,
+            "network_png": png_filename if os.path.exists(png_filepath) else None,
         })
 
         print(f"  ✓ [{label}]: {len(period_docs)} docs, {len(nodes)} active nodes, {len(edges)} edges, {len(comms)} communities -> {net_filename}")
@@ -2518,6 +2847,7 @@ def cmd_communities(args):
     os.makedirs(out_dir, exist_ok=True)
     eval_csv_path = os.path.join(out_dir, f"{out_stem}_partition_eval.csv")
     eval_png_path = os.path.join(out_dir, f"{out_stem}_partition_eval_{lang}.png")
+    comm_png_path = os.path.abspath(args.png) if getattr(args, "png", None) else os.path.join(out_dir, f"{out_stem}_communities_{lang}.png")
     if partition_eval:
         import csv as _csv
         with open(eval_csv_path, "w", encoding="utf-8", newline="") as cf:
@@ -2525,6 +2855,15 @@ def cmd_communities(args):
             writer.writeheader()
             writer.writerows(partition_eval)
         render_partition_eval_figure(partition_eval, eval_png_path, lang=lang)
+
+    if len(nodes) > 0:
+        render_network_png(
+            nodes, edges, comm_png_path,
+            title=("Comunidades de Red Bibliométrica" if lang == "es" else "Bibliometric Network Communities"),
+            subtitle=f"{algorithm.upper()} (res={resolution})",
+            lang=lang,
+            modularity_q=mod_q,
+        )
 
     output_data = {
         "algorithm": algorithm,
@@ -2542,6 +2881,8 @@ def cmd_communities(args):
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     print(f"Detected {len(communities_list)} communities via {algorithm} (resolution={resolution}, Q={mod_q}). Saved to {args.output}")
+    if os.path.exists(comm_png_path):
+        print(f"  - Network PNG (300 DPI): {comm_png_path}")
     if partition_eval:
         print(f"  - Partition Eval CSV/PNG: {eval_csv_path} | {eval_png_path}")
     sys.exit(0)
@@ -2615,6 +2956,27 @@ def cmd_render_vosviewer(args):
     sys.exit(0)
 
 
+def cmd_render_png(args):
+    """Renders static 300 DPI PNG bibliometric network figure from network JSON."""
+    lang = getattr(args, "lang", "en") or "en"
+    with open(args.input, "r", encoding="utf-8") as f:
+        net = json.load(f)
+    nodes = net.get("nodes", net.get("nodes_with_community", []))
+    edges = net.get("edges", [])
+    mod_q = net.get("modularity_q", net.get("metadata", {}).get("modularity_q"))
+    cluster_key = "front_id" if any("front_id" in n for n in nodes) and not any("community" in n for n in nodes) else "community"
+    title = args.title or ("Red Bibliométrica" if lang == "es" else "Bibliometric Network")
+    subtitle = args.subtitle or ("Partición Modular de Comunidades" if lang == "es" else "Modular Community Partition")
+    render_network_png(
+        nodes, edges, args.output,
+        title=title, subtitle=subtitle, lang=lang,
+        dpi=args.dpi, max_labels=args.max_labels,
+        cluster_key=cluster_key, modularity_q=mod_q,
+    )
+    print(f"Generated static network PNG ({args.dpi} DPI): {args.output}")
+    sys.exit(0)
+
+
 def cmd_export_som_matrix(args):
     """Exports N x N adjacency/co-occurrence matrix for SOM training."""
     with open(args.input, "r", encoding="utf-8") as f:
@@ -2667,11 +3029,23 @@ def main():
     p_bld.add_argument("--max-terms", type=int, default=None, help="Limit network to top N prominent terms")
     p_bld.add_argument("--auto-analyze", action="store_true", help="Automatically run Leiden communities and centralities")
     p_bld.add_argument("--eval-resolutions", type=str, default="0.5,0.75,1.0,1.25,1.5", help="Comma-separated resolution grid for partition evaluation")
+    p_bld.add_argument("--png", type=str, default=None, help="Path to output static 300 DPI network PNG (defaults to <stem>_network_<lang>.png)")
     p_bld.add_argument("--html-knomap", type=str, default=None, help="Path to output standalone KnoMap Force Graph HTML")
     p_bld.add_argument("--html-vosviewer", type=str, default=None, help="Path to output standalone VOSviewer HTML visualizer")
     p_bld.add_argument("--vosviewer-json", type=str, default=None, help="Path to output canonical VOSviewer JSON format")
     p_bld.add_argument("--som-matrix", type=str, default=None, help="Path to output N x N co-occurrence matrix CSV for SOM training")
     p_bld.set_defaults(func=cmd_build)
+
+    # Subcommand: render-png
+    p_rpng = subparsers.add_parser("render-png", help="Render static 300 DPI PNG network figure from network JSON")
+    p_rpng.add_argument("--lang", choices=["en", "es"], default=argparse.SUPPRESS, help="Output language (default: en)")
+    p_rpng.add_argument("--input", required=True, help="Path to network JSON")
+    p_rpng.add_argument("--output", required=True, help="Path to output PNG file")
+    p_rpng.add_argument("--title", default=None, help="Figure title")
+    p_rpng.add_argument("--subtitle", default=None, help="Figure subtitle")
+    p_rpng.add_argument("--max-labels", type=int, default=35, help="Maximum readable node labels (default: 35)")
+    p_rpng.add_argument("--dpi", type=int, default=300, help="Output DPI (default: 300)")
+    p_rpng.set_defaults(func=cmd_render_png)
 
     # Subcommand: render-knomap
     p_rkn = subparsers.add_parser("render-knomap", help="Render standalone KnoMap Force Graph HTML from network JSON")
@@ -2729,6 +3103,7 @@ def main():
     p_com.add_argument("--algorithm", choices=["leiden", "louvain"], default="leiden")
     p_com.add_argument("--resolution", type=float, default=1.0)
     p_com.add_argument("--eval-resolutions", type=str, default="0.25,0.5,0.75,1.0,1.25,1.5,2.0", help="Comma-separated resolution grid for partition evaluation")
+    p_com.add_argument("--png", type=str, default=None, help="Path to output static 300 DPI communities PNG (defaults to <stem>_communities_<lang>.png)")
     p_com.set_defaults(func=cmd_communities)
 
     # Subcommand: calculate-centralities

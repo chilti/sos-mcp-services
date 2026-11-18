@@ -428,6 +428,152 @@ def main():
     else:
         logger.warning("No se generaron enlaces suficientes para renderizar el diagrama aluvial Sankey.")
 
+    # Render static 300 DPI Alluvial / Sankey PNGs (EN & ES) without kaleido dependency
+    alluvial_png_en = os.path.join(args.output_dir, "alluvial_lineages_en.png")
+    alluvial_png_es = os.path.join(args.output_dir, "alluvial_lineages_es.png")
+
+    def _render_alluvial_png(out_png: str, fig_lang: str) -> bool:
+        if not window_fronts_data or not windows:
+            return False
+        try:
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+            from matplotlib.patches import FancyBboxPatch, PathPatch
+            from matplotlib.path import Path as MplPath
+        except Exception:
+            return False
+
+        is_es_fig = (fig_lang == "es")
+        palette = [
+            "#1d4ed8", "#059669", "#d97706", "#7c3aed", "#dc2626",
+            "#0891b2", "#db2777", "#65a30d", "#ea580c", "#4f46e5",
+        ]
+        n_w = len(windows)
+        fig_w = max(12.0, 3.3 * n_w)
+        fig_ax, ax = plt.subplots(figsize=(fig_w, 7.6), dpi=300, facecolor="white")
+        ax.set_facecolor("#fbfcfd")
+
+        # Compute vertical positions per window proportional to front document count
+        bar_w = 0.22
+        x_positions = [i * 1.4 for i in range(n_w)]
+        node_boxes = {}  # (w_idx, f_id) -> (x0, x1, y0, y1, color, count, name)
+        max_col_total = max(
+            [sum(fd["count"] for fd in window_fronts_data[wi].values()) for wi in range(n_w)] + [1]
+        )
+
+        # Assign consistent color by front_id across windows
+        all_fids = sorted({fid for wi in range(n_w) for fid in window_fronts_data[wi].keys()})
+        fid_color = {fid: palette[idx % len(palette)] for idx, fid in enumerate(all_fids)}
+
+        for wi in range(n_w):
+            items = sorted(window_fronts_data[wi].items(), key=lambda kv: kv[1]["count"], reverse=True)
+            col_total = max(1, sum(fd["count"] for _, fd in items))
+            gap = 0.045 * max_col_total
+            total_span = col_total + max(0, len(items) - 1) * gap
+            y_cursor = max_col_total * 1.18
+            scale = (max_col_total * 0.95) / max(total_span, 1e-6)
+            x0 = x_positions[wi] - bar_w / 2.0
+            x1 = x_positions[wi] + bar_w / 2.0
+
+            for fid, fd in items:
+                h = max(0.025 * max_col_total, fd["count"] * scale)
+                y1 = y_cursor
+                y0 = y1 - h
+                y_cursor = y0 - gap * scale
+                col = fid_color[fid]
+                node_boxes[(wi, fid)] = (x0, x1, y0, y1, col, fd["count"], fd["name"])
+                ax.add_patch(FancyBboxPatch(
+                    (x0, y0), bar_w, h, boxstyle="round,pad=0.0,rounding_size=0.02",
+                    facecolor=col, edgecolor="white", linewidth=1.0, alpha=0.90, zorder=4
+                ))
+                lbl_name = fd["name"] if len(fd["name"]) <= 24 else fd["name"][:21] + "..."
+                lbl_txt = f"{lbl_name}\n(N={fd['count']})"
+                tx = x1 + 0.03 if wi < n_w - 1 else x0 - 0.03
+                ha = "left" if wi < n_w - 1 else "right"
+                ax.text(tx, 0.5 * (y0 + y1), lbl_txt, fontsize=7.5, color="#0f172a",
+                        ha=ha, va="center", zorder=6,
+                        bbox=dict(boxstyle="round,pad=0.14", facecolor="white", edgecolor="#e2e8f0", alpha=0.84))
+
+            w_lbl, ys, ye = windows[wi]
+            ax.text(x_positions[wi], max_col_total * 1.24, f"{ys}–{ye}", fontsize=10.5,
+                    fontweight="bold", color="#0f172a", ha="center", va="bottom")
+
+        # Track cumulative offsets on source/target rectangles for clean Bezier ribbons
+        idx_to_wf = {idx: wf for wf, idx in sankey_node_map.items()}
+        src_used = {k: 0.0 for k in node_boxes}
+        tgt_used = {k: 0.0 for k in node_boxes}
+        src_tot = {k: 0.0 for k in node_boxes}
+        tgt_tot = {k: 0.0 for k in node_boxes}
+        for lk in sankey_links:
+            s_wf = idx_to_wf.get(lk["source"])
+            t_wf = idx_to_wf.get(lk["target"])
+            if s_wf in node_boxes and t_wf in node_boxes:
+                val = max(1.0, float(lk["value"]))
+                src_tot[s_wf] += val
+                tgt_tot[t_wf] += val
+
+        for lk in sankey_links:
+            s_wf = idx_to_wf.get(lk["source"])
+            t_wf = idx_to_wf.get(lk["target"])
+            if s_wf not in node_boxes or t_wf not in node_boxes:
+                continue
+            sx0, sx1, sy0, sy1, scol, _, _ = node_boxes[s_wf]
+            tx0, tx1, ty0, ty1, _, _, _ = node_boxes[t_wf]
+            val = max(1.0, float(lk["value"]))
+            sh = (sy1 - sy0) * (val / max(src_tot[s_wf], val))
+            th = (ty1 - ty0) * (val / max(tgt_tot[t_wf], val))
+            sy_top = sy1 - src_used[s_wf]
+            sy_bot = sy_top - sh
+            src_used[s_wf] += sh
+            ty_top = ty1 - tgt_used[t_wf]
+            ty_bot = ty_top - th
+            tgt_used[t_wf] += th
+
+            xm = 0.5 * (sx1 + tx0)
+            verts = [
+                (sx1, sy_top),
+                (xm, sy_top), (xm, ty_top), (tx0, ty_top),
+                (tx0, ty_bot),
+                (xm, ty_bot), (xm, sy_bot), (sx1, sy_bot),
+                (sx1, sy_top),
+            ]
+            codes = [
+                MplPath.MOVETO,
+                MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4,
+                MplPath.LINETO,
+                MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4,
+                MplPath.CLOSEPOLY,
+            ]
+            ax.add_patch(PathPatch(MplPath(verts, codes), facecolor=scol, edgecolor="none", alpha=0.32, zorder=2))
+
+        # Annotate AMI between consecutive window columns
+        for wi, ami_r in enumerate(ami_window_records):
+            if wi < n_w - 1:
+                x_mid = 0.5 * (x_positions[wi] + x_positions[wi + 1])
+                ami_txt = f"AMI={ami_r['ami']:.3f}\nNMI={ami_r['nmi']:.3f}"
+                ax.text(x_mid, max_col_total * 1.24, ami_txt, fontsize=8.0, color="#1e293b",
+                        ha="center", va="bottom",
+                        bbox=dict(boxstyle="round,pad=0.2", facecolor="#f1f5f9", edgecolor="#cbd5e1"))
+
+        ax.set_title(
+            "Dinámica Longitudinal de Frentes de Investigación (Diagrama Aluvial)" if is_es_fig
+            else "Longitudinal Dynamics of Research Fronts (Alluvial Diagram)",
+            fontsize=13.0, fontweight="bold", pad=22, color="#0f172a",
+        )
+        ax.set_xlim(x_positions[0] - 0.55, x_positions[-1] + 0.55)
+        ax.set_ylim(-0.08 * max_col_total, max_col_total * 1.38)
+        ax.axis("off")
+        fig_ax.tight_layout()
+        fig_ax.savefig(out_png, dpi=300, bbox_inches="tight", facecolor="white")
+        plt.close(fig_ax)
+        return os.path.exists(out_png)
+
+    has_png_en = _render_alluvial_png(alluvial_png_en, "en")
+    has_png_es = _render_alluvial_png(alluvial_png_es, "es")
+    if has_png_en or has_png_es:
+        logger.info(f"Diagrama Aluvial 300 DPI PNG guardado en: {alluvial_png_en} | {alluvial_png_es}")
+
     manifest_path = os.path.join(args.output_dir, "lineages_run_manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as mf:
         json.dump({
@@ -440,6 +586,8 @@ def main():
                 "lineage_similarity_matrix_csv": sim_mat_path,
                 "ami_window_summary_csv": ami_path,
                 "alluvial_lineages_html": alluvial_html_path if (sankey_links and sankey_nodes) else None,
+                "alluvial_lineages_en_png": alluvial_png_en if has_png_en else None,
+                "alluvial_lineages_es_png": alluvial_png_es if has_png_es else None,
             },
         }, mf, indent=2, ensure_ascii=False, default=str)
 

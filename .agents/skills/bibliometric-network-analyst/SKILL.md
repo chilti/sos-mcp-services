@@ -140,6 +140,17 @@ python scripts/biblio_network_cli.py render-vosviewer \
 3. **◎ Density Visualization:** **Continuous heat surface computed via a 2D Gaussian kernel** following Van Eck & Waltman's original formulation (thermal palette Blue $\to$ Cyan $\to$ Green $\to$ Yellow $\to$ Red), revealing areas of highest conceptual concentration.
 4. **Interoperability:** Built-in button to download `vosviewer.json` and direct link to open the map in the official [app.vosviewer.com](https://app.vosviewer.com) web application or import it into KnoMap's Biblio Networks tab.
 
+### 4.3 Artifact 3: Publication-Grade Static 300 DPI PNG (`render-png`, `--png`, & Auto-Export)
+
+Every `build-network` (via `<stem>_network_<lang>.png` or `--png <path>`), `detect-communities` (`<stem>_communities_<lang>.png` or `--png <path>`), and `sequential-networks` (`network_<period>_<lang>.png` per window) automatically exports a **300 DPI static PNG** with community-aware spring layout, translucent cluster hulls, size-scaled nodes, top-node collision-avoiding labels, community legend, and Modularity $Q$ annotation, ready for Markdown/Word/PDF embedding (`render-png` also renders any existing network JSON standalone):
+
+```bash
+python scripts/biblio_network_cli.py render-png \
+  --input ./full_network.json \
+  --output ./reports/network_communities_en.png \
+  --max-labels 35 --dpi 300 --lang en
+```
+
 ---
 
 ## 5. Longitudinal Sequential Networks (`sequential-networks`)

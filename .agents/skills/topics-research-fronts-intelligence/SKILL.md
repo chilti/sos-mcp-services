@@ -125,6 +125,7 @@ The agent must execute the reproducible scripts using the official environment:
 *Artifacts Generated in `reports/` (Full Evidence-First):*
 - `fronts_summary.csv`: Table with quantitative metrics, volume $N$, citations, mean year, and representative core paper for each front.
 - `fronts_network.json`: Structured graph (nodes and normalized edges) enriched in `metadata` with `modularity_q`, `graph_topology`, `cluster_size_distribution`, and multi-resolution `partition_evaluation`.
+- `fronts_network_en.png` / `fronts_network_es.png`: Dual-panel **300 DPI static PNG** of the research fronts network (document-level coupling clusters with convex hulls + macro inter-front backbone with citations and FWCI) ready for direct embedding in `.md`/`.docx`/`.pdf` manuscripts.
 - `fronts_partition_eval.csv`, `fronts_partition_eval_en.png` / `_es.png`, and `fronts_run_manifest.json`: Complete comparison across candidate partition resolutions/functions (`modularity` and `cpm`, Modularity $Q$, coverage %, cluster size stats) and reproducibility manifest.
 - `works_with_fronts.parquet`: Enriched corpus with `front_id` and `front_name` columns.
 
@@ -144,6 +145,7 @@ The agent must execute the reproducible scripts using the official environment:
 *Artifacts Generated in `reports/`:*
 - `lineages_summary.csv`: Quantitative record of all intertemporal transitions and their event type (*Persistence*, *Split*, *Merge*, *Genesis*, *Decay*).
 - `lineage_similarity_matrix.csv` & `ami_window_summary.csv`: Complete pairwise front-to-front similarity matrix (`jaccard_refs`, `jaccard_docs`, `combined_score`, `passed_threshold`) plus inter-window **Adjusted Mutual Information (AMI)** and NMI metrics.
+- `alluvial_lineages_en.png` / `alluvial_lineages_es.png`: Native Matplotlib **300 DPI static PNG** alluvial flow diagram with proportional Bézier ribbons and inter-window AMI/NMI annotations (zero `kaleido` dependency) ready for direct publication embedding.
 - `lineages_run_manifest.json`: Parameters, time windows, and artifact links.
 - `alluvial_lineages.html`: Standalone interactive HTML alluvial diagram generated with Plotly.
 

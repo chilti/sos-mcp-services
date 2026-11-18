@@ -71,8 +71,8 @@ flowchart TD
    - Run [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md) across multiple units and relations:
      * Conceptual co-occurrence (`--unit keywords`),
      * Collaboration co-authorship (`--unit countries`, `--unit institutions`, `--unit authors`),
-     * Source/work coupling + `sequential-networks` with inter-period AMI (`sequence_manifest.json`), persisting `*_partition_eval.csv`, `*_partition_eval_<lang>.png`, Modularity $Q$, and `*_run_manifest.json`.
-   - Run [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md) / [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) comparing `coupling`, `cocitation`, `topics`, and `hybrid` (saving `fronts_partition_eval.csv`, `fronts_run_manifest.json`, and `track_longitudinal_lineages.py` outputs `ami_window_summary.csv`, `lineage_similarity_matrix.csv`, `alluvial_lineages.html`).
+     * Source/work coupling + `sequential-networks` with inter-period AMI (`sequence_manifest.json`), persisting `*_network_<lang>.png` (300 DPI), `*_partition_eval.csv`, `*_partition_eval_<lang>.png`, Modularity $Q$, and `*_run_manifest.json`.
+   - Run [`topics-research-fronts-intelligence`](../topics-research-fronts-intelligence/SKILL.md) / [`research-fronts-detection-expert`](../research-fronts-detection-expert/SKILL.md) comparing `coupling`, `cocitation`, `topics`, and `hybrid` (saving `fronts_network_{en,es}.png`, `fronts_partition_eval.csv`, `fronts_run_manifest.json`, and `track_longitudinal_lineages.py` outputs `ami_window_summary.csv`, `lineage_similarity_matrix.csv`, `alluvial_lineages_{en,es}.png`, `alluvial_lineages.html`).
    - If R + `bibliometrix` are present, run [`bibliometrix-guide`](../bibliometrix-guide/SKILL.md) for Callon's Strategic Diagram.
 
 3. **`worker-context-policy` (`./evidence_vault/06_context/`):**
