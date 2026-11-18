@@ -1,6 +1,6 @@
 # Canonical OpenAlex Topics Taxonomy and CWTS Leiden Methodology
 
-### *Multi-Level Hierarchical Structure, ClickHouse Mapping, and Query Rules*
+### *Multi-Level Hierarchical Structure, OpenAlex API & Optional ClickHouse Mapping, and Query Rules*
 
 ---
 
@@ -45,22 +45,21 @@ graph TD
 
 ---
 
-## 3. Mapping in ClickHouse (`rag.works_flat`)
+## 3. Field Mapping in OpenAlex (API & Optional ClickHouse `rag.works_flat`)
 
-In the global columnar database `rag.works_flat` (464.8M records), the taxonomy levels are denormalized into high-performance native columns:
+In OpenAlex (`./corpus.parquet` via `openalex-harvester`, REST API `primary_topic.*`, or the optional global snapshot `rag.works_flat`), taxonomy levels map as follows:
 
-| Hierarchical Level | Primary Column (Text) | Identifier Column (ID) | ClickHouse Data Type |
+| Hierarchical Level | Portable OpenAlex / Parquet Column | API Filter Field | Optional ClickHouse Column (`rag.works_flat`) |
 | :--- | :--- | :--- | :--- |
-| **Domain** | `domain_name` (or `domain`) | — | `LowCardinality(String)` |
-| **Field** | `field_name` (or `field`) | — | `LowCardinality(String)` |
-| **Subfield**| `subfield_name` (or `subfield`)| `subfield_id` | `LowCardinality(String)` |
-| **Canonical Topic** | `topic` | `topic_id` (e.g., `T10023`) | `String` / `LowCardinality(String)` |
-| **Primary Topic** | — | `primary_topic_id` | `String` |
-| **All Topics** | — | `all_topics` | `Array(LowCardinality(String))` |
+| **Domain** | `domain` (`domain_name`) | `primary_topic.domain.display_name` | `domain_name` (`LowCardinality(String)`) |
+| **Field** | `field` (`field_name`) | `primary_topic.field.display_name` | `field_name` (`LowCardinality(String)`) |
+| **Subfield**| `subfield` (`subfield_name`) | `primary_topic.subfield.display_name` | `subfield_name` (`LowCardinality(String)`) |
+| **Canonical Topic** | `topic` / `topic_id` | `primary_topic.id` (e.g., `T10023`) | `topic`, `topic_id`, `primary_topic_id` |
+| **All Topics** | `topics` / `all_topics` | `topics.id` | `all_topics` (`Array(LowCardinality(String))`) |
 
 > [!TIP]
-> **Columnar Optimization (ZERO JOINs):**
-> When querying `rag.works_flat`, never perform a `JOIN` with external topic tables. Filter directly using `subfield_name = 'Artificial Intelligence'` or `topic_id = 'T10142'`. To check secondary topics, use the native function `has(all_topics, 'T10142')`.
+> **Columnar Optimization (When Using Optional ClickHouse Accelerator):**
+> Never perform a `JOIN` with external topic tables. Filter directly using `subfield_name = 'Artificial Intelligence'` or `topic_id = 'T10142'`, and `has(all_topics, 'T10142')` for secondary topics.
 
 ---
 
@@ -68,7 +67,7 @@ In the global columnar database `rag.works_flat` (464.8M records), the taxonomy 
 
 | Analysis Scenario | Recommended Choice | Technical Reason |
 | :--- | :--- | :--- |
-| **University- or Country-wide Mapping** | **OpenAlex Topics (`rag.works_flat`)** | Evaluates thousands of publications in seconds without reconstructing citation graphs. |
+| **University- or Country-wide Mapping** | **OpenAlex Topics (`primary_topic` / `topic_id`)** | Evaluates thousands of publications rapidly without reconstructing citation graphs. |
 | **Thematic Concentration Sunburst Diagram** | **OpenAlex Hierarchy (Domain $\to$ Field $\to$ Subfield $\to$ Topic)** | 100% precomputed multi-level structure directly compatible with Plotly `go.Sunburst`. |
 | **Delineating a Specific Emerging Research Front (micro-front)** | **Ad-Hoc Contemporary Bibliographic Coupling** | Fine granularity. OpenAlex Topics group ~50 to 200 papers per year; ad-hoc coupling isolates specific frontier clusters of 10 to 30 articles. |
 | **Temporal Evolution of a Multidisciplinary Topic** | **Hybrid: Subfield/Topic Filtering + AMI Lineages** | Extracts the subfield literature and tracks annual bifurcations and merges using the AMI metric. |

@@ -104,8 +104,8 @@ Below is a summary of which analytical entity each model applies to, its formula
 ```
 
 * **Upstream Skills (Corpus Providers):**
-  - [`openalex-mexico-works-search`](../openalex-mexico-clickhouse/openalex-mexico-works-search/SKILL.md): Extraction of Mexican publication corpora in Parquet/JSON format.
-  - [`openalex-harvester`](../openalex-harvester/SKILL.md) / [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`arxiv-harvester`](../arxiv-harvester/SKILL.md): Normalized scientific literature downloads.
+  - [`openalex-harvester`](../openalex-harvester/SKILL.md) / [`scopus-harvester`](../scopus-harvester/SKILL.md) / [`arxiv-harvester`](../arxiv-harvester/SKILL.md): Portable scientific literature harvests into canonical Parquet/CSV.
+  - [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) / [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md): Optional local ClickHouse snapshot accelerators when `CLICKHOUSE_HOST` is configured.
   - [`tlachia-metrics-handler`](../tlachia-metrics-handler/SKILL.md): Extraction of canonical document metadata packages.
 * **Downstream Skills (Analysis Consumers):**
   - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Incorporation of classical indicators into multidimensional profiles for SOM training.

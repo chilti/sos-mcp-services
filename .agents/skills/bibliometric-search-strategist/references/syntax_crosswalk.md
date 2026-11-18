@@ -1,23 +1,23 @@
 # Bibliographic Syntax Matrix and Operator Crosswalk
 
-Comprehensive syntax comparison for transpilation across Web of Science, Scopus, PubMed, and ClickHouse (`rag.works_academic_all`).
+Comprehensive syntax comparison for transpilation across OpenAlex API, Web of Science, Scopus, PubMed, and optional local ClickHouse SQL.
 
 ---
 
 ## 1. Boolean Operator and Special Character Mapping
 
-| Function | Web of Science | Scopus | PubMed | ClickHouse SQL |
-|---|---|---|---|---|
-| **Logical AND** | `AND` | `AND` | `AND` | `AND` |
-| **Logical OR** | `OR` | `OR` | `OR` | `OR` |
-| **Logical NOT** | `NOT` | `AND NOT` | `NOT` | `AND NOT` |
-| **Grouping** | `( ... )` | `( ... )` | `( ... )` | `( ... )` |
-| **Exact phrase** | `"phrase"` | `"phrase"` or `{phrase}` | `"phrase"` | `positionCaseInsensitiveUTF8(col, 'phrase') > 0` |
-| **Right truncation** | `term*` | `term*` | `term*` | `ilike(col, '%term%')` or regex |
-| **Single-char wildcard** | `?` (exactly 1) | `?` (exactly 1) | N/A | `_` in LIKE |
-| **Zero-or-one wildcard** | `$` (0 or 1 char) | N/A | N/A | regex `col ~ '...'` |
-| **Any-order proximity** | `term1 NEAR/n term2` | `term1 W/n term2` | N/A (`"term1 term2"~n`) | Logical combination / distance |
-| **Strict-order proximity** | N/A | `term1 PRE/n term2` | N/A | Regex with `\w+` spacer |
+| Function | Web of Science | Scopus | PubMed | OpenAlex API (`filter=` / `search=`) | Optional ClickHouse SQL |
+|---|---|---|---|---|---|
+| **Logical AND** | `AND` | `AND` | `AND` | Comma-separated filters / `AND` inside `.search` | `AND` |
+| **Logical OR** | `OR` | `OR` | `OR` | `OR` inside `.search` or pipe `\|` in values | `OR` |
+| **Logical NOT** | `NOT` | `AND NOT` | `NOT` | `NOT` inside `.search` or `!value` in filters | `AND NOT` |
+| **Grouping** | `( ... )` | `( ... )` | `( ... )` | `( ... )` | `( ... )` |
+| **Exact phrase** | `"phrase"` | `"phrase"` or `{phrase}` | `"phrase"` | `title_and_abstract.search:"phrase"` | `positionCaseInsensitiveUTF8(col, 'phrase') > 0` |
+| **Right truncation** | `term*` | `term*` | `term*` | Prefix/stem variants | `ilike(col, '%term%')` or regex |
+| **Single-char wildcard** | `?` (exactly 1) | `?` (exactly 1) | N/A | Expand explicit variants | `_` in LIKE |
+| **Zero-or-one wildcard** | `$` (0 or 1 char) | N/A | N/A | Expand explicit variants | regex `col ~ '...'` |
+| **Any-order proximity** | `term1 NEAR/n term2` | `term1 W/n term2` | `"term1 term2"~n` | Proximity-expanded phrase combinations | Logical combination / distance |
+| **Strict-order proximity** | N/A | `term1 PRE/n term2` | N/A | Exact ordered phrases | Regex with `\w+` spacer |
 
 ---
 
@@ -65,7 +65,17 @@ Comprehensive syntax comparison for transpilation across Web of Science, Scopus,
 - `[dp]`: Date of Publication (`2020/01/01:2024/12/31[dp]`).
 - `[lang]`: Language (`eng[lang]`, `spa[lang]`).
 
-### ClickHouse OpenAlex (`rag.works_academic_all`)
+### OpenAlex REST API (Portable Default)
+- **Endpoint:** `https://api.openalex.org/works`
+- **Search & Filter Parameters:**
+  - `title_and_abstract.search:`: Boolean search over titles and inverted abstracts.
+  - `title.search:`: Title-only Boolean search.
+  - `publication_year:`: Exact year or range (`2020-2026`).
+  - `type:`: Document types (`article|review|preprint`).
+  - `authorships.institutions.country_code:`: ISO-2 country filter (`MX`, `US`).
+  - `open_access.oa_status:`: `diamond|gold|green|hybrid|bronze|closed`.
+
+### Optional Local ClickHouse OpenAlex Snapshot (`rag.works_flat` / `rag.works_academic_all`)
 - **Inviolable rule:** Zero JOINs.
 - **Core fields:**
   - `id`: Canonical OpenAlex Work ID (`https://openalex.org/W...`).

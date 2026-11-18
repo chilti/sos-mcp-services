@@ -1,6 +1,6 @@
 ---
 name: bibliometric-search-strategist
-description: Expert construction of advanced bibliographic search strategies and scientific field delineation (Huang & Porter multi-stage Field Delineation, conceptual building blocks, Pearl Growing, and multi-database translation across Web of Science, Scopus, PubMed, and ClickHouse), audited under the GLOBAL (ISSI) guideline. Respond and label outputs in the user's language.
+description: Expert construction of advanced bibliographic search strategies and scientific field delineation (Huang & Porter multi-stage Field Delineation, conceptual building blocks, Pearl Growing, and multi-database translation across OpenAlex API, Web of Science, Scopus, PubMed, plus optional local ClickHouse acceleration), audited under the GLOBAL (ISSI) guideline. Respond and label outputs in the user's language.
 metadata:
   python: ">=3.10"
   script: "scripts/query_synthesizer.py"
@@ -68,7 +68,7 @@ Exact phrases (`"..."`) are rigid and ignore intervening adjectives or inversion
 * **Web of Science:** `termA NEAR/n termB` (at most $n$ intervening words in either order).
 * **Scopus:** `termA W/n termB` (either order) or `termA PRE/n termB` (strict order).
 * **PubMed:** `"termA termB"~n` (edit-distance proximity).
-* **ClickHouse (`rag.works_academic_all`):** Boolean combination of synonymous positional expressions.
+* **OpenAlex API / Optional Local Snapshot:** Boolean/filter combination of synonymous positional or full-text search terms (`title_and_abstract.search=` in OpenAlex API; `positionCaseInsensitiveUTF8` when using optional local ClickHouse).
 
 ### 2.3. Safe Truncation
 * **Asterisk (`*`):** Zero or more characters (`nanopart*`). **Prohibition:** Never use truncation on word stems shorter than 4 characters (e.g., `pol*` causes massive lexical overflow with *policy, polymer, police, polish, pollen*).
@@ -78,20 +78,18 @@ Exact phrases (`"..."`) are rigid and ignore intervening adjectives or inversion
 
 ## 3. Multi-Platform Translation Matrix (Polyglot Crosswalk)
 
-| Field / Parameter | Web of Science (WoS) | Scopus (Elsevier) | PubMed (NLM) | OpenAlex / ClickHouse (`rag.works_academic_all`) |
+| Field / Parameter | Web of Science (WoS) | Scopus (Elsevier) | PubMed (NLM) | OpenAlex REST API (Portable Default) |
 |---|---|---|---|---|
-| **Title + Abstract + Keywords** | `TS=("deep learning" OR "neural net*")` | `TITLE-ABS-KEY("deep learning" OR "neural net*")` | `("deep learning"[tiab] OR "neural net*"[tiab])` | `(positionCaseInsensitiveUTF8(title, 'deep learning') > 0 OR positionCaseInsensitiveUTF8(title, 'neural net') > 0)` |
-| **Title Only** | `TI=("quantum computing")` | `TITLE("quantum computing")` | `"quantum computing"[ti]` | `positionCaseInsensitiveUTF8(title, 'quantum computing') > 0` |
-| **Author Keywords** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `arrayExists(x -> positionCaseInsensitiveUTF8(x, 'solar cell') > 0, keywords)` |
-| **Topics / Categories** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `positionCaseInsensitiveUTF8(topic, 'Solar Cells') > 0` |
-| **Time Window** | `PY=(2015-2024)` | `PUBYEAR > 2014 AND PUBYEAR < 2025` | `2015:2024[dp]` | `(publication_year >= 2015 AND publication_year <= 2024)` |
-| **Document Types** | `DT=(Article OR Review)` | `(DOCTYPE(ar) OR DOCTYPE(re))` | `("journal article"[pt] OR "review"[pt])` | `type IN ('article', 'review')` |
-| **Diamond Open Access** | `OA=(Diamond)` *(or manual filter)* | `OA(NONE)` *(with APC mapping)* | N/A *(via PMC)* | `oa_status = 'diamond'` |
+| **Title + Abstract / Keywords** | `TS=("deep learning" OR "neural net*")` | `TITLE-ABS-KEY("deep learning" OR "neural net*")` | `("deep learning"[tiab] OR "neural net*"[tiab])` | `filter=title_and_abstract.search:("deep learning" OR "neural network")` |
+| **Title Only** | `TI=("quantum computing")` | `TITLE("quantum computing")` | `"quantum computing"[ti]` | `filter=title.search:"quantum computing"` |
+| **Author Keywords** | `AK=("solar cell*")` | `AUTHKEY("solar cell*")` | `"solar cells"[ot]` | `search="solar cell"` *(or topic/keyword filter)* |
+| **Topics / Categories** | `WC=("Energy & Fuels")` | `SUBJAREA(ENER)` | `"Solar Energy"[mesh]` | `filter=primary_topic.id:T...` |
+| **Time Window** | `PY=(2015-2024)` | `PUBYEAR > 2014 AND PUBYEAR < 2025` | `2015:2024[dp]` | `filter=publication_year:2015-2024` |
+| **Document Types** | `DT=(Article OR Review)` | `(DOCTYPE(ar) OR DOCTYPE(re))` | `("journal article"[pt] OR "review"[pt])` | `filter=type:article\|review` |
+| **Diamond Open Access** | `OA=(Diamond)` *(or manual filter)* | `OA(NONE)` *(with APC mapping)* | N/A *(via PMC)* | `filter=open_access.oa_status:diamond` |
 
-### ClickHouse Rules (`rag.works_academic_all`)
-1. **ZERO JOINS:** Resolve the entire query against the precomputed denormalized table.
-2. **Production Columns:** Use `title`, `author_names`, `institution_names`, `topic`, `keywords`, `all_country_codes`.
-3. **Columnar Optimization:** Use `positionCaseInsensitiveUTF8(col, 'term') > 0` and higher-order array functions (`arrayExists(...)`).
+### Optional Local ClickHouse Accelerator (When `CLICKHOUSE_HOST` Is Set or `--include-clickhouse` Is Passed)
+When running inside an environment with an OpenAlex ClickHouse snapshot (`rag.works_flat` globally or `rag.works_academic_all` for Mexico), follow the **ZERO JOINs** rule using columnar functions (`positionCaseInsensitiveUTF8(col, 'term') > 0`, `arrayExists(...)`). See [`clickhouse_accelerator.md`](references/clickhouse_accelerator.md).
 
 ---
 
@@ -124,7 +122,7 @@ Standalone CLI for syntactic validation, multi-database transpilation, and GLOBA
   --action validate \
   --query '("causal inference" OR "structural causal model*") AND (LLM OR "large language model*")'
 
-# Transpile JSON blocks to WoS, Scopus, PubMed, ClickHouse and generate GLOBAL audit
+# Transpile JSON blocks to OpenAlex API, WoS, Scopus, PubMed (plus optional ClickHouse via --include-clickhouse) and generate GLOBAL audit
 /home/ambientesPy/revistaslatam/bin/python \
   /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/bibliometric-search-strategist/scripts/query_synthesizer.py \
   --action transpile \
@@ -165,7 +163,7 @@ Standalone CLI for syntactic validation, multi-database transpilation, and GLOBA
 
 1. **Initial Delineation:** Design conceptual blocks (*building blocks*) and transpile queries using `bibliometric-search-strategist`.
 2. **Quality Audit:** Generate and review the `global_audit.md` report.
-3. **Bulk Harvesting:** Extract global data with [`openalex-harvester`](../openalex-harvester/SKILL.md) or Mexican output with [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md).
+3. **Bulk Harvesting:** Extract global or national OpenAlex data autonomously with [`openalex-harvester`](../openalex-harvester/SKILL.md) (or leverage the optional local ClickHouse snapshot via [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) / [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) when configured).
 4. **Review and Snowballing:** Chain with [`deep-literature-researcher`](../deep-literature-researcher/SKILL.md) to execute in-depth literature review and citation density filtering.
 5. **Network and SOM Mapping:** Process with [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md) and [`som-methodological-expert`](../som-methodological-expert/SKILL.md).
 

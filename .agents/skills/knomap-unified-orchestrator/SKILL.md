@@ -23,12 +23,14 @@ All ecosystem skills communicate through standardized artifacts in the project w
 ## 2. 4-Stage Orchestration Protocol
 
 ### Stage 1: Conceptual Delineation, Identity Resolution, and Harvesting (`./corpus.parquet`)
-1. **Field Delineation:** Invoke `bibliometric-search-strategist` (`scripts/query_synthesizer.py`) to construct conceptual blocks audited under the GLOBAL (ISSI) guideline and transpile to ClickHouse SQL (`clickhouse_query.sql`), WoS, Scopus, and PubMed.
-2. **Entity Resolution (if applicable to Mexico):** Invoke `openalex-mexico-institutions`, `openalex-mexico-author-search`, and `snii-identity-resolver`.
-3. **Canonical Corpus Extraction (`./corpus.parquet`):**
-   - **Global (464.8M works in `rag.works_flat`):** Use `openalex-search-engineer` (`scripts/openalex_search_cli.py search-works --sql-file ./queries/clickhouse_query.sql --output ./corpus.parquet`) or `openalex-harvester`.
-   - **National Mexico (1.65M works in `rag.works_academic_all`):** Use `openalex-mexico-works-search` (`openalex_mexico_cli.py search-works --output ./corpus.parquet`).
-   - **Specialized external databases:** Use `scopus-harvester`, `pubmed-harvester`, `arxiv-harvester`, `semantic-scholar-harvester`, or `deep-literature-researcher` (Snowballing).
+1. **Field Delineation:** Invoke `bibliometric-search-strategist` (`scripts/query_synthesizer.py`) to construct conceptual blocks audited under the GLOBAL (ISSI) guideline and transpile to OpenAlex API query syntax (`openalex_query.txt`), WoS, Scopus, and PubMed (plus optional ClickHouse SQL via `--include-clickhouse` when a local snapshot is active).
+2. **Canonical Corpus Extraction (`./corpus.parquet` — Autonomous Default):**
+   - **Global or Country-Specific OpenAlex Harvesting:** Use [`openalex-harvester`](../openalex-harvester/SKILL.md) (cursor-paginated OpenAlex REST API) as the primary portable extractor producing `./corpus.parquet`.
+   - **Specialized external databases:** Use `scopus-harvester`, `pubmed-harvester`, `arxiv-harvester`, `semantic-scholar-harvester`, `scientometrics-incites-expert`, or `deep-literature-researcher` (Snowballing).
+3. **Optional High-Speed Local Accelerator (ClickHouse OpenAlex Snapshot — Opt-In):**
+   - Only when `CLICKHOUSE_HOST` is configured in the environment and accelerator skills are active (see [`references/clickhouse_accelerator.md`](references/clickhouse_accelerator.md)):
+     * **Global Snapshot (`rag.works_flat`):** Use `openalex-search-engineer` (`scripts/openalex_search_cli.py`) for massive rate-limit-free harvests and exact global denominator queries ($CShareD$, $DShareC$).
+     * **Mexican National / SNII (`rag.works_academic_all`):** Use `openalex-mexico-clickhouse` (`openalex-mexico-institutions`, `openalex-mexico-author-search`, `snii-identity-resolver`, and 768d Nomic semantic search).
 
 ### Stage 2: Analytical Engines and Matrix Construction (`./matrices/` and `./reports/`)
 All Stage 2 skills read `./corpus.parquet` directly:
@@ -49,20 +51,21 @@ All Stage 2 skills read `./corpus.parquet` directly:
    - `open-access-monitor` (`open_access_monitor_cli.py`: 6 OA routes and observed vs. list APC expenditure in USD).
    - `sdg-impact-intelligence` (`sdg_impact_cli.py`: SDGs 1–17).
 
-### Stage 3: Neurocomputational Cartography (SOM Triad) and Executive Visualization
-1. **Note on Dimension Selection:** While there are 4 classical cardinal dimensions (Volume, Citation Impact, Top 10%/1% Excellence, and Collaboration/OA), the agent can choose **any subset of the 35+ indicators** from `./matrices/*.parquet` via `--indicator-cols` tailored to the research question.
+### Stage 3: Neurocomputational Cartography (Big SOM Triad) and Executive Visualization
+1. **Note on Dimension Selection:** While there are 4 cardinal dimensions (Volume, Citation Impact, Top 10%/1% Excellence, and Collaboration/OA), the agent can choose **any subset of the 42 indicators** from `./matrices/*.parquet` via `--indicator-cols` tailored to the research question. Always apply the **Big SOM ($10 \cdot N$ with SVD spectral ratio, `--grid-type big`)** sizing rule.
 2. **Static SOM and Comparable Peers (`som-methodological-expert`):**
-   - `scripts/som_pipeline_cli.py --input ./matrices/indicadores_som.parquet --state-out ./reports/som_state.json --html-out ./reports/som_dashboard.html --diagnosis-out ./reports/som_diagnosis.json`
+   - `scripts/som_pipeline_cli.py --input ./matrices/indicadores_som.parquet --grid-type big --state-out ./reports/som_state.json --html-out ./reports/som_dashboard.html --diagnosis-out ./reports/som_diagnosis.json`
 3. **Continuous Trajectory SOM (`som-trajectory-mapping`):**
-   - `scripts/som_trajectory_cli.py --input ./matrices/series_cma_som.parquet --top-entities 5 --html-out ./reports/som_trajectories.html --json-out ./reports/som_trajectories.json`
+   - `scripts/som_trajectory_cli.py --input ./matrices/series_cma_som.parquet --grid-type big --top-entities 5 --html-out ./reports/som_trajectories.html --json-out ./reports/som_trajectories.json`
 4. **Warm-Start Longitudinal SOM (`neural-longitudinal-mapping`):**
-   - `scripts/neural_longitudinal_cli.py prepare` + `analyze` over `./matrices/periodos_som.parquet`.
+   - `scripts/neural_longitudinal_cli.py prepare` + `train` (Big SOM dimensions) + `analyze` over `./matrices/periodos_som.parquet`.
 5. **Executive Visualizer (`openalex-mexico-visualizer`):**
    - `openalex_mexico_viz_cli.py` for rankings, dual time series, OA donuts, and SDG grids in `./reports/`.
 
-### Stage 4: Documentary Synthesis
-Integrate all quantitative findings and links to `./reports/` using one of the 4 master templates:
-- `template-articulo-cientifico-imryd`
-- `template-informe-tecnico-institucional`
-- `template-policy-brief-gobernanza`
-- `template-radar-frentes-investigacion`
+### Stage 4: Documentary Synthesis, OpenAlex Reference Audit, and `.docx`/`.pdf` Export
+1. Integrate all quantitative findings, numbered tables (`Table 1`, ... without `N/D`), and embedded 300 DPI PNG figures (`![Figure N. ...](./reports/...)`) using one of the 4 master templates:
+   - `template-articulo-cientifico-imryd`
+   - `template-informe-tecnico-institucional`
+   - `template-policy-brief-gobernanza`
+   - `template-radar-frentes-investigacion`
+2. Verify all cited references 1:1 against OpenAlex (`./corpus.parquet` or `https://api.openalex.org/works`) and compile final **Word (`.docx`)** and **PDF (`.pdf`)** deliverables with visual page inspection.

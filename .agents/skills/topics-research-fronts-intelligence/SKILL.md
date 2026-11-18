@@ -1,7 +1,7 @@
 ---
 name: topics-research-fronts-intelligence
 description: >-
-  Analytical engine for detecting, delineating, and longitudinally tracking research fronts in bibliometric networks (bibliographic coupling, co-citation, direct citations, and OpenAlex Topics). Operates under the Workspace-First principle consuming prior local corpora (Parquet/CSV) or querying the global ClickHouse table (rag.works_flat) with zero JOINs. Models communities via the Leiden algorithm (CPM), tracks temporal lineages using Adjusted Mutual Information (AMI), classifies evolutionary events (Persistence, Split, Merge, Genesis), and generates interactive alluvial diagrams (Plotly HTML) linked with bibliometric-network-analyst. Respond and label outputs in the user's language.
+  Analytical engine for detecting, delineating, and longitudinally tracking research fronts in bibliometric networks (bibliographic coupling, co-citation, direct citations, and OpenAlex Topics). Operates under the Workspace-First principle consuming prior local corpora (Parquet/CSV) or falling back autonomously to the OpenAlex API (with optional high-speed local ClickHouse acceleration when configured). Models communities via the Leiden algorithm (CPM), tracks temporal lineages using Adjusted Mutual Information (AMI), classifies evolutionary events (Persistence, Split, Merge, Genesis), and generates interactive alluvial diagrams (Plotly HTML) linked with bibliometric-network-analyst. Respond and label outputs in the user's language.
 ---
 
 # Skill: Topics & Research Fronts Intelligence
@@ -31,7 +31,7 @@ This skill strictly follows the principle of **decoupling ingestion from analysi
 ```mermaid
 flowchart LR
     subgraph Stage_1["Stage 1: Ingestion & Harvesting"]
-        H["bibliometric-search-strategist<br>openalex-harvester / ClickHouse"] -->|Persists in workspace| W["corpus.parquet / corpus.csv"]
+        H["bibliometric-search-strategist<br>openalex-harvester / Optional ClickHouse"] -->|Persists in workspace| W["corpus.parquet / corpus.csv"]
     end
     subgraph Stage_2["Stage 2: topics-research-fronts-intelligence"]
         W -->|Primary Mode: Direct Ingestion| F["build_bibliometric_fronts.py"]
@@ -52,8 +52,8 @@ To process a previously harvested corpus, the skill only requires a tabular file
 - `topic` or `topic_id` (optional): If using the native OpenAlex taxonomy.
 - `cited_by_count` and `fwci` (optional): To identify *Core Papers* and the visibility of each front.
 
-### 2.2. Standalone / Contingency Mode (ClickHouse `rag.works_flat`)
-If the user invokes the skill standalone without a previously downloaded corpus, the skill can query the global ClickHouse database directly on **`rag.works_flat`** (464.8M worldwide records) under the strict **ZERO JOINs** rule.
+### 2.2. Standalone / Contingency Mode (OpenAlex API Default + Optional ClickHouse Accelerator)
+If invoked standalone without a previously downloaded corpus (`./corpus.parquet`), the script falls back autonomously to the **OpenAlex REST API (`https://api.openalex.org/works`)** (or uses the local OpenAlex ClickHouse snapshot `rag.works_flat` under the **ZERO JOINs** rule when `CLICKHOUSE_HOST` is explicitly configured in the environment).
 
 ---
 
@@ -64,7 +64,7 @@ graph TD
     subgraph Methods["Research Front Detection Strategies"]
         M1["A. Bibliographic Coupling (coupling)<br><b>Recommended for Emerging Fronts</b><br>Zero temporal latency. Clusters of current articles.<br>Formula: Salton or Association Strength"]
         M2["B. Document Co-Citation (cocitation)<br><b>Recommended for Intellectual Base</b><br>Identification of foundational documents (Core Papers)<br>slight citation time lag"]
-        M3["C. OpenAlex Topics Taxonomy (topics)<br><b>Recommended for Rapid Macroscopic Mapping</b><br>Uses precomputed CWTS Leiden partition in rag.works_flat<br>Hierarchy: Domain -> Field -> Subfield -> Topic"]
+        M3["C. OpenAlex Topics Taxonomy (topics)<br><b>Recommended for Rapid Macroscopic Mapping</b><br>Uses precomputed CWTS Leiden OpenAlex Topics<br>Hierarchy: Domain -> Field -> Subfield -> Topic"]
         M4["D. Hybrid Approach (hybrid)<br><b>Recommended for Low Citation Density</b><br>Fusion: lambda * Coupling + (1-lambda) * TF-IDF"]
     end
 ```
@@ -114,7 +114,7 @@ The agent must execute the reproducible scripts using the official environment:
   --output-dir reports
 ```
 
-#### Mode B: Direct Fallback on ClickHouse (`rag.works_flat` — Standalone)
+#### Mode B: Standalone Contingency Fallback (OpenAlex API or Optional Local ClickHouse)
 ```bash
 /home/ambientesPy/revistaslatam/bin/python /mnt/expansion/desplegados/sos-mcp-services/.agents/skills/topics-research-fronts-intelligence/scripts/build_bibliometric_fronts.py \
   --topic-id T10023 \
@@ -195,11 +195,10 @@ graph TD
 
 ## 7. Data Availability and Anti-Hallucination Rules
 
-1. **Global Table in ClickHouse:** Any direct query must target `rag.works_flat` (464.8M global records), not `rag.works_academic_all` (which is scoped to Mexico).
-2. **ZERO JOINs Rule:** Performing `JOIN` operations in ClickHouse is strictly prohibited. All queries must filter column-wise over denormalized fields (`domain_name`, `field_name`, `subfield_name`, `topic`, `topic_id`, `has(all_topics, '...')`).
-3. **Real References:** The reference column in `rag.works_flat` is `referenced_works: Array(String)`. Never invent column names such as `references_ids` or `cites_list`.
-4. **Prohibition of Synthetic Data:** If no links exceed the minimum similarity threshold, report that the network is sparse and the fronts do not reach critical mass; never fabricate fictional clusters.
-5. **Zero-Scaffolding Leakage:** In reports and manuscripts produced for the user, omit references to prompts, internal scripts, or chat mechanics; the document must read like a formal scientometric study.
+1. **Workspace-First OpenAlex Schema:** Prefer `./corpus.parquet` generated via `openalex-harvester` (or via optional local ClickHouse snapshot `rag.works_flat` when `CLICKHOUSE_HOST` is set, strictly respecting **ZERO JOINs**).
+2. **Real References:** The canonical reference array column is `referenced_works: Array(String)`. Never invent column names such as `references_ids` or `cites_list`.
+3. **Prohibition of Synthetic Data:** If no links exceed the minimum similarity threshold, report that the network is sparse and the fronts do not reach critical mass; never fabricate fictional clusters.
+4. **Zero-Scaffolding Leakage:** In reports and manuscripts produced for the user, omit references to prompts, internal scripts, or chat mechanics; the document must read like a formal scientometric study.
 
 ---
 

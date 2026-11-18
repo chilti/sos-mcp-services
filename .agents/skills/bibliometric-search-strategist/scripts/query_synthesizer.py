@@ -4,7 +4,7 @@ query_synthesizer.py
 
 Multi-platform validator, synthesizer, and transpiler for bibliographic
 search strategies in scientometrics and systematic reviews.
-Supports Web of Science, Scopus, PubMed, and ClickHouse (rag.works_academic_all).
+Supports OpenAlex API, Web of Science, Scopus, PubMed, and optional ClickHouse SQL.
 """
 
 import argparse
@@ -160,7 +160,7 @@ class QueryValidator:
 
 
 class QueryTranspiler:
-    """Transpiles a structured block definition into WoS, Scopus, PubMed, and ClickHouse."""
+    """Transpiles a structured block definition into OpenAlex API, WoS, Scopus, PubMed, and optional ClickHouse."""
 
     def __init__(self, spec: Dict[str, Any], lang: str = "en"):
         self.spec = spec
@@ -260,6 +260,49 @@ class QueryTranspiler:
             query += "\n  AND " + "\n  AND ".join(filter_parts)
 
         return query
+
+    def to_openalex_api(self) -> str:
+        """Generate portable OpenAlex REST API filter and boolean query syntax."""
+        block_clauses = []
+        for block in self.blocks:
+            terms = block.get("terms", [])
+            oa_terms = []
+            for t in terms:
+                clean_t = t.replace("*", "")
+                oa_terms.append(f'"{clean_t}"' if " " in clean_t and not clean_t.startswith('"') else clean_t)
+            if oa_terms:
+                block_clauses.append(f"({' OR '.join(oa_terms)})")
+
+        search_expr = " AND ".join(block_clauses)
+        filters = []
+        if search_expr:
+            filters.append(f"title_and_abstract.search:({search_expr})")
+
+        y_start = self.filters.get("year_start")
+        y_end = self.filters.get("year_end")
+        if y_start and y_end:
+            filters.append(f"publication_year:{y_start}-{y_end}")
+        elif y_start:
+            filters.append(f"publication_year:>{int(y_start) - 1}")
+
+        doc_types = self.filters.get("doc_types", [])
+        if doc_types:
+            filters.append(f"type:{'|'.join(d.lower() for d in doc_types)}")
+
+        countries = self.filters.get("countries", [])
+        if "Mexico" in countries or "MX" in countries:
+            filters.append("authorships.institutions.country_code:MX")
+
+        oa_status = self.filters.get("oa_status")
+        if oa_status:
+            filters.append(f"open_access.oa_status:{oa_status.lower()}")
+
+        filter_str = ",".join(filters)
+        out = "# Portable OpenAlex REST API Query\n"
+        out += f"# Endpoint: https://api.openalex.org/works\n\n"
+        out += f"title_and_abstract.search:\n{search_expr}\n\n"
+        out += f"filter=\n{filter_str}\n"
+        return out
 
     def to_clickhouse_sql(self, table_override: str = None) -> str:
         """Generate optimized SQL for rag.works_flat (global) or rag.works_academic_all (Mexico) with ZERO JOINs."""
@@ -370,8 +413,8 @@ class QueryTranspiler:
             md += "| Dimensión GLOBAL | Ítem de Auditoría | Estado | Especificación Metodológica |\n"
             md += "|---|---|:---:|---|\n"
             md += f"| **1. Justificación Conceptual** | Delimitación del dominio y preguntas | ✅ | Descomposición en {len(self.blocks)} bloques conceptuales ortogonales (Building Blocks). |\n"
-            md += "| **2. Fuentes y Snapshot** | Declaración de bases y fecha de corte | ℹ️ | Transpilación multi-base (WoS, Scopus, PubMed, ClickHouse). *Registrar fecha y huso horario exacto en la extracción final.* |\n"
-            md += "| **3. Delimitación de Campo** | Ecuación exacta y etiquetas de campo | ✅ | Sintaxis calibrada con etiquetas específicas (`TS=`, `TITLE-ABS-KEY()`, `[tiab]` y funciones nativas ClickHouse). |\n"
+            md += "| **2. Fuentes y Snapshot** | Declaración de bases y fecha de corte | ℹ️ | Transpilación multi-base (OpenAlex API, WoS, Scopus, PubMed). *Registrar fecha y huso horario exacto en la extracción final.* |\n"
+            md += "| **3. Delimitación de Campo** | Ecuación exacta y etiquetas de campo | ✅ | Sintaxis calibrada con etiquetas específicas (`title_and_abstract.search`, `TS=`, `TITLE-ABS-KEY()`, `[tiab]`). |\n"
             md += "| **4. Selección de Descriptores** | Vocabularios controlados y sinónimos | ✅ | Integración multi-esquema: MeSH, Topics de OpenAlex y vocabulario técnico no controlado. |\n"
             md += "| **5. Ortografía y Truncamiento** | Comodines seguros y balanceo léxico | ✅ | Comillas balanceadas, ausencia de comodines con raíces < 4 letras y operadores en mayúsculas auditados. |\n"
             md += f"| **6. Filtros y Límites** | Ventana temporal y tipos de documento | ✅ | Rango temporal: {y_start}–{y_end}; Tipologías admitidas: `{doc_types}`. |\n"
@@ -393,8 +436,8 @@ class QueryTranspiler:
             md += "| GLOBAL Dimension | Audit Item | Status | Methodological Specification |\n"
             md += "|---|---|:---:|---|\n"
             md += f"| **1. Conceptual Rationale** | Domain delineation and research questions | ✅ | Decomposed into {len(self.blocks)} orthogonal conceptual blocks (Building Blocks). |\n"
-            md += "| **2. Sources & Snapshot** | Database declaration and cutoff date | ℹ️ | Multi-database transpilation (WoS, Scopus, PubMed, ClickHouse). *Record exact extraction date and time zone upon final harvest.* |\n"
-            md += "| **3. Field Delineation** | Exact search string and field tags | ✅ | Calibrated syntax with specific field tags (`TS=`, `TITLE-ABS-KEY()`, `[tiab]`, and native ClickHouse functions). |\n"
+            md += "| **2. Sources & Snapshot** | Database declaration and cutoff date | ℹ️ | Multi-database transpilation (OpenAlex API, WoS, Scopus, PubMed). *Record exact extraction date and time zone upon final harvest.* |\n"
+            md += "| **3. Field Delineation** | Exact search string and field tags | ✅ | Calibrated syntax with specific field tags (`title_and_abstract.search`, `TS=`, `TITLE-ABS-KEY()`, `[tiab]`). |\n"
             md += "| **4. Descriptor Selection** | Controlled vocabularies and synonyms | ✅ | Multi-scheme integration: MeSH, OpenAlex Topics, and uncontrolled technical vocabulary. |\n"
             md += "| **5. Spelling & Truncation** | Safe wildcards and lexical balancing | ✅ | Balanced quotes, no wildcards with stems < 4 letters, and audited uppercase operators. |\n"
             md += f"| **6. Filters & Limits** | Time window and document types | ✅ | Time window: {y_start}–{y_end}; Admitted document types: `{doc_types}`. |\n"
@@ -411,6 +454,11 @@ def main():
     parser.add_argument("--query", type=str, help="Boolean search string to validate or format")
     parser.add_argument("--config", type=str, help="JSON/YAML file with conceptual block definitions")
     parser.add_argument("--output", type=str, default="./search_output", help="Directory to save generated artifacts")
+    parser.add_argument(
+        "--include-clickhouse",
+        action="store_true",
+        help="Also generate optional local ClickHouse SQL (auto-enabled when CLICKHOUSE_HOST env var is set)",
+    )
     parser.add_argument(
         "--lang",
         type=str,
@@ -461,25 +509,30 @@ def main():
         wos_q = transpiler.to_wos()
         scopus_q = transpiler.to_scopus()
         pubmed_q = transpiler.to_pubmed()
-        ch_sql = transpiler.to_clickhouse_sql()
+        openalex_q = transpiler.to_openalex_api()
         global_md = transpiler.generate_global_template()
 
+        with open(os.path.join(args.output, "openalex_query.txt"), "w", encoding="utf-8") as f:
+            f.write(openalex_q)
         with open(os.path.join(args.output, "wos_query.txt"), "w", encoding="utf-8") as f:
             f.write(wos_q)
         with open(os.path.join(args.output, "scopus_query.txt"), "w", encoding="utf-8") as f:
             f.write(scopus_q)
         with open(os.path.join(args.output, "pubmed_query.txt"), "w", encoding="utf-8") as f:
             f.write(pubmed_q)
-        with open(os.path.join(args.output, "clickhouse_query.sql"), "w", encoding="utf-8") as f:
-            f.write(ch_sql)
         with open(os.path.join(args.output, "global_audit.md"), "w", encoding="utf-8") as f:
             f.write(global_md)
 
         print(msg["transpile_done"].format(output=args.output))
+        print("  - openalex_query.txt (OpenAlex REST API)")
         print("  - wos_query.txt (Web of Science)")
         print("  - scopus_query.txt (Scopus)")
         print("  - pubmed_query.txt (PubMed)")
-        print("  - clickhouse_query.sql (ClickHouse / rag.works_academic_all)")
+        if args.include_clickhouse or os.getenv("CLICKHOUSE_HOST"):
+            ch_sql = transpiler.to_clickhouse_sql()
+            with open(os.path.join(args.output, "clickhouse_query.sql"), "w", encoding="utf-8") as f:
+                f.write(ch_sql)
+            print("  - clickhouse_query.sql (Optional Local ClickHouse Accelerator)")
         print("  - global_audit.md (GLOBAL / ISSI Audit)")
 
     elif args.action == "format":

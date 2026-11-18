@@ -25,8 +25,8 @@ flowchart TD
     end
 
     subgraph Phase2 ["2. Hybrid Collection & Delineation (Data Collection)"]
-        D3 --> H1["Boolean Search (High Recall in ClickHouse/APIs)"]
-        D3 --> H2["768d Semantic Vector Search (Nomic)"]
+        D3 --> H1["Boolean Search (OpenAlex API / WoS / Scopus / Optional Local Snapshot)"]
+        D3 --> H2["Semantic Vector Search (Optional 768d Local Embeddings)"]
         D3 --> H3["Snowballing with Glänzel Density Filter (k >= 2)"]
         H1 & H2 & H3 --> DUP["Deduplication & Unique Consolidation"]
     end
@@ -73,10 +73,9 @@ $$
 $$
 
 1. **Symbolic Tier (Boolean Recall):**
-   - Built with [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) and executed in ClickHouse (`rag.works_academic_all`) or global APIs (OpenAlex, WoS, Scopus).
-2. **Dense Semantic Tier (768d Embeddings):**
-   - Local dense vector representations (Nomic Embed v1.5 / 768 dimensions).
-   - Identifies conceptually related publications that express the problem using divergent vocabulary.
+   - Built with [`bibliometric-search-strategist`](../bibliometric-search-strategist/SKILL.md) and executed against **OpenAlex API** (portable default), WoS, or Scopus —or against an optional local OpenAlex ClickHouse snapshot when configured (`CLICKHOUSE_HOST`).
+2. **Dense Semantic Tier (768d Embeddings — Optional Local Accelerator):**
+   - When available locally (Nomic Embed v1.5 / 768 dimensions via ClickHouse/LM Studio), identifies conceptually related publications expressed with divergent vocabulary.
 3. **Reciprocal Rank Fusion (RRF, $k=60$):**
    - Combines both rankings, prioritizing documents at the intersection of both layers.
 
@@ -154,7 +153,7 @@ The qualitative synthesis report must be structured around 3 analytical axes:
 
 ## 6. Automated Tool: `scripts/citation_snowball.py`
 
-Standalone CLI for backward/forward snowballing with local ClickHouse (zero JOINs) and global OpenAlex, with optional automated Open Access full-text harvesting:
+Standalone CLI for backward/forward snowballing over global **OpenAlex API** (autonomous portable default), with optional local ClickHouse fast-path when `CLICKHOUSE_HOST` is set and optional automated Open Access full-text harvesting:
 
 ```bash
 # Backward and forward snowballing with density filter over seeds

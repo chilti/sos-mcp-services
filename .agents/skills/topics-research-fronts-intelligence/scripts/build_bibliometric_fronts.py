@@ -51,16 +51,17 @@ def parse_arguments():
         default=None,
         help="Ruta al archivo de corpus descargado previamente (Parquet o CSV)."
     )
-    # Parámetros de Fallback para ClickHouse
-    parser.add_argument("--ch-host", type=str, default="10.90.0.87", help="Host ClickHouse")
-    parser.add_argument("--ch-port", type=int, default=8124, help="Puerto ClickHouse HTTP")
-    parser.add_argument("--ch-user", type=str, default="rag_user", help="Usuario ClickHouse")
-    parser.add_argument("--ch-password", type=str, default="$B3tt3r-R4g-3veR-d0N3++", help="Password ClickHouse")
-    parser.add_argument("--ch-database", type=str, default="rag", help="Base de datos ClickHouse")
-    parser.add_argument("--topic-id", type=str, default=None, help="Filtrar por topic_id (ej. T10023) en rag.works_flat")
-    parser.add_argument("--subfield-name", type=str, default=None, help="Filtrar por subfield_name en rag.works_flat")
-    parser.add_argument("--sql-filter", type=str, default=None, help="Cláusula WHERE adicional (CERO JOINs)")
-    parser.add_argument("--limit", type=int, default=10000, help="Límite máximo de registros para extracción ClickHouse")
+    # Parámetros de Fallback Standalone (OpenAlex API por defecto; ClickHouse opcional opt-in)
+    parser.add_argument("--ch-host", type=str, default=os.getenv("CLICKHOUSE_HOST", ""), help="Host ClickHouse opcional (por defecto toma CLICKHOUSE_HOST si existe)")
+    parser.add_argument("--ch-port", type=int, default=int(os.getenv("CLICKHOUSE_PORT", "8124")), help="Puerto ClickHouse HTTP")
+    parser.add_argument("--ch-user", type=str, default=os.getenv("CLICKHOUSE_USER", "default"), help="Usuario ClickHouse")
+    parser.add_argument("--ch-password", type=str, default=os.getenv("CLICKHOUSE_PASSWORD", ""), help="Password ClickHouse")
+    parser.add_argument("--ch-database", type=str, default=os.getenv("CLICKHOUSE_DATABASE", "rag"), help="Base de datos ClickHouse")
+    parser.add_argument("--topic-id", type=str, default=None, help="Filtrar por OpenAlex topic_id (ej. T10023)")
+    parser.add_argument("--subfield-name", type=str, default=None, help="Filtrar por OpenAlex subfield name")
+    parser.add_argument("--query", type=str, default=None, help="Búsqueda textual libre en OpenAlex API si no hay corpus local")
+    parser.add_argument("--sql-filter", type=str, default=None, help="Cláusula WHERE adicional opcional (CERO JOINs)")
+    parser.add_argument("--limit", type=int, default=2000, help="Límite máximo de registros para extracción standalone")
 
     # Estrategia metodológica
     parser.add_argument(
@@ -137,12 +138,75 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def _fetch_openalex_api_fallback(args) -> pd.DataFrame:
+    """Fallback autónomo portátil vía OpenAlex REST API (cursor pagination) cuando no hay corpus local ni ClickHouse."""
+    import requests
+    base_url = "https://api.openalex.org/works"
+    filters = ["has_references:true"]
+    if args.topic_id:
+        tid = args.topic_id.split("/")[-1]
+        filters.append(f"primary_topic.id:{tid}")
+    if args.subfield_name:
+        filters.append(f'default.search:"{args.subfield_name}"')
+
+    params: Dict[str, Any] = {
+        "filter": ",".join(filters),
+        "sort": "cited_by_count:desc",
+        "per-page": 200,
+        "cursor": "*",
+    }
+    if args.query:
+        params["search"] = args.query
+    headers = {"User-Agent": "TopicsResearchFronts/1.0 (mailto:soporte@knomap.org)"}
+
+    rows: List[Dict[str, Any]] = []
+    limit = max(1, int(args.limit))
+    logger.info("Extrayendo corpus autónomo vía OpenAlex REST API (%s)...", base_url)
+    while len(rows) < limit:
+        resp = requests.get(base_url, params=params, headers=headers, timeout=20)
+        resp.raise_for_status()
+        payload = resp.json()
+        results = payload.get("results", [])
+        if not results:
+            break
+        for w in results:
+            pt = w.get("primary_topic") or {}
+            rows.append({
+                "id": w.get("id", ""),
+                "doi": w.get("doi", ""),
+                "title": w.get("title") or w.get("display_name") or "",
+                "abstract": "",
+                "publication_year": w.get("publication_year"),
+                "cited_by_count": w.get("cited_by_count", 0),
+                "fwci": w.get("fwci"),
+                "referenced_works": w.get("referenced_works") or [],
+                "topic": pt.get("display_name", ""),
+                "topic_id": (pt.get("id") or "").split("/")[-1],
+                "subfield_name": (pt.get("subfield") or {}).get("display_name", ""),
+                "field_name": (pt.get("field") or {}).get("display_name", ""),
+                "domain_name": (pt.get("domain") or {}).get("display_name", ""),
+                "author_names": [a.get("author", {}).get("display_name", "") for a in (w.get("authorships") or [])],
+                "institution_names": [ins.get("display_name", "") for a in (w.get("authorships") or []) for ins in (a.get("institutions") or [])],
+                "country_codes": [cc for a in (w.get("authorships") or []) for cc in (a.get("countries") or [])],
+            })
+            if len(rows) >= limit:
+                break
+        next_cursor = (payload.get("meta") or {}).get("next_cursor")
+        if not next_cursor:
+            break
+        params["cursor"] = next_cursor
+
+    df = pd.DataFrame(rows)
+    logger.info(f"Extraídos {len(df):,} documentos desde OpenAlex REST API.")
+    return df
+
+
 def load_corpus(args) -> pd.DataFrame:
     """
     Carga el corpus bajo el principio Workspace-First:
-    1. Si se especifica --input-file, lo carga.
-    2. Si no, busca archivos canónicos en el directorio activo.
-    3. Si no existen, ejecuta fallback a ClickHouse sobre rag.works_flat sin JOINs.
+    1. Si se especifica --input-file o existe corpus.parquet local, lo carga.
+    2. Si ClickHouse está configurado explícitamente (CLICKHOUSE_HOST / --ch-host), usa fast-path CERO JOINs.
+    3. En caso contrario, ejecuta fallback autónomo portátil contra OpenAlex REST API.
     """
     input_path = args.input_file
     if not input_path:
@@ -162,46 +226,54 @@ def load_corpus(args) -> pd.DataFrame:
         logger.info(f"Corpus cargado exitosamente: {len(df):,} documentos.")
         return df
 
-    # Fallback a ClickHouse rag.works_flat (Global)
-    logger.info("No se encontró archivo de corpus local. Ejecutando extracción de contingencia desde ClickHouse (rag.works_flat)...")
-    try:
-        import clickhouse_connect
-        client = clickhouse_connect.get_client(
-            host=args.ch_host,
-            port=args.ch_port,
-            username=args.ch_user,
-            password=args.ch_password,
-            database=args.ch_database
-        )
-        conditions = ["title != ''"]
-        if args.topic_id:
-            if args.topic_id.startswith("http"):
-                conditions.append(f"topic_id = '{args.topic_id}'")
-            else:
-                conditions.append(f"(topic_id = '{args.topic_id}' OR topic_id LIKE '%/{args.topic_id}')")
-        if args.subfield_name:
-            conditions.append(f"subfield_name = '{args.subfield_name}'")
-        if args.sql_filter:
-            conditions.append(f"({args.sql_filter})")
+    # Tier 2: Acelerador opcional ClickHouse (solo si está explícitamente configurado)
+    if args.ch_host:
+        logger.info("No se encontró corpus local; intentando acelerador ClickHouse configurado...")
+        try:
+            import clickhouse_connect
+            client = clickhouse_connect.get_client(
+                host=args.ch_host,
+                port=args.ch_port,
+                username=args.ch_user,
+                password=args.ch_password,
+                database=args.ch_database,
+                connect_timeout=3,
+            )
+            conditions = ["title != ''"]
+            if args.topic_id:
+                if args.topic_id.startswith("http"):
+                    conditions.append(f"topic_id = '{args.topic_id}'")
+                else:
+                    conditions.append(f"(topic_id = '{args.topic_id}' OR topic_id LIKE '%/{args.topic_id}')")
+            if args.subfield_name:
+                conditions.append(f"subfield_name = '{args.subfield_name}'")
+            if args.sql_filter:
+                conditions.append(f"({args.sql_filter})")
 
-        where_clause = " AND ".join(conditions)
-        query = f"""
-        SELECT
-            id, doi, title, abstract, publication_year, cited_by_count, fwci,
-            referenced_works, topic, topic_id, subfield_name, field_name, domain_name,
-            author_names, institution_names, country_codes
-        FROM rag.works_flat
-        WHERE {where_clause}
-        ORDER BY cited_by_count DESC
-        LIMIT {args.limit}
-        """
-        logger.info(f"Ejecutando SQL columnar determinista sin JOINs sobre rag.works_flat:\n{query}")
-        result = client.query(query)
-        df = pd.DataFrame(result.result_rows, columns=result.column_names)
-        logger.info(f"Extraídos {len(df):,} documentos desde rag.works_flat.")
-        return df
+            where_clause = " AND ".join(conditions)
+            query = f"""
+            SELECT
+                id, doi, title, abstract, publication_year, cited_by_count, fwci,
+                referenced_works, topic, topic_id, subfield_name, field_name, domain_name,
+                author_names, institution_names, country_codes
+            FROM rag.works_flat
+            WHERE {where_clause}
+            ORDER BY cited_by_count DESC
+            LIMIT {args.limit}
+            """
+            logger.info(f"Ejecutando SQL columnar determinista sin JOINs sobre rag.works_flat:\n{query}")
+            result = client.query(query)
+            df = pd.DataFrame(result.result_rows, columns=result.column_names)
+            logger.info(f"Extraídos {len(df):,} documentos desde rag.works_flat.")
+            return df
+        except Exception as e:
+            logger.warning(f"ClickHouse no accesible ({e}). Cambiando a fallback autónomo OpenAlex API.")
+
+    # Tier 3: Fallback autónomo portátil vía OpenAlex API
+    try:
+        return _fetch_openalex_api_fallback(args)
     except Exception as e:
-        logger.error(f"Fallo al conectar o extraer desde ClickHouse: {e}")
+        logger.error(f"Fallo al extraer corpus desde OpenAlex API: {e}")
         sys.exit(1)
 
 

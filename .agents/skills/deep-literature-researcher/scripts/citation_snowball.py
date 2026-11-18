@@ -4,8 +4,8 @@ citation_snowball.py
 
 Herramienta de Snowballing de Citas (Backward & Forward) sobre grafos de citación
 académica (Wohlin, 2014) para revisiones sistemáticas de literatura PRISMA 2020.
-Combina consultas locales de alta velocidad en ClickHouse (rag.works_academic_all, CERO JOINs)
-con la API pública de OpenAlex para cobertura internacional completa.
+Opera de forma autónoma sobre la API pública de OpenAlex y acelera opcionalmente
+mediante ClickHouse local (CERO JOINs) cuando CLICKHOUSE_HOST está configurado.
 Incluye adquisición opcional de texto completo en Acceso Abierto (--download-oa-pdfs).
 """
 
@@ -42,23 +42,25 @@ except ImportError:
 
 OPENALEX_API_BASE = "https://api.openalex.org/works"
 USER_AGENT = "DeepLiteratureResearcher/1.0 (mailto:soporte@knomap.org)"
+CH_DEFAULT_TABLE = os.getenv("CLICKHOUSE_TABLE", "rag.works_flat")
 
 
 def get_ch_client():
-    if not HAS_CLICKHOUSE:
+    """Conecta opcionalmente a ClickHouse solo si CLICKHOUSE_HOST está configurado explícitamente."""
+    host = os.getenv("CLICKHOUSE_HOST", "").strip()
+    if not HAS_CLICKHOUSE or not host:
         return None
     try:
-        host = os.getenv("CLICKHOUSE_HOST", "10.90.0.87")
         port = int(os.getenv("CLICKHOUSE_PORT", "8124"))
-        user = os.getenv("CLICKHOUSE_USER", "rag_user")
-        pwd = os.getenv("CLICKHOUSE_PASSWORD", "$B3tt3r-R4g-3veR-d0N3++").replace("$$", "$")
+        user = os.getenv("CLICKHOUSE_USER", "default")
+        pwd = os.getenv("CLICKHOUSE_PASSWORD", "").replace("$$", "$")
         db = os.getenv("CLICKHOUSE_DATABASE", "rag")
         return clickhouse_connect.get_client(
             host=host, port=port, username=user, password=pwd, database=db,
-            connect_timeout=3, send_receive_timeout=15
+            connect_timeout=2, send_receive_timeout=15
         )
     except Exception as e:
-        print(f"[Aviso] No se pudo conectar a ClickHouse local ({e}). Usando API OpenAlex.", file=sys.stderr)
+        print(f"[Aviso] ClickHouse local no disponible ({e}). Usando API OpenAlex.", file=sys.stderr)
         return None
 
 
@@ -83,39 +85,40 @@ def resolve_seed(identifier: str, ch_client=None) -> Optional[Dict[str, Any]]:
             identifier = f"10.48550/arXiv.{arxiv_match.group(1)}"
             is_doi = True
 
-    # Intento 1: ClickHouse local
+    # Intento 1: ClickHouse local (solo si está configurado)
     if ch_client:
         try:
+            ref_select = "referenced_works" if "works_flat" in CH_DEFAULT_TABLE else "JSONExtract(raw_data, 'referenced_works', 'Array(String)')"
             if is_doi:
                 doi_clean = re.search(r"10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", identifier)
                 if doi_clean:
-                    sql = f"SELECT id, doi, title, publication_year, cited_by_count, raw_data FROM rag.works_academic_all WHERE positionCaseInsensitiveUTF8(doi, '{doi_clean.group(0)}') > 0 LIMIT 1"
+                    sql = f"SELECT id, doi, title, publication_year, cited_by_count, {ref_select} FROM {CH_DEFAULT_TABLE} WHERE positionCaseInsensitiveUTF8(doi, '{doi_clean.group(0)}') > 0 LIMIT 1"
                     rows = ch_client.query(sql).result_rows
                     if rows:
                         r = rows[0]
-                        raw = json.loads(r[5]) if r[5] else {}
+                        refs = r[5] if isinstance(r[5], list) else []
                         return {
                             "id": clean_work_id(r[0]),
                             "doi": r[1],
                             "title": r[2],
                             "year": r[3],
                             "cited_by_count": r[4],
-                            "referenced_works": [clean_work_id(x) for x in raw.get("referenced_works", [])]
+                            "referenced_works": [clean_work_id(x) for x in refs]
                         }
             elif is_openalex:
                 w_id = clean_work_id(identifier)
-                sql = f"SELECT id, doi, title, publication_year, cited_by_count, raw_data FROM rag.works_academic_all WHERE id = 'https://openalex.org/{w_id}' OR id = '{w_id}' LIMIT 1"
+                sql = f"SELECT id, doi, title, publication_year, cited_by_count, {ref_select} FROM {CH_DEFAULT_TABLE} WHERE id = 'https://openalex.org/{w_id}' OR id = '{w_id}' LIMIT 1"
                 rows = ch_client.query(sql).result_rows
                 if rows:
                     r = rows[0]
-                    raw = json.loads(r[5]) if r[5] else {}
+                    refs = r[5] if isinstance(r[5], list) else []
                     return {
                         "id": clean_work_id(r[0]),
                         "doi": r[1],
                         "title": r[2],
                         "year": r[3],
                         "cited_by_count": r[4],
-                        "referenced_works": [clean_work_id(x) for x in raw.get("referenced_works", [])]
+                        "referenced_works": [clean_work_id(x) for x in refs]
                     }
         except Exception as e:
             print(f"[Debug] Fallo consulta local para {identifier}: {e}", file=sys.stderr)
@@ -164,7 +167,7 @@ def fetch_works_metadata(work_ids: List[str], ch_client=None) -> Dict[str, Dict[
                 chunk = full_ids[i:i + chunk_size]
                 sql = f"""
                 SELECT id, doi, title, publication_year, type, author_names, cited_by_count, fwci
-                FROM rag.works_academic_all
+                FROM {CH_DEFAULT_TABLE}
                 WHERE id IN ({','.join(chunk)})
                 """
                 rows = ch_client.query(sql).result_rows

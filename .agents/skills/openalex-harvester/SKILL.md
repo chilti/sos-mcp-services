@@ -30,9 +30,8 @@ Autonomous, standalone tool for bulk harvesting of scientific records from the O
   - [`tlachia-metrics-engine`](../tlachia-metrics-engine/SKILL.md): Processes the canonical Parquet file to compute over 30 scientometric indicators.
   - [`bibliometric-network-analyst`](../bibliometric-network-analyst/SKILL.md): Extracts co-authorship, bibliographic coupling, and term co-occurrence networks.
   - [`som-methodological-expert`](../som-methodological-expert/SKILL.md): Receives the profile matrix computed from the corpus.
-- **Differentiation from `openalex-mexico-clickhouse`:**
-  - If the query is about **Mexico** (Mexican universities, SNII researchers, national output), use [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md), which queries the ultra-fast local ClickHouse cluster with embeddings and ZERO JOINs.
-  - Use `openalex-harvester` when harvesting literature from **any country or topic worldwide** directly from the global OpenAlex API into canonical Parquet files.
+- **Primary Autonomous Extractor Worldwide:** Use `openalex-harvester` to harvest OpenAlex literature for **any country, institution, ROR, or global topic** directly from the public OpenAlex API into canonical Parquet files.
+- **Optional Local ClickHouse Acceleration (`openalex-search-engineer` / `openalex-mexico-clickhouse`):** When running inside an environment where a local OpenAlex ClickHouse snapshot is deployed (`CLICKHOUSE_HOST` configured), prefer [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) (global snapshot) or [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) (Mexican output + SNII + 768d embeddings) for millisecond-latency harvests without HTTP rate limits.
 
 ---
 
@@ -79,9 +78,8 @@ python scripts/openalex_harvest_cli.py fetch-institution-works \
 
 ## Common Mistakes and Anti-Patterns (Avoid Frequent Pitfalls)
 
-- ❌ **Anti-pattern 1: Harvesting literature via the public API that already resides in local ClickHouse**  
-  Using `openalex-harvester` to download UNAM or Mexican papers over the external API with network latency.  
-  **Solution:** For any research focused on Mexico, rely directly on `openalex-mexico-clickhouse` (1.65M local works with millisecond response times).
+- 💡 **Performance Tip (Optional Local ClickHouse Snapshot):**  
+  If your workspace has access to a local ClickHouse OpenAlex snapshot (`CLICKHOUSE_HOST` set), prefer [`openalex-search-engineer`](../openalex-search-engineer/SKILL.md) or [`openalex-mexico-clickhouse`](../openalex-mexico-clickhouse/SKILL.md) for high-volume harvests (avoiding HTTP pagination latency), while keeping `openalex-harvester` as the portable fallback everywhere else.
 - ❌ **Anti-pattern 2: Using traditional page-number pagination for large volumes**  
   OpenAlex limits conventional page pagination to the first 10,000 records.  
   **Solution:** The CLI automatically uses cursor pagination (`cursor=*`) for exhaustive harvests.
