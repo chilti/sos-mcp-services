@@ -50,6 +50,38 @@ def is_valid_geo_affiliation(aff_text: str, rx_pos: re.Pattern | None, rx_neg: r
     return has_pos and not has_neg
 
 
+def _extract_precomputed_vector(val: Any) -> list[float] | None:
+    """Normalizes a precomputed embedding array/list into an L2-unit float list, or None if empty."""
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return None
+    if isinstance(val, str):
+        s = val.strip()
+        if not s or s == "[]":
+            return None
+        try:
+            val = json.loads(s)
+        except Exception:
+            return None
+    try:
+        arr = np.asarray(val, dtype=np.float32).ravel()
+    except Exception:
+        return None
+    if arr.size < 16 or not np.all(np.isfinite(arr)):
+        return None
+    nrm = float(np.linalg.norm(arr))
+    if nrm <= 0.0:
+        return None
+    return (arr / nrm).astype(np.float32).tolist()
+
+
+def _join_seq_cell(val: Any, sep: str = ", ") -> str:
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return ""
+    if isinstance(val, (list, tuple, np.ndarray)):
+        return sep.join(str(x).strip() for x in val if str(x).strip())
+    return str(val).strip()
+
+
 def standardize_columns(df: pd.DataFrame, source_tag: str) -> pd.DataFrame:
     cols = [
         "oa_id", "doi_norm", "pmid_norm", "pmcid", "title", "title_norm",
@@ -71,6 +103,10 @@ def standardize_columns(df: pd.DataFrame, source_tag: str) -> pd.DataFrame:
     out["oa_id"] = out["oa_id"].map(norm_oa_id)
     out["title_norm"] = out["title"].map(norm_title)
     out["first_surname"] = out["author_names"].map(first_author_surname)
+    if "_precomputed_vec" in df.columns:
+        out["_precomputed_vec"] = df["_precomputed_vec"].values
+    else:
+        out["_precomputed_vec"] = None
     return out
 
 
@@ -187,6 +223,172 @@ def load_oa_manual_folder(oa_dir: Path, y0: int, y1: int, rx_pos: re.Pattern | N
     df = df[(df["publication_year"] >= y0) & (df["publication_year"] <= y1)].copy()
     print(f"  [OpenAlex Manual Export] {len(df)} records loaded from {oa_dir.name}/.")
     return standardize_columns(df, "oa_cleanroom_manual")
+
+
+def _resolve_precomputed_col(df: pd.DataFrame, preferred: str = "auto") -> str | None:
+    if preferred == "none":
+        return None
+    if preferred != "auto":
+        return preferred if preferred in df.columns else None
+    for cand in ("embedding_qwen", "embedding_nomic", "embedding", "dense_vector", "_precomputed_vec"):
+        if cand in df.columns:
+            return cand
+    return None
+
+
+def normalize_clickhouse_df(raw: pd.DataFrame, y0: int, y1: int, target_iso: str, source_tag: str = "clickhouse_mx_enriched", precomputed_col: str = "auto") -> pd.DataFrame:
+    """Normalizes ClickHouse works_mexico_abstracts_enriched / works_flat exports and retains precomputed dense vectors."""
+    if raw.empty:
+        return pd.DataFrame()
+    raw = raw.copy()
+    if "is_retracted" in raw.columns:
+        raw = raw[pd.to_numeric(raw["is_retracted"], errors="coerce").fillna(0) == 0]
+    if "is_paratext" in raw.columns:
+        raw = raw[pd.to_numeric(raw["is_paratext"], errors="coerce").fillna(0) == 0]
+    raw["publication_year"] = pd.to_numeric(raw.get("publication_year", 0), errors="coerce").fillna(0).astype(int)
+    raw = raw[(raw["publication_year"] >= y0) & (raw["publication_year"] <= y1)].copy()
+    if raw.empty:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(index=raw.index)
+    df["oa_id"] = raw.get("id", raw.get("oa_id", pd.Series("", index=raw.index))).map(norm_oa_id)
+    df["doi_norm"] = raw.get("doi", raw.get("doi_norm", pd.Series("", index=raw.index))).map(norm_doi)
+    df["pmid_norm"] = raw.get("pmid", raw.get("pmid_norm", pd.Series("", index=raw.index))).map(norm_pmid)
+    df["pmcid"] = raw.get("pmcid", pd.Series("", index=raw.index)).fillna("").astype(str)
+    df["title"] = raw.get("title", pd.Series("", index=raw.index)).fillna("").astype(str)
+    df["publication_year"] = raw["publication_year"]
+    df["doc_type"] = raw.get("type", raw.get("doc_type", pd.Series("", index=raw.index))).fillna("").astype(str).str.lower()
+    df["language"] = raw.get("language", pd.Series("", index=raw.index)).fillna("").astype(str).str.lower()
+    df["source_venue"] = raw.get("source_venue", raw.get("source_name", raw.get("source_id", pd.Series("", index=raw.index)))).fillna("").astype(str)
+    df["topic"] = raw.get("topic", pd.Series("", index=raw.index)).fillna("").astype(str)
+    df["subfield"] = raw.get("subfield", raw.get("subfield_name", pd.Series("", index=raw.index))).fillna("").astype(str)
+    df["field"] = raw.get("field", raw.get("field_name", pd.Series("", index=raw.index))).fillna("").astype(str)
+    df["domain"] = raw.get("domain", raw.get("domain_name", pd.Series("", index=raw.index))).fillna("").astype(str)
+
+    akw = raw["author_keywords"].map(lambda v: _join_seq_cell(v, ", ")) if "author_keywords" in raw.columns else pd.Series("", index=raw.index)
+    okw = raw["keywords"].map(lambda v: _join_seq_cell(v, ", ")) if "keywords" in raw.columns else pd.Series("", index=raw.index)
+    df["keywords"] = [
+        ", ".join(dict.fromkeys([t.strip() for t in f"{a}, {k}".split(",") if t.strip()]))
+        for a, k in zip(akw, okw)
+    ]
+    df["author_names"] = raw["author_names"].map(lambda v: _join_seq_cell(v, "; ")) if "author_names" in raw.columns else ""
+    if "country_codes" in raw.columns:
+        cc_vals = raw["country_codes"].map(lambda v: _join_seq_cell(v, ","))
+        df["country_codes"] = np.where(cc_vals.str.strip() != "", cc_vals, target_iso)
+    else:
+        df["country_codes"] = target_iso
+    df["abstract_final"] = raw.get("abstract_final", raw.get("abstract", pd.Series("", index=raw.index))).fillna("").astype(str)
+    df["abstract_source"] = raw.get("abstract_source", pd.Series("", index=raw.index)).fillna("").astype(str)
+    df["cited_by_count"] = pd.to_numeric(raw.get("cited_by_count", pd.Series(0, index=raw.index)), errors="coerce").fillna(0).astype(int)
+    df["fwci"] = pd.to_numeric(raw.get("fwci", pd.Series(0.0, index=raw.index)), errors="coerce").fillna(0.0).astype(float)
+    df["is_oa"] = raw.get("is_oa", pd.Series("", index=raw.index)).astype(str)
+    df["oa_status"] = raw.get("oa_status", pd.Series("", index=raw.index)).fillna("").astype(str)
+    df["apc_paid_usd"] = pd.to_numeric(raw.get("apc_paid_usd", pd.Series(0.0, index=raw.index)), errors="coerce").fillna(0.0).astype(float)
+
+    vec_col = _resolve_precomputed_col(raw, precomputed_col)
+    if vec_col:
+        df["_precomputed_vec"] = [_extract_precomputed_vector(v) for v in raw[vec_col].tolist()]
+        n_vec = sum(v is not None for v in df["_precomputed_vec"])
+        print(f"  [ClickHouse Precomputed Vectors] Column '{vec_col}' retained for {n_vec}/{len(df)} works.")
+    return standardize_columns(df, source_tag)
+
+
+def load_clickhouse_parquet_inputs(ch_path: Path | None, default_dir: Path, y0: int, y1: int, target_iso: str, precomputed_col: str) -> pd.DataFrame:
+    files: list[Path] = []
+    if ch_path is not None:
+        if ch_path.is_file():
+            files = [ch_path]
+        elif ch_path.is_dir():
+            files = sorted(ch_path.glob("*.parquet"))
+    elif default_dir.exists():
+        files = sorted(default_dir.glob("*.parquet"))
+    if not files:
+        return pd.DataFrame()
+    raw = pd.concat([pd.read_parquet(p) for p in files], ignore_index=True)
+    if "id" in raw.columns:
+        raw = raw.drop_duplicates(subset=["id"]).reset_index(drop=True)
+    df = normalize_clickhouse_df(raw, y0, y1, target_iso, source_tag="clickhouse_mx_enriched", precomputed_col=precomputed_col)
+    print(f"  [ClickHouse Parquet] {len(df)} records loaded from {len(files)} file(s).")
+    return df
+
+
+def harvest_clickhouse(spec_path: Path, cache_pq: Path, y0: int, y1: int, target_iso: str, env: dict[str, str], precomputed_col: str = "auto") -> pd.DataFrame:
+    """Executes ZERO-JOIN ClickHouse harvest reading precomputed MX vectors when available."""
+    if cache_pq.exists():
+        cached = pd.read_parquet(cache_pq)
+        if precomputed_col != "none" and precomputed_col != "auto" and precomputed_col in cached.columns:
+            cached["_precomputed_vec"] = [_extract_precomputed_vector(v) for v in cached[precomputed_col].tolist()]
+        print(f"  [ClickHouse Cache] {len(cached)} records loaded.")
+        return cached
+    if not spec_path.exists():
+        return pd.DataFrame()
+    try:
+        import clickhouse_connect
+    except ImportError as exc:
+        raise RuntimeError("clickhouse_connect is required for --openalex-cleanroom clickhouse (or pass --clickhouse-parquet).") from exc
+
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    ch_spec = spec.get("clickhouse") or {}
+    if not ch_spec.get("enriched_where"):
+        raise RuntimeError("Phase 0 clickhouse specification missing in openalex_api_broad.json; re-run 00_build_strategy.py.")
+
+    client = clickhouse_connect.get_client(
+        host=env.get("CLICKHOUSE_HOST") or env.get("CH_HOST") or "localhost",
+        port=int(env.get("CLICKHOUSE_PORT") or 8123),
+        username=env.get("CLICKHOUSE_USER") or "default",
+        password=env.get("CLICKHOUSE_PASSWORD") or env.get("CLICKHOUSE_CLEAN_PASSWORD") or "",
+        database=env.get("CLICKHOUSE_DATABASE") or "rag",
+        connect_timeout=10,
+        send_receive_timeout=300,
+    )
+    is_mx = bool(ch_spec.get("is_mx_enriched"))
+    vec_col = "embedding_nomic" if precomputed_col == "embedding_nomic" else "embedding_qwen"
+    if is_mx:
+        sel_cols = "id, doi, pmid, pmcid, publication_year, type, language, is_oa, source_id, title, author_keywords, keywords, abstract_final, abstract_source"
+        if precomputed_col != "none":
+            sel_cols += f", {vec_col}"
+        q1 = f"SELECT {sel_cols} FROM rag.works_mexico_abstracts_enriched FINAL WHERE {ch_spec['enriched_where']}"
+        df_base = client.query_df(q1)
+        flat_topics_where = ch_spec.get("flat_topics_where") or ""
+        if flat_topics_where:
+            df_tids = client.query_df(f"SELECT id FROM rag.works_flat WHERE {flat_topics_where}")
+            extra_ids = sorted(set(df_tids["id"].astype(str)) - set(df_base["id"].astype(str))) if not df_tids.empty else []
+            extra_chunks = []
+            for s in range(0, len(extra_ids), 5000):
+                batch_ids = ", ".join("'" + x.replace("'", "") + "'" for x in extra_ids[s : s + 5000])
+                extra_chunks.append(client.query_df(f"SELECT {sel_cols} FROM rag.works_mexico_abstracts_enriched FINAL WHERE id IN ({batch_ids})"))
+            if extra_chunks:
+                df_base = pd.concat([df_base] + extra_chunks, ignore_index=True).drop_duplicates(subset=["id"])
+
+        # ZERO-JOIN metadata enrichment from rag.works_flat by batched id IN (...)
+        all_ids = df_base["id"].dropna().astype(str).unique().tolist()
+        meta_chunks = []
+        for s in range(0, len(all_ids), 5000):
+            batch_ids = ", ".join("'" + x.replace("'", "") + "'" for x in all_ids[s : s + 5000])
+            qm = (
+                "SELECT id, topic, subfield, field, domain, author_names, country_codes, "
+                "cited_by_count, fwci, oa_status, apc_paid_usd, is_retracted, is_paratext "
+                f"FROM rag.works_flat WHERE id IN ({batch_ids})"
+            )
+            meta_chunks.append(client.query_df(qm))
+        if meta_chunks:
+            df_meta = pd.concat(meta_chunks, ignore_index=True).drop_duplicates(subset=["id"])
+            df_base = df_base.merge(df_meta, on="id", how="left")
+        out_df = normalize_clickhouse_df(df_base, y0, y1, target_iso, source_tag="clickhouse_mx_enriched", precomputed_col=vec_col if precomputed_col != "none" else "none")
+    else:
+        qf = (
+            "SELECT id, doi, pmid, publication_year, type, language, is_oa, source_id, title, "
+            "keywords, abstract, topic, subfield, field, domain, author_names, country_codes, "
+            "cited_by_count, fwci, oa_status, apc_paid_usd, is_retracted, is_paratext "
+            f"FROM rag.works_flat WHERE {ch_spec['enriched_where']}"
+        )
+        raw_flat = client.query_df(qf)
+        out_df = normalize_clickhouse_df(raw_flat, y0, y1, target_iso, source_tag="clickhouse_flat", precomputed_col="none")
+
+    if not out_df.empty:
+        out_df.to_parquet(cache_pq, index=False)
+    print(f"  [ClickHouse Direct] {len(out_df)} works harvested (ZERO JOINs).")
+    return out_df
 
 
 def harvest_pubmed(query_file: Path, y0: int, y1: int, cache_pq: Path, rx_pos: re.Pattern | None, rx_neg: re.Pattern | None, target_iso: str, c_name: str, refresh: bool = False) -> tuple[pd.DataFrame, int]:
@@ -429,8 +631,10 @@ def enrich_abstract_cascade(df: pd.DataFrame, email: str, oa_key: str | None, ca
     return df
 
 
-def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_dir: Path, backend: str = "auto") -> np.ndarray:
-    """Computes normalized dense embeddings via local HTTP endpoint (LM Studio/Ollama) or local sentence-transformers fallback."""
+def compute_embeddings(
+    df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_dir: Path, backend: str = "auto", precomputed_mode: str = "auto"
+) -> tuple[np.ndarray, dict[str, int]]:
+    """Reuses precomputed ClickHouse/Parquet vectors first, computing dense embeddings only for missing rows."""
     cache_path = cache_dir / "dense_embeddings_cache.npz"
     texts = [
         " | ".join([f"Title: {r.title}"] + ([f"Venue: {r.source_venue}"] if str(r.source_venue).strip() else []) + ([f"Topic: {r.topic}"] if str(r.topic).strip() else []) + ([f"Keywords: {r.keywords}"] if str(r.keywords).strip() else []) + ([f"Abstract: {str(r.abstract_final)[:3000]}"] if str(r.abstract_final).strip() else []))
@@ -438,10 +642,31 @@ def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_d
     ]
     hashes = [hashlib.sha1(t.encode("utf-8", errors="ignore")).hexdigest() for t in texts]
     vec_by_hash: dict[str, np.ndarray] = {}
+
+    n_pre = 0
+    pre_dim: int | None = None
+    if precomputed_mode != "none" and "_precomputed_vec" in df.columns:
+        valid_dims: dict[int, int] = {}
+        pre_arrs: dict[int, np.ndarray] = {}
+        for idx, raw_v in enumerate(df["_precomputed_vec"].tolist()):
+            arr = _extract_precomputed_vector(raw_v)
+            if arr is not None:
+                v = np.asarray(arr, dtype=np.float32)
+                pre_arrs[idx] = v
+                valid_dims[len(v)] = valid_dims.get(len(v), 0) + 1
+        if valid_dims:
+            pre_dim = max(valid_dims, key=valid_dims.get)
+            for idx, v in pre_arrs.items():
+                if len(v) == pre_dim:
+                    vec_by_hash[hashes[idx]] = v
+                    n_pre += 1
+            print(f"  [Precomputed Embeddings] Reused {n_pre}/{len(df)} vectors (dim={pre_dim}; 0 inference calls).")
+
     if cache_path.exists():
         npz = np.load(cache_path, allow_pickle=False)
         for h, v in zip(npz["hashes"], npz["vectors"]):
-            vec_by_hash[str(h)] = v.astype(np.float32)
+            if str(h) not in vec_by_hash and (pre_dim is None or len(v) == pre_dim):
+                vec_by_hash[str(h)] = v.astype(np.float32)
 
     missing = [i for i, h in enumerate(hashes) if h not in vec_by_hash]
     base_url = cfg["endpoints"]["embedding_base_url"].rstrip("/")
@@ -456,8 +681,9 @@ def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_d
         except Exception:
             use_http = False
 
+    n_computed = 0
     if missing and use_http:
-        print(f"  [Embeddings HTTP {base_url}] Computing {len(missing)} vectors (cached={len(df)-len(missing)})...")
+        print(f"  [Embeddings HTTP {base_url}] Computing {len(missing)} missing vectors (reused={len(df)-len(missing)})...")
         bs = 48
         for s in range(0, len(missing), bs):
             bidx = missing[s : s + bs]
@@ -469,8 +695,11 @@ def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_d
                         data = sorted(resp.json()["data"], key=lambda x: x["index"])
                         for li, it in zip(bidx, data):
                             v = np.asarray(it["embedding"], dtype=np.float32)
+                            if pre_dim is not None and len(v) != pre_dim:
+                                continue
                             nrm = np.linalg.norm(v)
                             vec_by_hash[hashes[li]] = (v / nrm) if nrm > 0 else v
+                            n_computed += 1
                         break
                 except Exception:
                     time.sleep(2.0 * (att + 1))
@@ -487,18 +716,21 @@ def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_d
             from sentence_transformers import SentenceTransformer
             for hf_model in hf_candidates:
                 try:
-                    print(f"  [Embeddings Local HF Cache: {hf_model}] Encoding {len(missing)} works...")
+                    print(f"  [Embeddings Local HF Cache: {hf_model}] Encoding {len(missing)} missing works...")
                     st = SentenceTransformer(hf_model, local_files_only=True, trust_remote_code=True)
                     embs = st.encode([texts[i][:4000] for i in missing], batch_size=32, normalize_embeddings=True, show_progress_bar=False)
+                    if pre_dim is not None and len(embs) and len(embs[0]) != pre_dim:
+                        continue
                     for li, v in zip(missing, embs):
                         vec_by_hash[hashes[li]] = np.asarray(v, dtype=np.float32)
+                        n_computed += 1
                     encoded_ok = True
                     break
                 except Exception:
                     continue
         except Exception:
             pass
-        if not encoded_ok:
+        if not encoded_ok and n_pre == 0:
             print("  [Embeddings Fallback SVD-TFIDF] No cached local HF/HTTP embedding model available; using dense SVD-TFIDF projection.")
             from sklearn.decomposition import TruncatedSVD
             from sklearn.feature_extraction.text import TfidfVectorizer
@@ -509,23 +741,27 @@ def compute_embeddings(df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_d
                 v = X_svd[li]
                 nrm = np.linalg.norm(v)
                 vec_by_hash[hashes[li]] = (v / nrm) if nrm > 0 else v
+                n_computed += 1
+        elif not encoded_ok and n_pre > 0:
+            print(f"  [Precomputed Guard] {len(missing)} rows lack precomputed {pre_dim}d vector and HTTP/HF is offline; preserving {pre_dim}d space cleanly.")
 
-    if vec_by_hash:
-        np.savez_compressed(cache_path, hashes=np.array(list(vec_by_hash.keys())), vectors=np.vstack(list(vec_by_hash.values())))
+    dim = pre_dim or (len(next(iter(vec_by_hash.values()))) if vec_by_hash else 1024)
+    compat = {h: v for h, v in vec_by_hash.items() if len(v) == dim}
+    if compat:
+        np.savez_compressed(cache_path, hashes=np.array(list(compat.keys())), vectors=np.vstack(list(compat.values())))
 
-    dim = len(next(iter(vec_by_hash.values()))) if vec_by_hash else 1024
     mat = np.zeros((len(df), dim), dtype=np.float32)
     for i, h in enumerate(hashes):
-        if h in vec_by_hash:
-            v = vec_by_hash[h]
-            if len(v) == dim:
-                mat[i] = v
+        if h in compat:
+            mat[i] = compat[h]
     norms = np.linalg.norm(mat, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
-    return (mat / norms).astype(np.float32)
+    return (mat / norms).astype(np.float32), {"precomputed_vectors_reused": n_pre, "newly_computed_vectors": n_computed, "embed_dim": int(dim)}
 
 
-def deduplicate_4_levels(raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_dir: Path, out_dir: Path, embed_backend: str) -> tuple[pd.DataFrame, np.ndarray, dict[str, int]]:
+def deduplicate_4_levels(
+    raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], cache_dir: Path, out_dir: Path, embed_backend: str, precomputed_mode: str = "auto"
+) -> tuple[pd.DataFrame, np.ndarray, dict[str, int]]:
     n_raw = len(raw_df)
     raw_df = raw_df.reset_index(drop=True)
     parent = list(range(n_raw))
@@ -567,7 +803,7 @@ def deduplicate_4_levels(raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], c
     for i in range(n_raw):
         groups.setdefault(find(i), []).append(i)
 
-    prio = {"oa_cleanroom_api": 4, "wos_cleanroom": 4, "pubmed_broad": 3, "scopus_cleanroom": 3, "oa_cleanroom_manual": 2}
+    prio = {"clickhouse_mx_enriched": 5, "clickhouse_flat": 4, "oa_cleanroom_api": 4, "wos_cleanroom": 4, "pubmed_broad": 3, "scopus_cleanroom": 3, "oa_cleanroom_manual": 2}
     recs = raw_df.to_dict("records")
 
     def _merge(rows: list[dict[str, Any]], origs: list[str]) -> dict[str, Any]:
@@ -577,6 +813,8 @@ def deduplicate_4_levels(raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], c
             for k in ["oa_id", "doi_norm", "pmid_norm", "pmcid", "language", "source_venue", "topic", "subfield", "field", "domain", "keywords", "author_names", "affiliations_raw", "country_codes", "abstract_final", "abstract_source", "oa_status"]:
                 if not str(base.get(k, "") or "").strip() and str(r.get(k, "") or "").strip():
                     base[k] = r[k]
+            if base.get("_precomputed_vec") is None and r.get("_precomputed_vec") is not None:
+                base["_precomputed_vec"] = r["_precomputed_vec"]
             if int(r.get("cited_by_count", 0) or 0) > int(base.get("cited_by_count", 0) or 0):
                 base["cited_by_count"] = r["cited_by_count"]
         oset = sorted(set(origs))
@@ -585,7 +823,7 @@ def deduplicate_4_levels(raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], c
         return base
 
     df3 = pd.DataFrame([_merge([recs[i] for i in idxs], [recs[i]["source_origin"] for i in idxs]) for idxs in groups.values()]).reset_index(drop=True)
-    vecs = compute_embeddings(df3, cfg, env, cache_dir, backend=embed_backend)
+    vecs, embed_stats = compute_embeddings(df3, cfg, env, cache_dir, backend=embed_backend, precomputed_mode=precomputed_mode)
 
     # Level 4: Bilingual semantic deduplication (cos >= 0.95 inside author/venue year blocks)
     p4 = list(range(len(df3)))
@@ -648,9 +886,19 @@ def deduplicate_4_levels(raw_df: pd.DataFrame, cfg: dict, env: dict[str, str], c
             keep_v.append(max(idxs, key=lambda i: (1 if str(df3.at[i, "abstract_final"]).strip() else 0, float(vnorms[i]))))
 
     df_final = pd.DataFrame(final_recs).reset_index(drop=True)
+    if "_precomputed_vec" in df_final.columns:
+        df_final = df_final.drop(columns=["_precomputed_vec"])
     slug = cfg["domain"].get("project_slug", "work").upper()[:6]
     df_final.insert(0, "work_uid", [f"{slug}_{i:06d}" for i in range(len(df_final))])
-    stats = {"raw_total": n_raw, "level1_doi_merges": l1, "level2_pmid_merges": l2, "level3_title_year_merges": l3, "level4_bilingual_semantic_merges": l4, "dedup_total": len(df_final)}
+    stats = {
+        "raw_total": n_raw,
+        "level1_doi_merges": l1,
+        "level2_pmid_merges": l2,
+        "level3_title_year_merges": l3,
+        "level4_bilingual_semantic_merges": l4,
+        "dedup_total": len(df_final),
+        **embed_stats,
+    }
     return df_final, vecs[keep_v].astype(np.float32), stats
 
 
@@ -658,12 +906,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workdir", type=str, default=".")
     parser.add_argument("--config", type=str, default=None)
-    parser.add_argument("--openalex-cleanroom", choices=["api", "manual", "none"], default="api")
+    parser.add_argument("--openalex-cleanroom", choices=["api", "manual", "clickhouse", "none"], default="api")
+    parser.add_argument("--clickhouse-parquet", type=str, default=None, help="Optional pre-exported ClickHouse Parquet file/dir with precomputed embedding_qwen/embedding_nomic")
+    parser.add_argument("--precomputed-embed-col", choices=["auto", "embedding_qwen", "embedding_nomic", "none"], default="auto")
     parser.add_argument("--wos-dir", type=str, default=None)
     parser.add_argument("--scopus-dir", type=str, default=None)
     parser.add_argument("--oa-manual-dir", type=str, default=None)
     parser.add_argument("--embed-backend", choices=["auto", "openai_api", "sentence_transformers"], default="auto")
     parser.add_argument("--include-pubmed", action="store_true", help="Force PubMed harvest even when is_biomedical is false")
+    parser.add_argument("--skip-abstract-cascade", action="store_true")
+    parser.add_argument("--force-abstract-cascade", action="store_true")
     parser.add_argument("--refresh-pubmed", action="store_true")
     parser.add_argument("--max-oa-pages", type=int, default=80)
     args = parser.parse_args()
@@ -699,13 +951,26 @@ def main() -> None:
     if not df_oam.empty:
         parts.append(df_oam)
 
-    if cfg["domain"].get("is_biomedical", False) or args.include_pubmed:
+    df_chp = load_clickhouse_parquet_inputs(Path(args.clickhouse_parquet) if args.clickhouse_parquet else None, in_root / "clickhouse", y0, y1, cc, args.precomputed_embed_col)
+    if not df_chp.empty:
+        parts.append(df_chp)
+
+    if args.openalex_cleanroom == "clickhouse":
+        ch_cache_pq = out_dir / f"cache_clickhouse_{args.precomputed_embed_col}.parquet"
+        df_ch = harvest_clickhouse(f0_dir / "queries" / q_geo / "openalex_api_broad.json", ch_cache_pq, y0, y1, cc, env, args.precomputed_embed_col)
+        if not df_ch.empty:
+            parts.append(df_ch)
+
+    if (cfg["domain"].get("is_biomedical", False) or args.include_pubmed) and args.openalex_cleanroom != "clickhouse":
         df_pm, drop_pm = harvest_pubmed(f0_dir / "queries" / q_geo / "pubmed_broad.txt", y0, y1, out_dir / "cache_pubmed_broad.parquet", rx_pos, rx_neg, cc, c_name, refresh=args.refresh_pubmed)
         if not df_pm.empty:
             parts.append(df_pm)
     else:
         drop_pm = 0
-        print("  [PubMed] Skipped (is_biomedical=false; pass --include-pubmed to override).")
+        if args.openalex_cleanroom == "clickhouse":
+            print("  [PubMed] Skipped (ClickHouse MX snapshot mode preserves frozen 1.2M scope).")
+        else:
+            print("  [PubMed] Skipped (is_biomedical=false; pass --include-pubmed to override).")
 
     if args.openalex_cleanroom == "api":
         df_oaa = harvest_openalex_api(f0_dir / "queries" / q_geo / "openalex_api_broad.json", out_dir / "cache_openalex_api.parquet", email, oa_key, max_pages=args.max_oa_pages)
@@ -716,8 +981,12 @@ def main() -> None:
         raise RuntimeError("No Phase 1 sources produced records. Check query specs or drop exports into delineation/inputs/.")
 
     raw_union = pd.concat(parts, ignore_index=True)
-    raw_union = enrich_abstract_cascade(raw_union, email, oa_key, cache_dir)
-    corpus_df, vecs_mat, dedup_stats = deduplicate_4_levels(raw_union, cfg, env, cache_dir, out_dir, args.embed_backend)
+    pure_ch_mx = set(raw_union["source_origin"].unique()) <= {"clickhouse_mx_enriched"}
+    if args.force_abstract_cascade or (not args.skip_abstract_cascade and not pure_ch_mx):
+        raw_union = enrich_abstract_cascade(raw_union, email, oa_key, cache_dir)
+    else:
+        print("  [Open Cascade] Skipped (frozen ClickHouse MX abstracts_enriched already populated / --skip-abstract-cascade).")
+    corpus_df, vecs_mat, dedup_stats = deduplicate_4_levels(raw_union, cfg, env, cache_dir, out_dir, args.embed_backend, precomputed_mode=args.precomputed_embed_col)
     corpus_df.to_parquet(out_dir / "corpus_bruto_dedup.parquet", index=False)
     np.save(out_dir / "embeddings_dense.npy", vecs_mat)
 

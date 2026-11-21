@@ -43,7 +43,7 @@ All artifacts use **relative workspace paths** inside `--workdir` (default: curr
 - **OpenAlex Budget Economy & Zero-ClickHouse Default:**
   - Phase 0 audits term specificity **locally in memory** over the downloaded Pearl-Growing sample (`0` extra `/works` calls; pass `--online-term-audit` only if desired).
   - Phase 0 generates **both** cursor-paginated `openalex_api_broad.json` (`~$0.10–$0.20` USD) **and** `openalex_web_manual.txt` (1-click OpenAlex Web UI URLs + copy-paste queries for free CSV download).
-  - ClickHouse local snapshots remain strictly opt-in (`--openalex-cleanroom snapshot` when `CLICKHOUSE_HOST` is configured).
+  - ClickHouse local snapshots remain opt-in (`--openalex-cleanroom clickhouse` when `CLICKHOUSE_HOST` is configured, or `--clickhouse-parquet <file.parquet>`), automatically reusing precomputed `embedding_qwen` (`1024d`) / `embedding_nomic` (`768d`) vectors from `rag.works_mexico_abstracts_enriched FINAL` with zero embedding inference overhead (`--precomputed-embed-col`).
 
 ## 3. Execution Sequence (Phase 0 -> Phase 5)
 
@@ -62,11 +62,13 @@ python scripts/00_build_strategy.py \
 *(If no local LLM endpoint is active at `LM_STUDIO_URL`, `--llm-mode agent` emits JSON prompts in `./delineation/fase0_estrategia/agent_prompts/` so the host agent supplies the initial facets/topic labels directly.)*
 
 ### Phase 1: Multi-Source Clean-Room Harvest, Open Abstract Cascade & 4-Level Dedup
-Drop any manual exports from Web of Science (`*.txt`), Scopus (`*.csv`), or OpenAlex Web UI (`*.csv`) into `./delineation/inputs/{wos,scopus,openalex}/`, then run:
+Drop any manual exports from Web of Science (`*.txt`), Scopus (`*.csv`), OpenAlex Web UI (`*.csv`), or pre-exported ClickHouse Parquet (`delineation/inputs/clickhouse/*.parquet`), then run:
 ```bash
 python scripts/01_ingest_enrich.py --workdir . --openalex-cleanroom api
 # Or if using manual OpenAlex Web CSV exports in ./delineation/inputs/openalex/:
 python scripts/01_ingest_enrich.py --workdir . --openalex-cleanroom manual
+# Or on dinamica1 / local ClickHouse (reuses precomputed embedding_qwen / embedding_nomic):
+python scripts/01_ingest_enrich.py --workdir . --openalex-cleanroom clickhouse --precomputed-embed-col embedding_qwen
 ```
 
 ### Phase 2: Co-Constructed S+/S- Seeds, 5-Fold OOF Calibration & RRF(k=60)

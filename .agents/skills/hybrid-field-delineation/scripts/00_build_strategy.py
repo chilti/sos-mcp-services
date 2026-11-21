@@ -542,18 +542,67 @@ def compile_queries(
 
         # 4) ClickHouse SQL (Optional local accelerator, ZERO JOINs)
         free_re, free_phr = _split_ch_terms(free_en + free_es)
-        ch_conds = []
-        if free_re:
-            ch_conds.append(f"match(concat(title, ' ', abstract, ' ', arrayStringConcat(keywords, ' ')), '{free_re.replace(chr(92), chr(92)*2)}')")
-        if free_phr:
-            phr_arr = ", ".join(f"'{p}'" for p in free_phr)
-            ch_conds.append(f"multiSearchAnyCaseInsensitiveUTF8(concat(title, ' ', abstract, ' ', arrayStringConcat(keywords, ' ')), [{phr_arr}])")
-        if topic_ids:
-            ch_conds.append("topic_id IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")")
+        coup_re, coup_phr = _split_ch_terms(coup_en + coup_es)
+        anc_re, anc_phr = _split_ch_terms(sorted(set(anc_en_clean + anc_es_clean)))
+        use_mx_enriched = is_c and cc == "MX"
+        ch_table = "rag.works_mexico_abstracts_enriched FINAL" if use_mx_enriched else "rag.works_flat"
+        ch_text_col = (
+            "concat(title, ' ', abstract_final, ' ', arrayStringConcat(keywords, ' '), ' ', arrayStringConcat(author_keywords, ' '))"
+            if use_mx_enriched
+            else "concat(title, ' ', abstract, ' ', arrayStringConcat(keywords, ' '))"
+        )
+
+        def _ch_re_phr(rx_s: str, phrs: list[str]) -> list[str]:
+            parts = []
+            if rx_s:
+                parts.append(f"match({ch_text_col}, '{rx_s.replace(chr(92), chr(92)*2)}')")
+            if phrs:
+                phr_arr = ", ".join(f"'{p}'" for p in phrs)
+                parts.append(f"multiSearchAnyCaseInsensitiveUTF8({ch_text_col}, [{phr_arr}])")
+            return parts
+
+        ch_conds = _ch_re_phr(free_re, free_phr)
+        coup_parts = _ch_re_phr(coup_re, coup_phr)
+        anc_parts = _ch_re_phr(anc_re, anc_phr)
+        if coup_parts and anc_parts:
+            ch_conds.append(f"(({' OR '.join(coup_parts)}) AND ({' OR '.join(anc_parts)}))")
         if pure_source_ids:
             ch_conds.append("replaceOne(source_id, 'https://openalex.org/', '') IN (" + ", ".join(f"'{sid}'" for sid in pure_source_ids) + ")")
-        c_where = f" AND has(country_codes, '{cc}')" if is_c else ""
-        ch_sql = f"-- Optional ClickHouse Broad Query ({geo.upper()}) | ZERO JOINs | No domain cutoff\nSELECT id, doi, pmid, publication_year, type, language, source_id, title\nFROM rag.works_flat\nWHERE (publication_year BETWEEN {y0} AND {y1}){c_where}\n  AND (\n    " + "\n    OR ".join(ch_conds) + "\n  );\n"
+
+        if use_mx_enriched:
+            ch_select = "id, doi, pmid, pmcid, publication_year, type, language, is_oa, source_id, title, author_keywords, keywords, abstract_final, abstract_source, embedding_qwen"
+            c_where = ""
+            flat_topic_cond = ("topic_id IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")") if topic_ids else ""
+            enriched_where = f"(publication_year BETWEEN {y0} AND {y1}) AND (\n    " + ("\n    OR ".join(ch_conds) if ch_conds else "1=0") + "\n  )"
+            flat_topics_where = (
+                f"(publication_year BETWEEN {y0} AND {y1}) AND has(country_codes, 'MX') AND ({flat_topic_cond})"
+                if flat_topic_cond
+                else ""
+            )
+            ch_sql = (
+                f"-- ClickHouse Broad Query (MX Enriched, ZERO JOINs, Precomputed Qwen3-0.6B 1024d / Nomic 768d)\n"
+                f"-- Note: embedding_nomic (Array(Float32), 768d) is also materialized in rag.works_mexico_abstracts_enriched.\n"
+                f"SELECT {ch_select}\n"
+                f"FROM {ch_table}\n"
+                f"WHERE {enriched_where};\n"
+            )
+            if flat_topics_where:
+                ch_sql += (
+                    f"\n-- Companion OpenAlex Topic IDs slice from rag.works_flat (ZERO JOINs; merge IDs in Python):\n"
+                    f"SELECT id\nFROM rag.works_flat\nWHERE {flat_topics_where};\n"
+                )
+        else:
+            if topic_ids:
+                ch_conds.append("topic_id IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")")
+            c_where = f" AND has(country_codes, '{cc}')" if is_c else ""
+            enriched_where = f"(publication_year BETWEEN {y0} AND {y1}){c_where} AND (\n    " + ("\n    OR ".join(ch_conds) if ch_conds else "1=0") + "\n  )"
+            flat_topics_where = ""
+            ch_sql = (
+                f"-- Optional ClickHouse Broad Query ({geo.upper()}) | ZERO JOINs | No domain cutoff\n"
+                f"SELECT id, doi, pmid, publication_year, type, language, source_id, title\n"
+                f"FROM rag.works_flat\n"
+                f"WHERE {enriched_where};\n"
+            )
         (gdir / "clickhouse_broad.sql").write_text(ch_sql, encoding="utf-8")
 
         # 5) OpenAlex Web UI Manual Download Guide + 1-Click URLs
@@ -599,6 +648,12 @@ def compile_queries(
             "coupled_terms_es": coup_es,
             "anchors_en": anc_en_clean,
             "anchors_es": anc_es_clean,
+            "clickhouse": {
+                "table": ch_table,
+                "is_mx_enriched": use_mx_enriched,
+                "enriched_where": enriched_where,
+                "flat_topics_where": flat_topics_where,
+            },
         }
         (gdir / "openalex_api_broad.json").write_text(json.dumps(oa_api_spec, indent=2, ensure_ascii=False), encoding="utf-8")
 
