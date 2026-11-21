@@ -18,7 +18,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common_io import load_or_create_config, phase_dir, resolve_workdir, strip_accents
+from common_io import filter_safe_homonyms, load_or_create_config, phase_dir, resolve_workdir, strip_accents
 
 
 def compile_term_pattern(terms: list[str]) -> re.Pattern:
@@ -29,7 +29,11 @@ def compile_term_pattern(terms: list[str]) -> re.Pattern:
             continue
         wc = ts.endswith("*")
         base = re.escape(ts[:-1] if wc else ts)
-        parts.append(rf"\b{base}" + (r"\w*" if wc else r"\b"))
+        has_cjk = bool(re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", ts))
+        if has_cjk:
+            parts.append(base)
+        else:
+            parts.append(rf"\b{base}" + (r"\w*" if wc else r"\b"))
     return re.compile("(?:" + "|".join(dict.fromkeys(parts)) + ")", flags=re.IGNORECASE) if parts else re.compile(r"(?!x)x")
 
 
@@ -45,12 +49,14 @@ def knn_mean_cosine(X_q: np.ndarray, X_ref: np.ndarray, k: int = 15) -> np.ndarr
     return out
 
 
-def compute_lexical_signals(df: pd.DataFrame, audit_df: pd.DataFrame, facets_init: dict, topics_df: pd.DataFrame, sources_df: pd.DataFrame) -> pd.DataFrame:
+def compute_lexical_signals(df: pd.DataFrame, audit_df: pd.DataFrame, facets_init: dict, topics_df: pd.DataFrame, sources_df: pd.DataFrame, cfg: dict | None = None) -> pd.DataFrame:
     free_terms = audit_df[audit_df["final_action"] == "FREE_OR"]["term"].tolist()
     coup_terms = audit_df[audit_df["final_action"] == "COUPLE_PROXIMITY"]["term"].tolist()
     coup_set = set(coup_terms)
     anchors = [a for a in (facets_init.get("anatomical_anchors_en", []) + facets_init.get("anatomical_anchors_es", [])) if a not in coup_set]
-    homonyms = facets_init.get("lexical_homonyms_to_avoid", [])
+    dom = (cfg or {}).get("domain") or {}
+    protected = [dom.get("seed_topic_en", ""), dom.get("seed_topic_es", ""), *anchors, *free_terms]
+    homonyms = filter_safe_homonyms(facets_init.get("lexical_homonyms_to_avoid", []), protected)
 
     indiv_rx = [compile_term_pattern([t]) for t in free_terms if str(t).strip()]
     rx_free_any = compile_term_pattern(free_terms)
@@ -124,22 +130,81 @@ def compute_lexical_signals(df: pd.DataFrame, audit_df: pd.DataFrame, facets_ini
     })
 
 
-def build_stratified_seeds(df: pd.DataFrame, lex_df: pd.DataFrame, vec_norms: np.ndarray, n_pos: int = 1200, n_neg: int = 1200, seed: int = 42) -> tuple[np.ndarray, np.ndarray]:
+def build_stratified_seeds(
+    df: pd.DataFrame, lex_df: pd.DataFrame, vec_norms: np.ndarray, n_pos: int = 1200, n_neg: int = 1200, seed: int = 42
+) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
     rng = np.random.default_rng(seed)
     valid = vec_norms > 0.1
-    pos_mask = valid & (~lex_df["homonym_hit"].values) & (((lex_df["topic_tier"].values == 2) & (lex_df["title_free_hits"].values >= 1)) | (lex_df["pure_venue_flag"].values & (lex_df["body_free_hits"].values >= 1)))
-    pos_cands = np.where(pos_mask)[0]
+    non_hom = ~lex_df["homonym_hit"].values
+    pos_struct = valid & non_hom & (lex_df["topic_tier"].values == 2) & lex_df["pure_venue_flag"].values
+    pos_lex = valid & non_hom & (((lex_df["topic_tier"].values == 2) & (lex_df["title_free_hits"].values >= 1)) | (lex_df["pure_venue_flag"].values & (lex_df["body_free_hits"].values >= 1)))
+    pos_cands = np.where(pos_struct | pos_lex)[0]
     if len(pos_cands) < 50:
-        # Fallback when external topics metadata is sparse
-        pos_cands = np.where(valid & (~lex_df["homonym_hit"].values) & (lex_df["title_free_hits"].values >= 1))[0]
+        pos_cands = np.where(valid & non_hom & ((lex_df["title_free_hits"].values >= 1) | (lex_df["topic_tier"].values == 2)))[0]
 
     pos_sel = rng.choice(pos_cands, size=min(n_pos, len(pos_cands)), replace=False).tolist() if len(pos_cands) > n_pos else pos_cands.tolist()
+    n_pos_struct = int(pos_struct[pos_sel].sum()) if pos_sel else 0
     neg_mask = valid & (~np.isin(np.arange(len(df)), pos_sel)) & (lex_df["title_free_hits"].values == 0) & (lex_df["body_free_hits"].values == 0) & (~lex_df["coupled_match"].values) & (~lex_df["pure_venue_flag"].values) & ((lex_df["topic_tier"].values == -1) | lex_df["homonym_hit"].values)
     neg_cands = np.where(neg_mask)[0]
     if len(neg_cands) < max(30, min(200, len(pos_sel) // 2)):
         neg_cands = np.where(valid & (~np.isin(np.arange(len(df)), pos_sel)) & (lex_df["title_free_hits"].values == 0) & (lex_df["body_free_hits"].values == 0) & (lex_df["topic_tier"].values <= 0))[0]
     neg_sel = rng.choice(neg_cands, size=min(n_neg, len(neg_cands)), replace=False).tolist() if len(neg_cands) > n_neg else neg_cands.tolist()
-    return np.array(sorted(set(pos_sel)), dtype=np.int64), np.array(sorted(set(neg_sel)), dtype=np.int64)
+    meta = {"n_pos_structural_seeds": n_pos_struct}
+    return np.array(sorted(set(pos_sel)), dtype=np.int64), np.array(sorted(set(neg_sel)), dtype=np.int64), meta
+
+
+def cross_lingual_bootstrap_seeds(
+    df: pd.DataFrame,
+    lex_df: pd.DataFrame,
+    vecs: np.ndarray,
+    vec_norms: np.ndarray,
+    pos_idx: np.ndarray,
+    neg_idx: np.ndarray,
+    k_nn: int,
+    n_pos_target: int,
+) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
+    """Round-2 cross-lingual seed bootstrapping adding high-confidence non-EN/ES anchors in the shared embedding space."""
+    if len(pos_idx) < 5 or len(neg_idx) < 5 or "language" not in df.columns:
+        return pos_idx, neg_idx, {"n_pos_cross_lingual": 0, "n_neg_cross_lingual": 0}
+    langs = df["language"].fillna("").astype(str).str.lower().str.strip().values
+    third_lang = ~np.isin(langs, ["en", "es", ""])
+    if not third_lang.any():
+        return pos_idx, neg_idx, {"n_pos_cross_lingual": 0, "n_neg_cross_lingual": 0}
+
+    valid = vec_norms > 0.1
+    m0 = knn_mean_cosine(vecs, vecs[pos_idx], k=k_nn) - knn_mean_cosine(vecs, vecs[neg_idx], k=k_nn)
+
+    pos_set, neg_set = set(pos_idx.tolist()), set(neg_idx.tolist())
+    cand_pos = np.where(
+        third_lang
+        & valid
+        & (~lex_df["homonym_hit"].values)
+        & (lex_df["topic_tier"].values >= 1)
+        & (m0 > 0.05)
+        & (~np.isin(np.arange(len(df)), list(pos_set | neg_set)))
+    )[0]
+    cap_pos = min(max(10, n_pos_target // 10), max(10, len(pos_idx) // 4))
+    if len(cand_pos) > cap_pos:
+        cand_pos = cand_pos[np.argsort(-m0[cand_pos])[:cap_pos]]
+
+    cand_neg = np.where(
+        third_lang
+        & valid
+        & (lex_df["topic_tier"].values == -1)
+        & (lex_df["title_free_hits"].values == 0)
+        & (lex_df["body_free_hits"].values == 0)
+        & (m0 < -0.02)
+        & (~np.isin(np.arange(len(df)), list(pos_set | neg_set | set(cand_pos.tolist()))))
+    )[0]
+    cap_neg = max(len(cand_pos), 0)
+    if len(cand_neg) > cap_neg:
+        cand_neg = cand_neg[np.argsort(m0[cand_neg])[:cap_neg]]
+
+    new_pos = np.array(sorted(pos_set | set(cand_pos.tolist())), dtype=np.int64)
+    new_neg = np.array(sorted(neg_set | set(cand_neg.tolist())), dtype=np.int64)
+    if len(cand_pos) or len(cand_neg):
+        print(f"  [Cross-Lingual Bootstrap] +{len(cand_pos)} S+ and +{len(cand_neg)} S- third-language anchors added.")
+    return new_pos, new_neg, {"n_pos_cross_lingual": int(len(cand_pos)), "n_neg_cross_lingual": int(len(cand_neg))}
 
 
 def run_oof_calibration(vecs: np.ndarray, pos_idx: np.ndarray, neg_idx: np.ndarray, k_nn: int, has_abs_all: np.ndarray) -> dict[str, float]:
@@ -178,6 +243,7 @@ def main() -> None:
     parser.add_argument("--config", type=str, default=None)
     parser.add_argument("--n-pos", type=int, default=1200)
     parser.add_argument("--n-neg", type=int, default=1200)
+    parser.add_argument("--no-cross-lingual-bootstrap", action="store_true")
     args = parser.parse_args()
 
     wd = resolve_workdir(args.workdir)
@@ -196,17 +262,28 @@ def main() -> None:
     topics_df = pd.read_csv(f0_dir / "propuesta_topics_descubiertos.csv") if (f0_dir / "propuesta_topics_descubiertos.csv").exists() else pd.DataFrame()
     sources_df = pd.read_csv(f0_dir / "propuesta_revistas_bradford.csv") if (f0_dir / "propuesta_revistas_bradford.csv").exists() else pd.DataFrame()
 
-    lex_df = compute_lexical_signals(df, audit_df, facets_init, topics_df, sources_df)
+    lex_df = compute_lexical_signals(df, audit_df, facets_init, topics_df, sources_df, cfg=cfg)
     vec_norms = np.linalg.norm(vecs, axis=1)
-    pos_idx, neg_idx = build_stratified_seeds(df, lex_df, vec_norms, n_pos=args.n_pos, n_neg=args.n_neg)
+    pos_idx, neg_idx, seed_meta = build_stratified_seeds(df, lex_df, vec_norms, n_pos=args.n_pos, n_neg=args.n_neg)
+    if not args.no_cross_lingual_bootstrap:
+        pos_idx, neg_idx, boot_meta = cross_lingual_bootstrap_seeds(df, lex_df, vecs, vec_norms, pos_idx, neg_idx, k_nn=k_nn, n_pos_target=args.n_pos)
+        seed_meta.update(boot_meta)
     oof_metrics = run_oof_calibration(vecs, pos_idx, neg_idx, k_nn=k_nn, has_abs_all=(df["abstract_final"].fillna("").str.strip() != "").to_numpy())
+    oof_metrics.update(seed_meta)
 
     X_pos, X_neg = vecs[pos_idx], vecs[neg_idx]
     margin = knn_mean_cosine(vecs, X_pos, k=k_nn) - knn_mean_cosine(vecs, X_neg, k=k_nn)
-    margin[vec_norms == 0] = -1.0
+    zero_vec = vec_norms == 0
+    if zero_vec.any():
+        strong_lex_zero = zero_vec & (
+            ((lex_df["title_free_hits"].values >= 1) & (~lex_df["homonym_hit"].values))
+            | ((lex_df["topic_tier"].values == 2) & (lex_df["body_free_hits"].values >= 2))
+        )
+        margin[zero_vec & (~strong_lex_zero)] = -0.25
+        margin[strong_lex_zero] = 0.0
     clf = LogisticRegression(C=1.0, max_iter=500, class_weight="balanced").fit(np.vstack([X_pos, X_neg]), np.concatenate([np.ones(len(pos_idx)), np.zeros(len(neg_idx))]))
     lr_prob = clf.predict_proba(vecs)[:, 1]
-    lr_prob[vec_norms == 0] = 0.0
+    lr_prob[zero_vec] = 0.0
 
     df_sc = pd.concat([df.reset_index(drop=True), lex_df.reset_index(drop=True)], axis=1)
     df_sc["margin_score"] = margin

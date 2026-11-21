@@ -527,9 +527,18 @@ def harvest_openalex_api(spec_path: Path, cache_pq: Path, email: str, oa_key: st
 
     for s in range(0, len(tids), 25):
         _pull_filter(f"{base_flt},primary_topic.id:{'|'.join(tids[s:s+25])}")
-    free_q = [t.replace("*", "") for t in (spec.get("free_terms_en", [])[:20] + spec.get("free_terms_es", [])[:10]) if len(t.replace("*", "")) >= 4]
+    def _oa_fmt(term: str) -> str:
+        c = term.replace("*", "").strip()
+        return f'"{c}"' if " " in c else c
+
+    free_q = [_oa_fmt(t) for t in (spec.get("free_terms_en", [])[:20] + spec.get("free_terms_es", [])[:10]) if len(t.replace("*", "").strip()) >= 4]
     if free_q:
         _pull_filter(f"{base_flt},title_and_abstract.search:({' OR '.join(free_q)})")
+    extra_map = spec.get("free_terms_extra") or {}
+    if isinstance(extra_map, dict):
+        extra_terms = [_oa_fmt(t) for ts in extra_map.values() for t in (ts or []) if len(str(t).replace("*", "").strip()) >= 2]
+        for s in range(0, len(extra_terms), 15):
+            _pull_filter(f"{base_flt},title_and_abstract.search:({' OR '.join(extra_terms[s:s+15])})")
     out_df = standardize_columns(pd.DataFrame(rows), "oa_cleanroom_api") if rows else pd.DataFrame()
     if not out_df.empty:
         out_df.to_parquet(cache_pq, index=False)

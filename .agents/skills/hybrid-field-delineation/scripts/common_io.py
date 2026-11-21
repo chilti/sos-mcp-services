@@ -184,6 +184,21 @@ def strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", str(text or "")) if not unicodedata.combining(c))
 
 
+def filter_safe_homonyms(homonyms: list[str], protected_terms: list[str]) -> list[str]:
+    """Removes core field terms/subphrases so LLM-suggested homonym lists cannot poison positive seeds."""
+    prot = {strip_accents(t).lower().replace("*", "").strip() for t in protected_terms if len(str(t).replace("*", "").strip()) >= 4}
+    safe: list[str] = []
+    for h in homonyms or []:
+        hs = str(h).strip()
+        hn = strip_accents(hs).lower().replace("*", "").strip()
+        if len(hn) < 3 or hn in prot:
+            continue
+        if len(hn) >= 5 and any((hn in pt or pt in hn) for pt in prot if len(pt) >= 5):
+            continue
+        safe.append(hs)
+    return list(dict.fromkeys(safe))
+
+
 def norm_doi(val: Any) -> str:
     if val is None or (isinstance(val, float) and np.isnan(val)):
         return ""

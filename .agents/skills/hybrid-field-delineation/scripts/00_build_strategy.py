@@ -24,7 +24,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common_io import load_env_vars, load_or_create_config, load_query_validator, phase_dir, resolve_workdir
+from common_io import filter_safe_homonyms, load_env_vars, load_or_create_config, load_query_validator, phase_dir, resolve_workdir
 
 
 def http_get_json(url: str, timeout: int = 30) -> dict:
@@ -114,12 +114,14 @@ Return JSON with keys:
 - "anatomical_anchors_es": 4-8 core Spanish anchor phrases/roots.
 - "scope_inclusion_criteria": 2-sentence clear inclusion rubric for Phase 4 judging.
 - "scope_exclusion_traps": 2-sentence exclusion rubric describing likely homonyms or adjacent false positives.
-- "lexical_homonyms_to_avoid": 6-12 short English/Spanish homonyms or trap phrases unrelated to the core field.
+- "lexical_homonyms_to_avoid": 6-12 short English/Spanish homonyms from OTHER disciplines (NEVER include core terms or subfields of the target topic).
 - "mesh_root_terms": 3-6 official MeSH headings if biomedical (else empty list []).
 """
     if llm_mode in ("auto", "local") and llm_endpoint_alive(ep["llm_base_url"], api_key):
         res = llm_chat_json(ep["llm_base_url"], api_key, ep["llm_model"], sys_p, usr_p)
         if res and "topic_search_queries" in res:
+            prot = [dom["seed_topic_en"], dom["seed_topic_es"], *(res.get("anatomical_anchors_en") or []), *(res.get("anatomical_anchors_es") or [])]
+            res["lexical_homonyms_to_avoid"] = filter_safe_homonyms(res.get("lexical_homonyms_to_avoid") or [], prot)
             return res
 
     if llm_mode == "agent":
@@ -418,11 +420,16 @@ def audit_term_specificity(
             continue
         unsafe = any(len(part) < th["min_truncation_stem_chars"] for part in re.findall(r"([a-zA-ZáéíóúñÁÉÍÓÚÑ]+)\*", t))
         q_clean = t.replace("*", "").strip()
-        if len(q_clean) < 3 or unsafe:
+        has_cjk = bool(re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", q_clean))
+        min_len = 2 if has_cjk else 3
+        if len(q_clean) < min_len or unsafe:
             rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": 0, "sample_pos_hits": 0, "topic_specificity": 0.0, "final_action": "REJECT_UNSAFE_WILDCARD" if unsafe else "REJECT_TOO_SHORT"})
             continue
+        if role_proposed == "FREE_OR_EXTRA":
+            rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": -1, "sample_pos_hits": -1, "topic_specificity": 0.95, "final_action": "FREE_OR"})
+            continue
         has_wc = "*" in t
-        if (" " not in q_clean and not has_wc and len(q_clean) <= 3) or role_proposed == "COUPLED":
+        if (not has_cjk and " " not in q_clean and not has_wc and len(q_clean) <= 3) or role_proposed == "COUPLED":
             rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": -1, "sample_pos_hits": -1, "topic_specificity": 0.35 if role_proposed != "COUPLED" else -1.0, "final_action": "COUPLE_PROXIMITY"})
             continue
         if " " in q_clean and not has_wc:
@@ -434,6 +441,49 @@ def audit_term_specificity(
         rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": tot, "sample_pos_hits": phits, "topic_specificity": round(spec, 3), "final_action": action})
     print(f"   [Audit {lang_lbl}/{role_proposed} (LOCAL_0_API_CALLS)] {len(rows)} terms verified.")
     return rows
+
+
+def translate_core_terms_multilingual(
+    core_en_terms: list[str], extra_langs: list[str], cfg: dict, api_key: str, out_dir: Path, llm_mode: str
+) -> dict[str, list[str]]:
+    """Translates high-specificity FREE_OR core terms into extra target languages/scripts (zh, pt, fr, ru, ja, etc.)."""
+    langs = [lc.strip().lower() for lc in extra_langs if lc.strip() and lc.strip().lower() not in ("en", "es")]
+    if not langs or not core_en_terms:
+        return {}
+    seed_terms = [t.replace("*", "").strip() for t in core_en_terms if len(t.replace("*", "").strip()) >= 4][:15]
+    if not seed_terms:
+        return {}
+
+    ep = cfg["endpoints"]
+    topic_en = cfg["domain"]["seed_topic_en"]
+    sys_p = (
+        f"You are an expert multilingual scientific terminologist for '{topic_en}'. "
+        "Translate unambiguous core scientific descriptors into each requested target language/script "
+        "without wildcards '*'. Keep only high-specificity technical phrases (avoid broad common words). Return strict valid JSON."
+    )
+    usr_p = (
+        f"Target language ISO codes: {', '.join(langs)}\n"
+        f"Source English core terms ({len(seed_terms)}): {', '.join(seed_terms)}\n"
+        "Return a JSON object mapping each ISO code key (e.g., \"zh\", \"pt\", \"fr\", \"ru\", \"ja\") "
+        "to a list of 6-12 concise scientific equivalents in that script."
+    )
+    if llm_mode in ("auto", "local") and llm_endpoint_alive(ep["llm_base_url"], api_key):
+        res = llm_chat_json(ep["llm_base_url"], api_key, ep["llm_model"], sys_p, usr_p)
+        if isinstance(res, dict):
+            out = {lc: [str(x).replace("*", "").strip() for x in (res.get(lc) or []) if str(x).strip()] for lc in langs}
+            if any(out.values()):
+                (out_dir / "extra_lang_translations.json").write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+                return {k: v for k, v in out.items() if v}
+
+    if llm_mode == "agent":
+        pdir = out_dir / "agent_prompts"
+        pdir.mkdir(parents=True, exist_ok=True)
+        (pdir / "03_extra_lang_prompt.json").write_text(json.dumps({"system": sys_p, "user": usr_p, "target_file": str(out_dir / "extra_lang_translations.json")}, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"  [Host-Agent Mode] Emitted extra-language translation prompt for {langs} -> agent_prompts/03_extra_lang_prompt.json.")
+    elif (out_dir / "extra_lang_translations.json").exists():
+        loaded = json.loads((out_dir / "extra_lang_translations.json").read_text(encoding="utf-8"))
+        return {lc: [str(x).strip() for x in (loaded.get(lc) or []) if str(x).strip()] for lc in langs if loaded.get(lc)}
+    return {}
 
 
 def fmt_q(term: str) -> str:
@@ -462,6 +512,10 @@ def compile_queries(
     free_es = audit_df[(audit_df["lang"] == "es") & (audit_df["final_action"] == "FREE_OR")]["term"].tolist()
     coup_en = audit_df[(audit_df["lang"] == "en") & (audit_df["final_action"] == "COUPLE_PROXIMITY")]["term"].tolist()
     coup_es = audit_df[(audit_df["lang"] == "es") & (audit_df["final_action"] == "COUPLE_PROXIMITY")]["term"].tolist()
+    extra_df = audit_df[(~audit_df["lang"].isin(["en", "es"])) & (audit_df["final_action"] == "FREE_OR")]
+    free_extra_map: dict[str, list[str]] = {
+        str(lg): grp["term"].tolist() for lg, grp in extra_df.groupby("lang")
+    } if not extra_df.empty else {}
 
     anc_en_clean = [a for a in anchors_en if a not in set(coup_en + coup_es)] or anchors_en
     anc_es_clean = [a for a in anchors_es if a not in set(coup_en + coup_es)] or anchors_es
@@ -633,6 +687,14 @@ def compile_queries(
             oa_lines.append(f"\n[Link 2 - Core Bradford Journals ({min(25, len(pure_source_ids))})]:\n{url_sources}")
         if url_lex:
             oa_lines.append(f"\n[Link 3 - Exact Title&Abstract Lexical Probe]:\n{url_lex}")
+        if free_extra_map:
+            extra_terms_flat = [fmt_q(t) for ts in free_extra_map.values() for t in ts][:30]
+            if extra_terms_flat:
+                url_extra = "https://openalex.org/works?page=1&filter=" + urllib.parse.quote(
+                    f"publication_year:{y0}-{y1}{geo_flt},title_and_abstract.search:({' OR '.join(extra_terms_flat)})",
+                    safe=":()",
+                )
+                oa_lines.append(f"\n[Link 4 - Extra Languages Probe ({','.join(free_extra_map.keys())})]:\n{url_extra}")
         (gdir / "openalex_web_manual.txt").write_text("\n".join(oa_lines), encoding="utf-8")
 
         # 6) OpenAlex REST API Spec
@@ -644,6 +706,7 @@ def compile_queries(
             "pure_source_ids": pure_source_ids,
             "free_terms_en": free_en,
             "free_terms_es": free_es,
+            "free_terms_extra": free_extra_map,
             "coupled_terms_en": coup_en,
             "coupled_terms_es": coup_es,
             "anchors_en": anc_en_clean,
@@ -679,6 +742,7 @@ def main() -> None:
     parser.add_argument("--embedding-base-url", type=str, default=None)
     parser.add_argument("--embedding-model", type=str, default=None)
     parser.add_argument("--llm-mode", choices=["auto", "local", "agent"], default="auto", help="auto=use local LLM if online else deterministic+agent prompts; agent=zero local LLM required")
+    parser.add_argument("--extra-langs", type=str, default="", help="Optional comma-separated extra ISO languages/scripts to translate core FREE_OR terms (e.g. pt,fr,zh,ru)")
     parser.add_argument("--reuse-stage4", action="store_true")
     parser.add_argument("--reuse-audit", action="store_true")
     args = parser.parse_args()
@@ -745,7 +809,19 @@ def main() -> None:
         rows.extend(audit_term_specificity(lex_blocks.get("coupled_context_terms_en", []), "en", "COUPLED", top_ids, cfg, email, oa_key, pearl_terms))
         rows.extend(audit_term_specificity(lex_blocks.get("coupled_context_terms_es", []), "es", "COUPLED", top_ids, cfg, email, oa_key, pearl_terms))
         audit_df = pd.DataFrame(rows).drop_duplicates(subset=["term", "lang"])
-        audit_df.to_csv(out_dir / "audit_terminos_especificidad.csv", index=False)
+
+    extra_langs = [x.strip().lower() for x in args.extra_langs.split(",") if x.strip() and x.strip().lower() not in ("en", "es")]
+    if extra_langs:
+        core_en_free = audit_df[(audit_df["lang"] == "en") & (audit_df["final_action"] == "FREE_OR")]["term"].tolist()
+        trans_map = translate_core_terms_multilingual(core_en_free, extra_langs, cfg, api_key, out_dir, args.llm_mode)
+        extra_rows = []
+        top_ids = inc_topics["topic_id"].tolist() if not inc_topics.empty else []
+        for lg, tlist in trans_map.items():
+            extra_rows.extend(audit_term_specificity(tlist, lg, "FREE_OR_EXTRA", top_ids, cfg, email, oa_key, pearl_terms))
+        if extra_rows:
+            audit_df = pd.concat([audit_df, pd.DataFrame(extra_rows)], ignore_index=True).drop_duplicates(subset=["term", "lang"])
+
+    audit_df.to_csv(out_dir / "audit_terminos_especificidad.csv", index=False)
 
     val = compile_queries(
         audit_df,

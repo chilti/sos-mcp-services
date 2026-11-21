@@ -58,6 +58,8 @@ python scripts/00_build_strategy.py \
   --year-from 2014 --year-to 2025 \
   --country "" \
   --biomedical false
+# For international corpora beyond EN/ES, optionally translate core FREE_OR terms:
+# --extra-langs "pt,fr,zh,ja,ru"
 ```
 *(If no local LLM endpoint is active at `LM_STUDIO_URL`, `--llm-mode agent` emits JSON prompts in `./delineation/fase0_estrategia/agent_prompts/` so the host agent supplies the initial facets/topic labels directly.)*
 
@@ -71,7 +73,7 @@ python scripts/01_ingest_enrich.py --workdir . --openalex-cleanroom manual
 python scripts/01_ingest_enrich.py --workdir . --openalex-cleanroom clickhouse --precomputed-embed-col embedding_qwen
 ```
 
-### Phase 2: Co-Constructed S+/S- Seeds, 5-Fold OOF Calibration & RRF(k=60)
+### Phase 2: Co-Constructed S+/S- Seeds (Structural + Cross-Lingual Bootstrap), 5-Fold OOF Calibration & RRF(k=60)
 ```bash
 python scripts/02_seeds_rrf.py --workdir .
 ```
