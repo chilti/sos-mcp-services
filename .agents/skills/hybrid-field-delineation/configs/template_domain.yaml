@@ -1,0 +1,57 @@
+# Generic Domain Template — Hybrid Scientific Field Delineation
+# All paths are relative to --workdir (default: .)
+
+domain:
+  project_slug: "custom_field"
+  seed_topic_en: "Your Scientific Topic"
+  seed_topic_es: "Tu tema cientifico"
+  is_biomedical: false
+  mesh_root_terms: []
+
+scope:
+  query_emission_mode: "both"   # "global" | "country" | "both"
+  geo_country_code: ""          # Optional ISO-2 country filter (e.g. "MX", "BR", "" for global)
+  geo_country_name: ""          # Optional country name (e.g. "Mexico", "Brazil")
+  year_start: 2010
+  year_end: 2025
+  peer_reviewed_types:
+    - "article"
+    - "review"
+    - "letter"
+    - "editorial"
+    - "book_chapter"
+
+endpoints:
+  # Local OpenAI-compatible server (LM Studio / Ollama / vLLM) or env vars LLM_BASE_URL / LM_STUDIO_URL
+  llm_base_url: "http://localhost:1234/v1"
+  llm_model: "local-model"
+  embedding_base_url: "http://localhost:1234/v1"
+  embedding_model: "text-embedding-qwen3-embedding-0.6b"
+  local_hf_embedding_model: "Qwen/Qwen3-Embedding-0.6B"
+  openalex_mailto: "researcher@example.org"
+
+strategy_generation:
+  min_truncation_stem_chars: 4
+  pearl_growing_sample_size: 800
+  min_topic_specificity_for_free_or: 0.18
+  max_hits_for_free_or: 8500
+  proximity_window_words: 5
+
+geography_rescue:
+  iso_code: ""
+  positive_affiliation_regex: ""
+  negative_affiliation_regex: ""
+
+thresholds:
+  knn_neighbors: 15
+  rrf_k: 60
+  umap_n_neighbors: 30
+  umap_min_dist: 0.0
+  leiden_resolutions: [0.6, 0.8, 1.0, 1.2, 1.5]
+  green_zone_min_pos_pct: 80.0
+  green_zone_max_neg_pct: 10.0
+  red_zone_min_neg_pct: 50.0
+  red_zone_max_pos_pct: 25.0
+  red_zone_outlier_rescue_margin: 0.0
+  snowball_min_core_links: 2
+  snowball_min_margin: 0.05

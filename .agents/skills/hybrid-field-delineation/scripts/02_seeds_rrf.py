@@ -1,0 +1,235 @@
+"""
+Phase 2: Stratified Seed Co-Construction (S+ / S-), 5-Fold OOF Calibration,
+Lexical + Continuous TF-IDF Scoring, Contrastive Margin, and RRF(k=60) Fusion.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common_io import load_or_create_config, phase_dir, resolve_workdir, strip_accents
+
+
+def compile_term_pattern(terms: list[str]) -> re.Pattern:
+    parts = []
+    for t in terms:
+        ts = strip_accents(t).lower().strip()
+        if not ts:
+            continue
+        wc = ts.endswith("*")
+        base = re.escape(ts[:-1] if wc else ts)
+        parts.append(rf"\b{base}" + (r"\w*" if wc else r"\b"))
+    return re.compile("(?:" + "|".join(dict.fromkeys(parts)) + ")", flags=re.IGNORECASE) if parts else re.compile(r"(?!x)x")
+
+
+def knn_mean_cosine(X_q: np.ndarray, X_ref: np.ndarray, k: int = 15) -> np.ndarray:
+    if len(X_ref) == 0:
+        return np.zeros(len(X_q), dtype=np.float32)
+    k_eff = min(k, len(X_ref))
+    out = np.zeros(len(X_q), dtype=np.float32)
+    for s in range(0, len(X_q), 2048):
+        sims = X_q[s : s + 2048] @ X_ref.T
+        top_k = np.partition(sims, -k_eff, axis=1)[:, -k_eff:] if sims.shape[1] > k_eff else sims
+        out[s : s + 2048] = top_k.mean(axis=1)
+    return out
+
+
+def compute_lexical_signals(df: pd.DataFrame, audit_df: pd.DataFrame, facets_init: dict, topics_df: pd.DataFrame, sources_df: pd.DataFrame) -> pd.DataFrame:
+    free_terms = audit_df[audit_df["final_action"] == "FREE_OR"]["term"].tolist()
+    coup_terms = audit_df[audit_df["final_action"] == "COUPLE_PROXIMITY"]["term"].tolist()
+    coup_set = set(coup_terms)
+    anchors = [a for a in (facets_init.get("anatomical_anchors_en", []) + facets_init.get("anatomical_anchors_es", [])) if a not in coup_set]
+    homonyms = facets_init.get("lexical_homonyms_to_avoid", [])
+
+    indiv_rx = [compile_term_pattern([t]) for t in free_terms if str(t).strip()]
+    rx_free_any = compile_term_pattern(free_terms)
+    rx_coup = compile_term_pattern(coup_terms)
+    rx_anc = compile_term_pattern(anchors)
+    rx_hom = compile_term_pattern(homonyms)
+
+    core_topics = set(topics_df[topics_df["llm_class"] == "INCLUDE_CORE"]["display_name"].str.lower().tolist()) if not topics_df.empty else set()
+    adj_topics = set(topics_df[topics_df["llm_class"] == "INCLUDE_ADJACENT"]["display_name"].str.lower().tolist()) if not topics_df.empty else set()
+    excl_topics = set(topics_df[topics_df["llm_class"] == "EXCLUDE"]["display_name"].str.lower().tolist()) if not topics_df.empty else set()
+    pure_venues = set(sources_df[sources_df["source_class"] == "PURE_DOMAIN_JOURNAL"]["display_name"].str.lower().tolist()) if not sources_df.empty else set()
+
+    titles_clean = [strip_accents(t).lower() for t in df["title"].fillna("")]
+    body_clean = [strip_accents(f"{t} {kw} {ab}").lower() for t, kw, ab in zip(df["title"].fillna(""), df["keywords"].fillna(""), df["abstract_final"].fillna(""))]
+    topics_low = df["topic"].fillna("").str.lower().tolist()
+    kw_low = df["keywords"].fillna("").str.lower().tolist()
+    venues_low = df["source_venue"].fillna("").str.lower().tolist()
+
+    n = len(df)
+    title_hits = np.zeros(n, dtype=np.int32)
+    body_hits = np.zeros(n, dtype=np.int32)
+    coupled = np.zeros(n, dtype=bool)
+    homonym_hit = np.zeros(n, dtype=bool)
+    topic_tier = np.zeros(n, dtype=np.int32)
+    pure_venue = np.zeros(n, dtype=bool)
+    rx_anchor_tax = compile_term_pattern(anchors[:8])
+
+    for i in range(n):
+        ti, bi = titles_clean[i], body_clean[i]
+        if rx_free_any.search(ti):
+            title_hits[i] = sum(1 for rx in indiv_rx if rx.search(ti))
+        if rx_free_any.search(bi):
+            body_hits[i] = sum(1 for rx in indiv_rx if rx.search(bi))
+        coupled[i] = bool(rx_coup.search(bi) and rx_anc.search(bi))
+        homonym_hit[i] = bool(rx_hom.search(bi))
+        tl, vl = topics_low[i], venues_low[i]
+        pure_venue[i] = vl in pure_venues
+        if tl in core_topics:
+            topic_tier[i] = 2
+        elif tl in adj_topics:
+            topic_tier[i] = 1
+        elif tl in excl_topics:
+            topic_tier[i] = -1
+        elif not tl and (pure_venue[i] or rx_anchor_tax.search(kw_low[i])):
+            topic_tier[i] = 2
+
+    vocab_seeds = [strip_accents(t).lower().replace("*", "") for t in free_terms if len(t.replace("*", "")) >= 4]
+    try:
+        tfv = TfidfVectorizer(ngram_range=(1, 2), min_df=2, max_features=4000, sublinear_tf=True)
+        X_tf = tfv.fit_transform(body_clean)
+        q_vec = tfv.transform([" ".join(vocab_seeds)])
+        tfidf_sim = np.asarray((X_tf @ q_vec.T).todense()).ravel().astype(np.float32)
+    except Exception:
+        tfidf_sim = np.zeros(n, dtype=np.float32)
+
+    lex_score = (
+        2.5 * np.minimum(title_hits, 4)
+        + 1.0 * np.minimum(body_hits, 6)
+        + 1.5 * coupled.astype(float)
+        + 2.2 * (topic_tier == 2).astype(float)
+        + 1.0 * (topic_tier == 1).astype(float)
+        + 2.5 * pure_venue.astype(float)
+        + 1.8 * tfidf_sim
+        - 1.8 * (topic_tier == -1).astype(float)
+        - 3.0 * (homonym_hit & (title_hits == 0)).astype(float)
+    )
+    return pd.DataFrame({
+        "title_free_hits": title_hits, "body_free_hits": body_hits, "coupled_match": coupled,
+        "homonym_hit": homonym_hit, "topic_tier": topic_tier, "pure_venue_flag": pure_venue,
+        "tfidf_pos_sim": np.round(tfidf_sim, 4), "lex_score": lex_score,
+    })
+
+
+def build_stratified_seeds(df: pd.DataFrame, lex_df: pd.DataFrame, vec_norms: np.ndarray, n_pos: int = 1200, n_neg: int = 1200, seed: int = 42) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+    valid = vec_norms > 0.1
+    pos_mask = valid & (~lex_df["homonym_hit"].values) & (((lex_df["topic_tier"].values == 2) & (lex_df["title_free_hits"].values >= 1)) | (lex_df["pure_venue_flag"].values & (lex_df["body_free_hits"].values >= 1)))
+    pos_cands = np.where(pos_mask)[0]
+    if len(pos_cands) < 50:
+        # Fallback when external topics metadata is sparse
+        pos_cands = np.where(valid & (~lex_df["homonym_hit"].values) & (lex_df["title_free_hits"].values >= 1))[0]
+
+    pos_sel = rng.choice(pos_cands, size=min(n_pos, len(pos_cands)), replace=False).tolist() if len(pos_cands) > n_pos else pos_cands.tolist()
+    neg_mask = valid & (~np.isin(np.arange(len(df)), pos_sel)) & (lex_df["title_free_hits"].values == 0) & (lex_df["body_free_hits"].values == 0) & (~lex_df["coupled_match"].values) & (~lex_df["pure_venue_flag"].values) & ((lex_df["topic_tier"].values == -1) | lex_df["homonym_hit"].values)
+    neg_cands = np.where(neg_mask)[0]
+    if len(neg_cands) < max(30, min(200, len(pos_sel) // 2)):
+        neg_cands = np.where(valid & (~np.isin(np.arange(len(df)), pos_sel)) & (lex_df["title_free_hits"].values == 0) & (lex_df["body_free_hits"].values == 0) & (lex_df["topic_tier"].values <= 0))[0]
+    neg_sel = rng.choice(neg_cands, size=min(n_neg, len(neg_cands)), replace=False).tolist() if len(neg_cands) > n_neg else neg_cands.tolist()
+    return np.array(sorted(set(pos_sel)), dtype=np.int64), np.array(sorted(set(neg_sel)), dtype=np.int64)
+
+
+def run_oof_calibration(vecs: np.ndarray, pos_idx: np.ndarray, neg_idx: np.ndarray, k_nn: int, has_abs_all: np.ndarray) -> dict[str, float]:
+    X_s = np.vstack([vecs[pos_idx], vecs[neg_idx]])
+    y_s = np.concatenate([np.ones(len(pos_idx), dtype=np.int32), np.zeros(len(neg_idx), dtype=np.int32)])
+    abs_s = np.concatenate([has_abs_all[pos_idx], has_abs_all[neg_idx]])
+    skf = StratifiedKFold(n_splits=min(5, len(pos_idx), len(neg_idx)), shuffle=True, random_state=42)
+    oof_m, oof_lr = np.zeros(len(y_s), dtype=np.float32), np.zeros(len(y_s), dtype=np.float32)
+
+    for tr, va in skf.split(X_s, y_s):
+        X_tr, y_tr, X_va = X_s[tr], y_s[tr], X_s[va]
+        oof_m[va] = knn_mean_cosine(X_va, X_tr[y_tr == 1], k=k_nn) - knn_mean_cosine(X_va, X_tr[y_tr == 0], k=k_nn)
+        clf = LogisticRegression(C=1.0, max_iter=500, class_weight="balanced").fit(X_tr, y_tr)
+        oof_lr[va] = clf.predict_proba(X_va)[:, 1]
+
+    def _fpr90(yt: np.ndarray, sc: np.ndarray) -> float:
+        ps = np.sort(sc[yt == 1])[::-1]
+        thr = ps[min(len(ps) - 1, int(np.floor(0.90 * len(ps))))]
+        return float((sc[yt == 0] >= thr).mean())
+
+    metrics = {
+        "n_pos_seeds": int(len(pos_idx)), "n_neg_seeds": int(len(neg_idx)),
+        "oof_margin_pr_auc": float(average_precision_score(y_s, oof_m)),
+        "oof_margin_roc_auc": float(roc_auc_score(y_s, oof_m)),
+        "oof_margin_fpr_at_rec90": _fpr90(y_s, oof_m),
+        "oof_logreg_pr_auc": float(average_precision_score(y_s, oof_lr)),
+        "oof_logreg_roc_auc": float(roc_auc_score(y_s, oof_lr)),
+        "oof_abs_gap": float(abs(oof_m[abs_s & (y_s == 1)].mean() - oof_m[(~abs_s) & (y_s == 1)].mean())) if (abs_s & (y_s == 1)).any() and ((~abs_s) & (y_s == 1)).any() else 0.0,
+    }
+    return metrics
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workdir", type=str, default=".")
+    parser.add_argument("--config", type=str, default=None)
+    parser.add_argument("--n-pos", type=int, default=1200)
+    parser.add_argument("--n-neg", type=int, default=1200)
+    args = parser.parse_args()
+
+    wd = resolve_workdir(args.workdir)
+    cfg, _ = load_or_create_config(wd, config_path=args.config)
+    k_nn = int(cfg["thresholds"]["knn_neighbors"])
+    rrf_k = int(cfg["thresholds"]["rrf_k"])
+
+    f0_dir = phase_dir(wd, "fase0_estrategia")
+    f1_dir = phase_dir(wd, "fase1_corpus")
+    out_dir = phase_dir(wd, "fase2_scoring")
+
+    df = pd.read_parquet(f1_dir / "corpus_bruto_dedup.parquet")
+    vecs = np.load(f1_dir / "embeddings_dense.npy")
+    audit_df = pd.read_csv(f0_dir / "audit_terminos_especificidad.csv")
+    facets_init = json.loads((f0_dir / "facets_init.json").read_text(encoding="utf-8"))
+    topics_df = pd.read_csv(f0_dir / "propuesta_topics_descubiertos.csv") if (f0_dir / "propuesta_topics_descubiertos.csv").exists() else pd.DataFrame()
+    sources_df = pd.read_csv(f0_dir / "propuesta_revistas_bradford.csv") if (f0_dir / "propuesta_revistas_bradford.csv").exists() else pd.DataFrame()
+
+    lex_df = compute_lexical_signals(df, audit_df, facets_init, topics_df, sources_df)
+    vec_norms = np.linalg.norm(vecs, axis=1)
+    pos_idx, neg_idx = build_stratified_seeds(df, lex_df, vec_norms, n_pos=args.n_pos, n_neg=args.n_neg)
+    oof_metrics = run_oof_calibration(vecs, pos_idx, neg_idx, k_nn=k_nn, has_abs_all=(df["abstract_final"].fillna("").str.strip() != "").to_numpy())
+
+    X_pos, X_neg = vecs[pos_idx], vecs[neg_idx]
+    margin = knn_mean_cosine(vecs, X_pos, k=k_nn) - knn_mean_cosine(vecs, X_neg, k=k_nn)
+    margin[vec_norms == 0] = -1.0
+    clf = LogisticRegression(C=1.0, max_iter=500, class_weight="balanced").fit(np.vstack([X_pos, X_neg]), np.concatenate([np.ones(len(pos_idx)), np.zeros(len(neg_idx))]))
+    lr_prob = clf.predict_proba(vecs)[:, 1]
+    lr_prob[vec_norms == 0] = 0.0
+
+    df_sc = pd.concat([df.reset_index(drop=True), lex_df.reset_index(drop=True)], axis=1)
+    df_sc["margin_score"] = margin
+    df_sc["logreg_prob"] = lr_prob
+    df_sc["seed_role"] = "NONE"
+    df_sc.loc[pos_idx, "seed_role"] = "S_POS"
+    df_sc.loc[neg_idx, "seed_role"] = "S_NEG"
+    df_sc["rank_lex"] = df_sc["lex_score"].rank(ascending=False, method="min").astype(int)
+    df_sc["rank_sem"] = df_sc["margin_score"].rank(ascending=False, method="min").astype(int)
+    df_sc["rrf_score"] = (1.0 / (rrf_k + df_sc["rank_lex"])) + (1.0 / (rrf_k + df_sc["rank_sem"]))
+
+    lex_strong = (df_sc["title_free_hits"] >= 1) | (df_sc["body_free_hits"] >= 2) | df_sc["coupled_match"] | df_sc["pure_venue_flag"]
+    sem_strong = df_sc["margin_score"] > 0.02
+    df_sc["via_captacion"] = np.select([lex_strong & sem_strong, lex_strong & (~sem_strong), (~lex_strong) & sem_strong], ["BOTH_LEX_AND_SEM", "LEX_ONLY", "SEM_ONLY_RESCUE"], default="BORDERLINE_WEAK")
+
+    all_metrics = {"oof_calibration": oof_metrics, "via_counts": df_sc["via_captacion"].value_counts().to_dict()}
+    df_sc.to_parquet(out_dir / "corpus_scored_rrf.parquet", index=False)
+    (out_dir / "fase2_oof_metrics.json").write_text(json.dumps(all_metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps(all_metrics, indent=2, ensure_ascii=False))
+
+    from visual_artifacts import generate_phase_visuals
+    generate_phase_visuals(2, wd, cfg)
+
+
+if __name__ == "__main__":
+    main()
