@@ -190,13 +190,14 @@ def triage_clusters_and_rescue(df: pd.DataFrame, cfg: dict) -> tuple[pd.DataFram
                 and med_m > 0.0
             ) or (pct_sp >= 78.0 and pct_sn <= 15.0 and med_m >= 0.06)
             is_green_anchored = (med_lr >= 0.68) and (pct_th >= 18.0 or pct_pv >= 12.0 or med_m >= 0.075)
-            if is_green_seeds and is_green_anchored:
+            is_green_hi_conf = (med_lr >= 0.72 and med_m >= 0.05 and (pct_th >= 18.0 or pct_pv >= 12.0) and (pct_sn <= th["green_zone_max_neg_pct"] or n_sn <= 1))
+            if (is_green_seeds and is_green_anchored) or is_green_hi_conf:
                 zone = "ZONA_VERDE"
             elif (
                 pct_sn >= th["red_zone_min_neg_pct"]
                 and pct_sp <= th["red_zone_max_pos_pct"]
                 and ((med_m < -0.015) or (med_m < 0.005 and pct_th < 12.0) or (med_lr <= 0.35 and pct_th < 12.0))
-            ) or (pct_sp <= 15.0 and med_lr <= 0.25 and pct_th < 8.0 and pct_pv < 5.0):
+            ) or (pct_sp <= 15.0 and med_lr <= 0.25 and pct_th < 8.0 and pct_pv < 5.0) or (med_lr <= 0.22 and med_m <= 0.01 and pct_sp <= 20.0):
                 zone = "ZONA_ROJA"
             else:
                 zone = "ZONA_GRIS"
@@ -228,6 +229,18 @@ def triage_clusters_and_rescue(df: pd.DataFrame, cfg: dict) -> tuple[pd.DataFram
 
     df["zona_cluster"] = df["leiden_cluster"].map(zone_by_cid)
     df["zona_triaje"] = df["zona_cluster"].copy()
+    weak_tail_mask = (
+        (df["zona_cluster"] == "ZONA_GRIS")
+        & (df.get("via_captacion", pd.Series("", index=df.index)) == "BORDERLINE_WEAK")
+        & (df.get("topic_tier", pd.Series(0, index=df.index)) <= 0)
+        & (df["title_free_hits"] == 0)
+        & (df.get("body_free_hits", pd.Series(0, index=df.index)) == 0)
+        & (~df.get("coupled_match", pd.Series(False, index=df.index)).astype(bool))
+        & (~df.get("pure_venue_flag", pd.Series(False, index=df.index)).astype(bool))
+        & (df.get("logreg_prob", pd.Series(0.5, index=df.index)) < 0.35)
+        & (df["margin_score"] <= 0.0)
+    )
+    df.loc[weak_tail_mask, "zona_triaje"] = "ZONA_ROJA"
     df["red_outlier_rescued"] = False
     rescue_mask = (df["zona_cluster"] == "ZONA_ROJA") & ((df["title_free_hits"] >= 1) | df["coupled_match"] | df["pure_venue_flag"]) & (df["margin_score"] > float(th["red_zone_outlier_rescue_margin"]))
     df.loc[rescue_mask, "zona_triaje"] = "ZONA_GRIS"

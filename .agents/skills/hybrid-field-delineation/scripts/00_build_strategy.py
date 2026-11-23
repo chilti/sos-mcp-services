@@ -111,7 +111,7 @@ def generate_initial_discovery_facets(cfg: dict, api_key: str, out_dir: Path, ll
 - Biomedical domain flag: {dom.get('is_biomedical', False)}
 
 Return JSON with keys:
-- "topic_search_queries": 10-14 short English search phrases for OpenAlex /topics endpoint covering core + adjacent interdisciplinary subfields.
+- "topic_search_queries": 12-16 short English search phrases (1-2 words each; if the topic has multiple subfields separated by commas or 'and', output separate atomic 1-2 word queries per subfield and NEVER combine 3+ concepts into a single phrase because OpenAlex /topics uses strict AND matching).
 - "anatomical_anchors_en": 4-8 core English anchor phrases/roots identifying the domain when coupled with ambiguous terms.
 - "anatomical_anchors_es": 4-8 core Spanish anchor phrases/roots.
 - "scope_inclusion_criteria": 2-sentence clear inclusion rubric for Phase 4 judging.
@@ -134,9 +134,42 @@ Return JSON with keys:
     return default_rule_facets(dom["seed_topic_en"], dom["seed_topic_es"], bool(dom.get("is_biomedical")))
 
 
-def discover_openalex_topics(queries: list[str], email: str, oa_key: str | None) -> pd.DataFrame:
+def expand_atomic_subaxis_queries(seed_topic_en: str, anchors: list[str] | None = None) -> tuple[list[str], list[str]]:
+    """Decomposes compound multi-axis field titles into atomic 1-2 word /topics queries."""
+    generic_unigrams = {"science", "sciences", "studies", "study", "research", "engineering", "technology", "policy", "policies", "systems", "analysis", "methods", "applications", "latin", "american"}
+    raw_axes = [p.strip() for p in re.split(r"[,;/&]+|\band\b", seed_topic_en or "", flags=re.IGNORECASE) if p.strip()]
+    primary: list[str] = []
+    for ax in raw_axes:
+        toks = [t for t in ax.split() if len(t) >= 3]
+        if len(toks) == 1 and toks[0].lower() in generic_unigrams:
+            continue
+        if len(toks) > 2:
+            # Keep 2-word head phrase too so OpenAlex AND matching stays broad
+            primary.append(" ".join(toks[:2]))
+        primary.append(ax)
+
+    fallbacks: list[str] = []
+    for cand in primary + list(anchors or []):
+        for tok in re.findall(r"[A-Za-z0-9\-]{5,}", cand):
+            tl = tok.lower()
+            if tl not in generic_unigrams:
+                fallbacks.append(tok)
+    return list(dict.fromkeys(primary)), list(dict.fromkeys(fallbacks))
+
+
+def discover_openalex_topics(
+    queries: list[str],
+    email: str,
+    oa_key: str | None,
+    seed_topic_en: str = "",
+    anchors: list[str] | None = None,
+    min_topics: int = 35,
+) -> pd.DataFrame:
     seen: dict[str, dict[str, Any]] = {}
-    for q in queries:
+    primary_axes, fallback_tokens = expand_atomic_subaxis_queries(seed_topic_en, anchors)
+    all_initial = list(dict.fromkeys([*primary_axes, *(queries or [])]))
+
+    def _query_one(q: str) -> None:
         params: dict[str, str] = {"search": q, "per-page": "25", "mailto": email}
         if oa_key:
             params["api_key"] = oa_key
@@ -149,9 +182,9 @@ def discover_openalex_topics(queries: list[str], email: str, oa_key: str | None)
                 try:
                     data = http_get_json("https://api.openalex.org/topics?" + urllib.parse.urlencode(params))
                 except Exception:
-                    continue
+                    return
             else:
-                continue
+                return
         for t in data.get("results", []):
             tid = str(t.get("id", "")).split("/")[-1]
             if not tid:
@@ -169,6 +202,17 @@ def discover_openalex_topics(queries: list[str], email: str, oa_key: str | None)
                 "matched_query": q,
             }
             seen.setdefault(tid, row)
+
+    for q in all_initial:
+        _query_one(q)
+    if len(seen) < min_topics:
+        for fq in fallback_tokens:
+            if fq.lower() in {x.lower() for x in all_initial}:
+                continue
+            _query_one(fq)
+            if len(seen) >= min_topics:
+                break
+        print(f"  [Topics Coverage Guard] Expanded composite queries -> {len(seen)} unique topics.")
     return pd.DataFrame(list(seen.values())).sort_values("works_count", ascending=False).reset_index(drop=True) if seen else pd.DataFrame()
 
 
@@ -855,7 +899,13 @@ def main() -> None:
         facets_init = generate_initial_discovery_facets(cfg, api_key, out_dir, args.llm_mode)
         (out_dir / "facets_init.json").write_text(json.dumps(facets_init, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        topics_raw = discover_openalex_topics(facets_init.get("topic_search_queries", []), email, oa_key)
+        topics_raw = discover_openalex_topics(
+            facets_init.get("topic_search_queries", []),
+            email,
+            oa_key,
+            seed_topic_en=cfg["domain"]["seed_topic_en"],
+            anchors=facets_init.get("anatomical_anchors_en", []),
+        )
         topics_curated = classify_topics(topics_raw, cfg, facets_init, api_key, out_dir, args.llm_mode)
         topics_curated.to_csv(out_dir / "propuesta_topics_descubiertos.csv", index=False)
 
