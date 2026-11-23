@@ -21,7 +21,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common_io import filter_safe_homonyms, load_env_vars, load_or_create_config, load_query_validator, phase_dir, resolve_workdir
@@ -68,10 +68,12 @@ def llm_chat_json(base_url: str, api_key: str, model: str, system_prompt: str, u
     for attempt in range(3):
         try:
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=120) as resp:
+            with urllib.request.urlopen(req, timeout=240) as resp:
                 raw = json.loads(resp.read().decode("utf-8"))
-                content = raw["choices"][0]["message"]["content"]
+                msg = raw["choices"][0]["message"]
+                content = (msg.get("content") or "").strip()
                 content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE | re.DOTALL).strip()
                 m = re.search(r"\{.*\}", content, flags=re.DOTALL)
                 if m:
                     return json.loads(m.group(0))
@@ -305,12 +307,56 @@ def differential_pearl_growing(core_topic_ids: list[str], email: str, oa_key: st
                 break
         return texts[:target_n]
 
+    cc_name = (cfg["scope"].get("geo_country_name") or "").strip().lower()
+    cc_code = (cfg["scope"].get("geo_country_code") or "").strip().lower()
+    extra_geo_stops = {x for x in (cc_name, cc_code, "mexico", "méxico") if x}
+    SPANISH_AND_ACADEMIC_STOPWORDS = frozenset(ENGLISH_STOP_WORDS) | extra_geo_stops | frozenset({
+        "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por", "un", "para",
+        "con", "no", "una", "su", "al", "lo", "como", "mas", "más", "pero", "sus", "le", "ya",
+        "o", "este", "si", "sí", "porque", "esta", "entre", "cuando", "muy", "sin", "sobre",
+        "tambien", "también", "me", "hasta", "hay", "donde", "quien", "desde", "todo", "nos",
+        "durante", "todos", "uno", "les", "ni", "contra", "otros", "ese", "eso", "ante", "ellos",
+        "e", "esto", "mi", "antes", "algunos", "unos", "yo", "otro", "otras", "otra", "el", "él",
+        "tanto", "esa", "estos", "mucho", "quienes", "nada", "muchos", "cual", "poco", "ella",
+        "estar", "estas", "algunas", "algo", "nosotros", "mis", "tu", "te", "ti", "ellas", "nosotras",
+        "vosotros", "vosotras", "os", "mia", "mía", "mio", "mío", "tuyo", "tuya", "suyo", "suya",
+        "nuestro", "nuestra", "vuestro", "vuestra", "esos", "esas", "estoy", "estas", "esta", "está",
+        "estamos", "estan", "están", "estuve", "estuvo", "estuvieron", "era", "eramos", "eran",
+        "fue", "fuimos", "fueron", "ser", "es", "son", "sido", "siendo", "sea", "sean", "han",
+        "ha", "he", "hemos", "habia", "había", "hubo", "mediante", "hacia", "bajo", "tras",
+        "segun", "según", "embargo", "ademas", "además", "cada", "todas", "solo", "sólo", "mismo",
+        "misma", "mismos", "mismas", "puede", "pueden", "pudo", "cuales", "donde", "dónde", "cuya",
+        "cuyo", "cuyos", "cuyas", "aqui", "aquí", "asi", "así", "aunque", "debido", "respecto",
+        "patients", "patient", "study", "studies", "results", "result", "methods", "method",
+        "conclusions", "conclusion", "background", "objective", "objectives", "year", "years",
+        "using", "used", "use", "based", "analysis", "analyses", "group", "groups", "factor",
+        "factors", "risk", "data", "case", "cases", "control", "controls", "associated",
+        "significantly", "significant", "evaluated", "assessed", "compared", "included", "total",
+        "mean", "high", "higher", "low", "lower", "showed", "found", "observed", "however",
+        "although", "therefore", "introduction", "discussion", "abstract", "clinical", "disease",
+        "diseases", "severe", "acute", "chronic", "treatment", "diagnosis", "prevalence",
+        "severity", "symptoms", "review", "effect", "effects", "level", "levels", "rate", "rates",
+        "day", "days", "week", "weeks", "month", "months", "time", "times", "age", "ages",
+        "child", "children", "adult", "adults", "women", "men", "human", "humans", "sample",
+        "samples", "population", "populations", "care", "hospital", "hospitalized", "mortality",
+        "cell", "cells", "trial", "trials", "mexico", "méxico",
+        "estudio", "estudios", "resultados", "resultado", "objetivo", "objetivos", "conclusiones",
+        "conclusion", "conclusión", "metodos", "métodos", "metodo", "método", "pacientes",
+        "paciente", "grupo", "grupos", "analisis", "análisis", "datos", "casos", "caso",
+        "tratamiento", "diagnostico", "diagnóstico", "prevalencia", "factores", "factor",
+        "riesgo", "clinico", "clínico", "clinica", "clínica", "enfermedad", "enfermedades",
+        "asociado", "asociada", "asociados", "asociadas", "presenta", "presentan", "mayor",
+        "menor", "altos", "bajos", "total", "nivel", "niveles", "efecto", "efectos", "revision",
+        "revisión", "articulo", "artículo", "resumen", "introduccion", "introducción",
+    })
+
     pos_en = _fetch_texts(f"primary_topic.id:{top_str},publication_year:{y0}-{y1},has_abstract:true,language:en{cc_flt}", max(100, sample_n // 2), 11) if top_str else []
     pos_es = _fetch_texts(f"primary_topic.id:{top_str},publication_year:{y0}-{y1},language:es{cc_flt}", max(80, sample_n // 3), 12) if top_str else []
-    excl_top = ",".join(f"!{t}" for t in core_topic_ids[:10])
-    bg_flt = f"publication_year:{y0}-{y1},has_abstract:true,language:en{cc_flt}" + (f",primary_topic.id:{excl_top}" if excl_top else "")
+    excl_top = ",".join(f"primary_topic.id:!{t}" for t in core_topic_ids[:10])
+    bg_flt = f"publication_year:{y0}-{y1},has_abstract:true,language:en{cc_flt}" + (f",{excl_top}" if excl_top else "")
     bg_en = _fetch_texts(bg_flt, max(100, sample_n // 2), 13)
-    bg_es = _fetch_texts(f"publication_year:{y0}-{y1},language:es{cc_flt}", max(80, sample_n // 3), 14)
+    bg_es_flt = f"publication_year:{y0}-{y1},language:es{cc_flt}" + (f",{excl_top}" if excl_top else "")
+    bg_es = _fetch_texts(bg_es_flt, max(80, sample_n // 3), 14)
 
     def extract_top_log_odds(pos_docs: list[str], bg_docs: list[str], min_df: int = 4, top_k: int = 60) -> list[str]:
         if len(pos_docs) < 15 or len(bg_docs) < 15:
@@ -325,11 +371,15 @@ def differential_pearl_growing(core_topic_ids: list[str], email: str, oa_key: st
         p1 = (c_p + alpha) / (c_p.sum() + alpha * len(terms))
         p2 = (c_b + alpha) / (c_b.sum() + alpha * len(terms))
         z = (np.log(p1 / (1 - p1)) - np.log(p2 / (1 - p2))) / np.sqrt(1.0 / (c_p + alpha) + 1.0 / (c_b + alpha))
-        stop_generic = {"patients", "study", "results", "methods", "conclusions", "background", "year", "years", "using", "based", "analysis", "estudio", "resultados", "objetivo", "conclusiones", "sobre", "entre"}
         out = []
         for idx in np.argsort(-z):
-            t = terms[idx].lower()
-            if t in stop_generic or len(t) < 4 or t.isdigit() or c_p[idx] < min_df:
+            t = terms[idx].lower().strip()
+            toks = t.split()
+            if t in SPANISH_AND_ACADEMIC_STOPWORDS or all(w in SPANISH_AND_ACADEMIC_STOPWORDS for w in toks):
+                continue
+            if len(toks) == 2 and (toks[0] in SPANISH_AND_ACADEMIC_STOPWORDS or toks[1] in SPANISH_AND_ACADEMIC_STOPWORDS):
+                continue
+            if len(t) < 4 or t.isdigit() or c_p[idx] < min_df:
                 continue
             out.append(t)
             if len(out) >= top_k:
@@ -351,18 +401,20 @@ def synthesize_bilingual_blocks(cfg: dict, api_key: str, mesh_data: dict, topics
 
     sys_p = (
         f"You are an expert information retrieval specialist creating a ~100% RECALL bilingual search dictionary for '{topic_en}' / '{topic_es}'. "
-        "Never use wildcard '*' on a stem shorter than 4 chars. Place short acronyms (<=3 chars) or ambiguous cross-domain terms in coupled_context_terms_*. Output strict valid JSON."
+        "Never use wildcard '*' on a stem shorter than 4 chars. Place short acronyms (<=3 chars), country names, or generic/ambiguous cross-domain single words "
+        "(e.g., cell, cells, cancer, care, days, children, hospital, therapy, expression, mortality, model, water, energy) in coupled_context_terms_*. "
+        "Put ONLY field-specific terms in free_terms_*. Output ONLY strict valid JSON."
     )
     usr_p = f"""Synthesize clean bilingual search blocks from these clean-room inputs:
-Topics ({len(top_names)}): {', '.join(top_names[:35])}
-MeSH Descriptors: {', '.join(mesh_data.get('descriptors', [])[:35])}
-MeSH Entry Terms: {', '.join(mesh_data.get('entry_terms', [])[:35])}
-Pearl Growing EN (Log-Odds): {', '.join(pearl_terms.get('en_terms', [])[:55])}
-Pearl Growing ES (Log-Odds): {', '.join(pearl_terms.get('es_terms', [])[:45])}
+Topics ({len(top_names)}): {', '.join(top_names[:25])}
+MeSH Descriptors: {', '.join(mesh_data.get('descriptors', [])[:25])}
+MeSH Entry Terms: {', '.join(mesh_data.get('entry_terms', [])[:25])}
+Pearl Growing EN (Log-Odds): {', '.join(pearl_terms.get('en_terms', [])[:45])}
+Pearl Growing ES (Log-Odds): {', '.join(pearl_terms.get('es_terms', [])[:35])}
 Anchors EN: {', '.join(facets_init.get('anatomical_anchors_en', []))}
 Anchors ES: {', '.join(facets_init.get('anatomical_anchors_es', []))}
 
-Return JSON keys: "free_terms_en", "free_terms_es", "coupled_context_terms_en", "coupled_context_terms_es".
+Return strict JSON with keys: "free_terms_en", "free_terms_es", "coupled_context_terms_en", "coupled_context_terms_es".
 """
     if llm_mode in ("auto", "local") and llm_endpoint_alive(ep["llm_base_url"], api_key):
         res = llm_chat_json(ep["llm_base_url"], api_key, ep["llm_model"], sys_p, usr_p)
@@ -413,6 +465,18 @@ def audit_term_specificity(
             return 1, 1, 0.85
         return tot, p_hits, float((p_hits + 0.5) / (tot + 1.0))
 
+    audit_stopwords = frozenset(ENGLISH_STOP_WORDS) | frozenset({
+        "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por", "un", "para",
+        "con", "no", "una", "su", "al", "lo", "como", "mas", "más", "pero", "sus", "le", "ya",
+        "este", "si", "sí", "porque", "esta", "entre", "cuando", "muy", "sin", "sobre", "tambien",
+        "también", "hasta", "hay", "donde", "desde", "todo", "durante", "todos", "uno", "contra",
+        "otros", "ese", "eso", "ante", "ellos", "esto", "antes", "algunos", "unos", "otro", "otras",
+        "otra", "tanto", "esa", "estos", "están", "fue", "fueron", "ser", "son", "sido", "siendo",
+        "mediante", "hacia", "bajo", "tras", "segun", "según", "embargo", "ademas", "además",
+        "patients", "study", "studies", "results", "methods", "conclusions", "background",
+        "objective", "year", "years", "using", "based", "analysis", "group", "groups", "factors",
+        "estudio", "resultados", "objetivo", "conclusiones", "pacientes", "metodos", "métodos",
+    })
     rows = []
     for raw_t in dict.fromkeys(terms):
         t = str(raw_t).strip()
@@ -420,10 +484,15 @@ def audit_term_specificity(
             continue
         unsafe = any(len(part) < th["min_truncation_stem_chars"] for part in re.findall(r"([a-zA-ZáéíóúñÁÉÍÓÚÑ]+)\*", t))
         q_clean = t.replace("*", "").strip()
+        q_low = q_clean.lower()
+        q_toks = q_low.split()
         has_cjk = bool(re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", q_clean))
         min_len = 2 if has_cjk else 3
         if len(q_clean) < min_len or unsafe:
             rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": 0, "sample_pos_hits": 0, "topic_specificity": 0.0, "final_action": "REJECT_UNSAFE_WILDCARD" if unsafe else "REJECT_TOO_SHORT"})
+            continue
+        if q_low in audit_stopwords or (q_toks and all(w in audit_stopwords for w in q_toks)):
+            rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": 0, "sample_pos_hits": 0, "topic_specificity": 0.0, "final_action": "REJECT_STOPWORD"})
             continue
         if role_proposed == "FREE_OR_EXTRA":
             rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": -1, "sample_pos_hits": -1, "topic_specificity": 0.95, "final_action": "FREE_OR"})
@@ -437,7 +506,20 @@ def audit_term_specificity(
             continue
 
         tot, phits, spec = _local_sample_counts(q_clean, has_wc)
-        action = "COUPLE_PROXIMITY" if ((has_wc and spec < 0.50) or (tot >= 40 and spec < th["min_topic_specificity_for_free_or"])) else "FREE_OR"
+        b_hits = max(0, tot - phits)
+        bg_rate = b_hits / max(1, len(bg_docs)) if bg_docs else 0.0
+        est_global_hits = int(round(bg_rate * 1200000))
+        max_free_hits = int(th.get("max_hits_for_free_or", 8500))
+        single_word_min_spec = max(0.88, float(th["min_topic_specificity_for_free_or"]))
+        if (
+            (has_wc and spec < 0.50)
+            or (tot >= 40 and spec < th["min_topic_specificity_for_free_or"])
+            or (" " not in q_clean and tot >= 20 and spec < single_word_min_spec)
+            or (" " not in q_clean and est_global_hits > max_free_hits and spec < 0.96)
+        ):
+            action = "COUPLE_PROXIMITY"
+        else:
+            action = "FREE_OR"
         rows.append({"term": t, "lang": lang_lbl, "proposed_role": role_proposed, "sample_hits": tot, "sample_pos_hits": phits, "topic_specificity": round(spec, 3), "final_action": action})
     print(f"   [Audit {lang_lbl}/{role_proposed} (LOCAL_0_API_CALLS)] {len(rows)} terms verified.")
     return rows
@@ -626,7 +708,7 @@ def compile_queries(
         if use_mx_enriched:
             ch_select = "id, doi, pmid, pmcid, publication_year, type, language, is_oa, source_id, title, author_keywords, keywords, abstract_final, abstract_source, embedding_qwen"
             c_where = ""
-            flat_topic_cond = ("topic_id IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")") if topic_ids else ""
+            flat_topic_cond = ("replaceOne(topic_id, 'https://openalex.org/', '') IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")") if topic_ids else ""
             enriched_where = f"(publication_year BETWEEN {y0} AND {y1}) AND (\n    " + ("\n    OR ".join(ch_conds) if ch_conds else "1=0") + "\n  )"
             flat_topics_where = (
                 f"(publication_year BETWEEN {y0} AND {y1}) AND has(country_codes, 'MX') AND ({flat_topic_cond})"
@@ -647,7 +729,7 @@ def compile_queries(
                 )
         else:
             if topic_ids:
-                ch_conds.append("topic_id IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")")
+                ch_conds.append("replaceOne(topic_id, 'https://openalex.org/', '') IN (" + ", ".join(f"'{tid}'" for tid in topic_ids) + ")")
             c_where = f" AND has(country_codes, '{cc}')" if is_c else ""
             enriched_where = f"(publication_year BETWEEN {y0} AND {y1}){c_where} AND (\n    " + ("\n    OR ".join(ch_conds) if ch_conds else "1=0") + "\n  )"
             flat_topics_where = ""
@@ -820,6 +902,48 @@ def main() -> None:
             extra_rows.extend(audit_term_specificity(tlist, lg, "FREE_OR_EXTRA", top_ids, cfg, email, oa_key, pearl_terms))
         if extra_rows:
             audit_df = pd.concat([audit_df, pd.DataFrame(extra_rows)], ignore_index=True).drop_duplicates(subset=["term", "lang"])
+
+    if not audit_df.empty and env.get("CLICKHOUSE_HOST"):
+        try:
+            import clickhouse_connect
+            ch_pwd = (env.get("CLICKHOUSE_PASSWORD") or env.get("CLICKHOUSE_CLEAN_PASSWORD") or "").replace("$$", "$")
+            ch_client = clickhouse_connect.get_client(
+                host=env.get("CLICKHOUSE_HOST") or "localhost",
+                port=int(env.get("CLICKHOUSE_PORT") or 8123),
+                username=env.get("CLICKHOUSE_USER") or "default",
+                password=ch_pwd,
+                database=env.get("CLICKHOUSE_DATABASE") or "rag",
+                connect_timeout=5,
+                send_receive_timeout=60,
+            )
+            max_free_hits = int(cfg["strategy_generation"].get("max_hits_for_free_or", 8500))
+            free_mask = (audit_df["final_action"] == "FREE_OR") & (~audit_df["term"].astype(str).str.strip().str.contains(" ", regex=False))
+            cand_idx = audit_df[free_mask].index.tolist()
+            if len(cand_idx) > 2:
+                exprs = []
+                for idx_r in cand_idx:
+                    t_raw = str(audit_df.at[idx_r, "term"]).strip()
+                    wc = t_raw.endswith("*")
+                    base = re.escape(t_raw[:-1] if wc else t_raw).replace("'", "")
+                    pat = (f"(?i)\\\\b{base}" if wc else f"(?i)\\\\b{base}\\\\b")
+                    exprs.append(f"countIf(match(concat(title, ' ', abstract_final), '{pat}')) AS c_{idx_r}")
+                q_cnt = f"SELECT {', '.join(exprs)} FROM rag.works_mexico_abstracts_enriched FINAL"
+                row_cnt = ch_client.query(q_cnt).result_rows[0]
+                hits_by_idx = {idx_r: int(val) for idx_r, val in zip(cand_idx, row_cnt)}
+                # Keep at least top 2 most specific unigrams per language in FREE_OR
+                protected_idx: set[int] = set()
+                for lg_k, grp in audit_df.loc[cand_idx].groupby("lang"):
+                    top2 = grp.sort_values(["topic_specificity", "sample_pos_hits"], ascending=[False, False]).head(2).index.tolist()
+                    protected_idx.update(top2)
+                demoted = 0
+                for idx_r, ch_hits in hits_by_idx.items():
+                    if ch_hits > max_free_hits and idx_r not in protected_idx:
+                        audit_df.at[idx_r, "final_action"] = "COUPLE_PROXIMITY"
+                        demoted += 1
+                if demoted:
+                    print(f"   [ClickHouse Frequency Guard] Demoted {demoted} hyper-frequent FREE_OR unigrams (> {max_free_hits:,} hits) to COUPLE_PROXIMITY.")
+        except Exception as exc:
+            print(f"   [ClickHouse Frequency Guard skipped] {exc}")
 
     audit_df.to_csv(out_dir / "audit_terminos_especificidad.csv", index=False)
 

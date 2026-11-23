@@ -17,11 +17,23 @@ import leidenalg
 import numpy as np
 import pandas as pd
 import umap
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common_io import load_or_create_config, phase_dir, resolve_workdir
+
+SPANISH_STOPWORDS = {
+    "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por", "un", "para",
+    "con", "no", "una", "su", "al", "lo", "como", "mas", "más", "pero", "sus", "le", "ya", "o",
+    "este", "sí", "si", "porque", "esta", "entre", "cuando", "muy", "sin", "sobre", "también",
+    "tambien", "me", "hasta", "hay", "donde", "quien", "desde", "todo", "nos", "durante",
+    "todos", "uno", "les", "ni", "contra", "otros", "ese", "eso", "ante", "ellos", "e", "esto",
+    "mi", "antes", "algunos", "que", "unos", "yo", "otro", "otras", "otra", "él", "tanto",
+    "esa", "estos", "mucho", "quienes", "nada", "muchos", "cual", "poco", "ella", "estar",
+    "estas", "algunas", "algo", "nosotros", "estudio", "analisis", "análisis", "mediante",
+}
+BILINGUAL_STOPWORDS = sorted(set(ENGLISH_STOP_WORDS) | SPANISH_STOPWORDS)
 
 
 def estimate_intrinsic_dimensions(vecs: np.ndarray) -> dict[str, float]:
@@ -118,7 +130,7 @@ def select_optimal_leiden_gamma(G: ig.Graph, seed_roles: np.ndarray, gammas: lis
 
 
 def extract_cluster_keywords(titles: pd.Series, labels: np.ndarray, top_k: int = 6) -> dict[int, str]:
-    vec = TfidfVectorizer(max_features=3000, stop_words="english", ngram_range=(1, 2), min_df=2)
+    vec = TfidfVectorizer(max_features=3000, stop_words=BILINGUAL_STOPWORDS, ngram_range=(1, 2), min_df=2)
     try:
         X = vec.fit_transform(titles.fillna("").astype(str))
         terms = np.array(vec.get_feature_names_out())
@@ -167,19 +179,36 @@ def triage_clusters_and_rescue(df: pd.DataFrame, cfg: dict) -> tuple[pd.DataFram
         ns = n_sp + n_sn
         pct_sp, pct_sn = 100.0 * n_sp / max(1, ns), 100.0 * n_sn / max(1, ns)
         med_m = float(sub["margin_score"].median())
+        med_lr = float(sub["logreg_prob"].median()) if "logreg_prob" in sub.columns else 0.5
         pct_th = float((sub["title_free_hits"] >= 1).mean() * 100.0)
+        pct_pv = float(sub["pure_venue_flag"].mean() * 100.0) if "pure_venue_flag" in sub.columns else 0.0
 
         if ns >= 5:
-            if (pct_sp >= th["green_zone_min_pos_pct"] and (pct_sn <= th["green_zone_max_neg_pct"] or n_sn <= 1) and med_m > 0.0) or (pct_sp >= 78.0 and pct_sn <= 15.0 and med_m >= 0.06):
+            is_green_seeds = (
+                pct_sp >= th["green_zone_min_pos_pct"]
+                and (pct_sn <= th["green_zone_max_neg_pct"] or n_sn <= 1)
+                and med_m > 0.0
+            ) or (pct_sp >= 78.0 and pct_sn <= 15.0 and med_m >= 0.06)
+            is_green_anchored = (med_lr >= 0.68) and (pct_th >= 18.0 or pct_pv >= 12.0 or med_m >= 0.075)
+            if is_green_seeds and is_green_anchored:
                 zone = "ZONA_VERDE"
-            elif pct_sn >= th["red_zone_min_neg_pct"] and pct_sp <= th["red_zone_max_pos_pct"] and ((med_m < -0.015) or (med_m < 0.005 and pct_th < 12.0)):
+            elif (
+                pct_sn >= th["red_zone_min_neg_pct"]
+                and pct_sp <= th["red_zone_max_pos_pct"]
+                and ((med_m < -0.015) or (med_m < 0.005 and pct_th < 12.0) or (med_lr <= 0.35 and pct_th < 12.0))
+            ) or (pct_sp <= 15.0 and med_lr <= 0.25 and pct_th < 8.0 and pct_pv < 5.0):
                 zone = "ZONA_ROJA"
             else:
                 zone = "ZONA_GRIS"
         else:
-            if med_m >= 0.055 and pct_th >= 42.0:
+            if med_m >= 0.055 and med_lr >= 0.72 and (pct_th >= 42.0 or pct_pv >= 25.0):
                 zone = "ZONA_VERDE"
-            elif (pct_sn == 100.0 and med_m < -0.01) or (med_m <= 0.005 and pct_th < 10.0) or (med_m < -0.02):
+            elif (
+                (pct_sn == 100.0 and med_m < -0.01)
+                or (med_m <= 0.005 and pct_th < 10.0)
+                or (med_m < -0.02)
+                or (med_lr <= 0.25 and pct_th < 8.0 and pct_pv < 5.0)
+            ):
                 zone = "ZONA_ROJA"
             else:
                 zone = "ZONA_GRIS"
@@ -189,8 +218,10 @@ def triage_clusters_and_rescue(df: pd.DataFrame, cfg: dict) -> tuple[pd.DataFram
             "leiden_cluster": int(cid), "zona_inicial": zone, "n_docs": int(len(sub)),
             "n_s_pos": n_sp, "n_s_neg": n_sn, "pct_s_pos_seeded": round(pct_sp, 1),
             "pct_s_neg_seeded": round(pct_sn, 1), "median_margin": round(med_m, 4),
+            "median_logreg_prob": round(med_lr, 4),
             "median_rrf": round(float(sub["rrf_score"].median()), 6),
             "pct_title_free_hits": round(pct_th, 1),
+            "pct_pure_venue": round(pct_pv, 1),
             "top_topics": json.dumps(sub["topic"].replace("", pd.NA).dropna().value_counts().head(3).to_dict(), ensure_ascii=False),
             "c_tfidf_terms": kw_map.get(int(cid), ""),
         })

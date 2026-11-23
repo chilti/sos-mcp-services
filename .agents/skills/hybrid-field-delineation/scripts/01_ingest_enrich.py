@@ -259,6 +259,7 @@ def normalize_clickhouse_df(raw: pd.DataFrame, y0: int, y1: int, target_iso: str
     df["publication_year"] = raw["publication_year"]
     df["doc_type"] = raw.get("type", raw.get("doc_type", pd.Series("", index=raw.index))).fillna("").astype(str).str.lower()
     df["language"] = raw.get("language", pd.Series("", index=raw.index)).fillna("").astype(str).str.lower()
+    df["source_id"] = raw.get("source_id", pd.Series("", index=raw.index)).fillna("").astype(str)
     df["source_venue"] = raw.get("source_venue", raw.get("source_name", raw.get("source_id", pd.Series("", index=raw.index)))).fillna("").astype(str)
     df["topic"] = raw.get("topic", pd.Series("", index=raw.index)).fillna("").astype(str)
     df["subfield"] = raw.get("subfield", raw.get("subfield_name", pd.Series("", index=raw.index))).fillna("").astype(str)
@@ -267,6 +268,8 @@ def normalize_clickhouse_df(raw: pd.DataFrame, y0: int, y1: int, target_iso: str
 
     akw = raw["author_keywords"].map(lambda v: _join_seq_cell(v, ", ")) if "author_keywords" in raw.columns else pd.Series("", index=raw.index)
     okw = raw["keywords"].map(lambda v: _join_seq_cell(v, ", ")) if "keywords" in raw.columns else pd.Series("", index=raw.index)
+    df["author_keywords"] = akw
+    df["oa_keywords"] = okw
     df["keywords"] = [
         ", ".join(dict.fromkeys([t.strip() for t in f"{a}, {k}".split(",") if t.strip()]))
         for a, k in zip(akw, okw)
@@ -336,7 +339,7 @@ def harvest_clickhouse(spec_path: Path, cache_pq: Path, y0: int, y1: int, target
         host=env.get("CLICKHOUSE_HOST") or env.get("CH_HOST") or "localhost",
         port=int(env.get("CLICKHOUSE_PORT") or 8123),
         username=env.get("CLICKHOUSE_USER") or "default",
-        password=env.get("CLICKHOUSE_PASSWORD") or env.get("CLICKHOUSE_CLEAN_PASSWORD") or "",
+        password=(env.get("CLICKHOUSE_PASSWORD") or env.get("CLICKHOUSE_CLEAN_PASSWORD") or "").replace("$$", "$"),
         database=env.get("CLICKHOUSE_DATABASE") or "rag",
         connect_timeout=10,
         send_receive_timeout=300,
@@ -374,6 +377,22 @@ def harvest_clickhouse(spec_path: Path, cache_pq: Path, y0: int, y1: int, target
         if meta_chunks:
             df_meta = pd.concat(meta_chunks, ignore_index=True).drop_duplicates(subset=["id"])
             df_base = df_base.merge(df_meta, on="id", how="left")
+        # Resolve source_id -> display_name from rag.sources in Python (ZERO JOINs)
+        if "source_id" in df_base.columns:
+            uniq_sids = sorted({str(s).split("/")[-1].strip() for s in df_base["source_id"].dropna().unique() if str(s).strip()})
+            src_map: dict[str, str] = {}
+            for s in range(0, len(uniq_sids), 5000):
+                b_sids = ", ".join("'" + x.replace("'", "") + "'" for x in uniq_sids[s : s + 5000])
+                try:
+                    qs = f"SELECT replaceOne(id, 'https://openalex.org/', '') AS sid, display_name FROM rag.sources WHERE replaceOne(id, 'https://openalex.org/', '') IN ({b_sids})"
+                    for r_sid, r_name in client.query(qs).result_rows:
+                        if r_sid and r_name:
+                            src_map[str(r_sid)] = str(r_name)
+                            src_map[f"https://openalex.org/{r_sid}"] = str(r_name)
+                except Exception:
+                    break
+            if src_map:
+                df_base["source_name"] = [src_map.get(str(x).strip(), src_map.get(str(x).split("/")[-1].strip(), str(x))) for x in df_base["source_id"].fillna("")]
         out_df = normalize_clickhouse_df(df_base, y0, y1, target_iso, source_tag="clickhouse_mx_enriched", precomputed_col=vec_col if precomputed_col != "none" else "none")
     else:
         qf = (
