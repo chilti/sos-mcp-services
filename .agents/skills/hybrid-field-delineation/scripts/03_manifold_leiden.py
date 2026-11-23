@@ -202,13 +202,14 @@ def triage_clusters_and_rescue(df: pd.DataFrame, cfg: dict) -> tuple[pd.DataFram
             else:
                 zone = "ZONA_GRIS"
         else:
-            if med_m >= 0.055 and med_lr >= 0.72 and (pct_th >= 42.0 or pct_pv >= 25.0):
+            if med_m >= 0.055 and med_lr >= 0.72 and n_sn == 0 and (pct_th >= 28.0 or pct_pv >= 18.0):
                 zone = "ZONA_VERDE"
             elif (
                 (pct_sn == 100.0 and med_m < -0.01)
                 or (med_m <= 0.005 and pct_th < 10.0)
                 or (med_m < -0.02)
                 or (med_lr <= 0.25 and pct_th < 8.0 and pct_pv < 5.0)
+                or (med_lr <= 0.22 and med_m <= 0.01 and pct_sp <= 20.0)
             ):
                 zone = "ZONA_ROJA"
             else:
