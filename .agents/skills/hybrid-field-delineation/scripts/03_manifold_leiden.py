@@ -265,7 +265,31 @@ def write_manifold_figures(df: pd.DataFrame, out_html: Path, d_id: int) -> None:
             opacity=0.65, width=1200, height=780,
         )
         fig.update_traces(marker={"size": 4})
-        fig.write_html(str(out_html), include_plotlyjs="cdn")
+        plot_frag = fig.to_html(full_html=False, include_plotlyjs="cdn")
+        wrapped_manifold = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Phase 3: UMAP(d_ID={d_id}D -> 2D) Manifold &amp; 3-Zone Triage</title>
+  <style>
+    body {{ margin: 0; padding: 24px 32px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.5; }}
+    .header-bar {{ background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff; padding: 20px 24px; border-radius: 12px; margin-bottom: 16px; }}
+    .header-bar h1 {{ margin: 0 0 6px 0; font-size: 1.35rem; }}
+    .header-desc {{ margin: 8px 0 0 0; color: #e2e8f0; font-size: 0.88rem; line-height: 1.5; }}
+    .guide {{ background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 8px; padding: 11px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #334155; }}
+    .card {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }}
+  </style>
+</head>
+<body>
+  <div class="header-bar">
+    <h1>Phase 3: Hierarchical UMAP({d_id}D &rarr; 2D) Manifold &amp; Leiden 3-Zone Triage</h1>
+    <div class="header-desc">Interactive semantic landscape built by estimating the intrinsic manifold dimension (d_ID={d_id}D), clustering in d_ID via Leiden (0% orphans), and projecting the exact manifold structure into 2D for visual inspection.</div>
+  </div>
+  <div class="guide"><strong>How to read:</strong> <strong>GREEN ZONE</strong> islands represent high-purity disciplinary core clusters promoted automatically; <strong>GRAY ZONE</strong> clusters (yellow) contain mixed/interdisciplinary boundaries sent to Phase 4 adjudication; <strong>RED ZONE</strong> islands isolate off-topic homonyms and noise. Click legend items to isolate zones and hover points for title, topic, Leiden cluster, margin score, and capture pathway.</div>
+  <div class="card">{plot_frag}</div>
+</body>
+</html>"""
+        out_html.write_text(wrapped_manifold, encoding="utf-8")
     except Exception as exc:
         print(f"  [Plotly warning] {exc}")
     try:
